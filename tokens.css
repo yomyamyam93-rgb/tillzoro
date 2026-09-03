@@ -1,0 +1,31 @@
+/* Till Zero design tokens v0.1 · 2026-09-03
+   index.html의 :root와 동일. 값을 바꾸면 화면이 따라온다. */
+  :root{
+    /* color · light (default) */
+    --ground:#ECECEA; --paper:#FAFAF9; --paper-2:#F2F2F4; --card:#FFFFFF; --ink:#131416; --ink-2:#5C5F66; --ink-3:#9A9DA4; --line:#E3E3E0;
+    --zero:#E5232E; --bubble-me:#131416; --bubble-me-ink:#FAFAF9; --bubble-you:#F0F0EE;
+    --shadow:0 1px 2px rgba(20,20,20,.06),0 8px 24px rgba(20,20,20,.06);
+    /* type */
+    --font-num:Orbitron,"Arial",sans-serif;
+    --font-body:"Pretendard Variable",Pretendard,"Noto Sans KR",system-ui,sans-serif;
+    --num-hero:84px; --num-row:30px; --num-keep:16px; --num-chat:44px;
+    --text-title:26px; --text-h:17px; --text-name:15px; --text-body:14px; --text-sub:13px; --text-cap:12px; --text-label:9px;
+    --track-label:.12em;
+    /* space */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+    --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:54px;
+    /* radius */
+    --r-card:14px; --r-bubble:16px; --r-bubble-tail:4px; --r-field:14px; --r-pill:25px; --r-sheet:22px; --r-chead:24px; --r-list:16px;
+    /* controls */
+    --btn-h:50px; --icon-btn:34px; --row-h:52px; --row-icon:20px; --avatar-lg:76px; --field-h:52px; --toggle-w:46px; --toggle-h:28px; --icon-stroke:2px; --icon-size:16px;
+    /* fade by d-day (card opacity) — 미결: 1 = 흐림 없음 */
+    --fade-dim:1; --fade-warn:1; --fade-zero:1;
+    /* motion */
+    --dur:.3s; --ease:cubic-bezier(.2,.7,.2,1);
+  }
+  /* color · dark */
+  :root[data-theme="dark"]{
+    --ground:#050506; --paper:#0C0C0E; --paper-2:#111114; --card:#1A1A1E; --ink:#F2F2EF; --ink-2:#A3A5AB; --ink-3:#6B6E75; --line:#232327;
+    --zero:#FF2D3A; --bubble-me:#F2F2EF; --bubble-me-ink:#0C0C0E; --bubble-you:#1E1E22;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);
+  }

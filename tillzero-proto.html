@@ -1,0 +1,196 @@
+<title>Till Zero 프로토타입</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --ground:#ECECEA;
+    --paper:#FAFAF9;
+    --card:#FFFFFF;
+    --ink:#131416;
+    --ink-2:#5C5F66;
+    --ink-3:#9A9DA4;
+    --line:#E3E3E0;
+    --zero:#E5232E;
+    --bubble-me:#131416;
+    --bubble-me-ink:#FAFAF9;
+    --bubble-you:#F0F0EE;
+    --shadow:0 1px 2px rgba(20,20,20,.06),0 8px 24px rgba(20,20,20,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#050506; --paper:#0C0C0E; --card:#151518; --ink:#F2F2EF; --ink-2:#A3A5AB; --ink-3:#6B6E75;
+      --line:#232327; --zero:#FF2D3A; --bubble-me:#F2F2EF; --bubble-me-ink:#0C0C0E; --bubble-you:#1E1E22;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#050506; --paper:#0C0C0E; --card:#151518; --ink:#F2F2EF; --ink-2:#A3A5AB; --ink-3:#6B6E75;
+    --line:#232327; --zero:#FF2D3A; --bubble-me:#F2F2EF; --bubble-me-ink:#0C0C0E; --bubble-you:#1E1E22;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px 16px}
+  .note{font:12px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink-3);letter-spacing:.02em;text-align:center;max-width:420px}
+  .note b{color:var(--ink-2);font-weight:500}
+  .phone{width:390px;height:844px;background:var(--paper);border-radius:44px;box-shadow:var(--shadow),0 0 0 10px var(--ink);overflow:hidden;position:relative}
+  .screen{position:absolute;inset:54px 0 0 0;display:flex;flex-direction:column;transform:translateX(0);transition:transform .32s cubic-bezier(.2,.7,.2,1)}
+  .screen[hidden]{display:flex;transform:translateX(100%)}
+  #chat{transform:translateX(100%)}
+  #chat.on{transform:translateX(0)}
+  #list.off{transform:translateX(-18%)}
+  @media (prefers-reduced-motion: reduce){.screen{transition:none}}
+
+  .status{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 34px;font:500 13px "IBM Plex Mono",monospace;color:var(--ink);flex:none}
+  .status .isl{width:110px;height:32px;border-radius:20px;background:var(--ink);position:absolute;left:50%;top:12px;transform:translateX(-50%)}
+
+  /* Till header */
+  .head{padding:8px 28px 6px;display:flex;align-items:flex-end;justify-content:space-between;flex:none}
+  .total{display:flex;align-items:baseline;gap:10px}
+  .total .n{font:300 72px/1 Oswald,"Arial Narrow",sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .total .l{font:500 12px "IBM Plex Mono",monospace;letter-spacing:.18em;color:var(--ink-2);text-transform:uppercase;padding-bottom:10px}
+  .gear{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;color:var(--ink-2);margin-bottom:8px}
+  .gear svg{width:16px;height:16px}
+
+  .rows{flex:1;overflow:auto;padding:10px 20px 28px;display:flex;flex-direction:column;gap:14px;scrollbar-width:none}
+  .rows::-webkit-scrollbar{display:none}
+  .row{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:stretch;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .row:focus-visible{outline:2px solid var(--ink);outline-offset:4px;border-radius:14px}
+  .count{display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:6px}
+  .count .n{font:400 40px/1 Oswald,"Arial Narrow",sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .count .k{font:400 9px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase;white-space:nowrap}
+  .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+  .photo{height:118px;position:relative;display:flex;align-items:flex-end;padding:12px 14px}
+  .photo .name{font:700 15px/1 "Noto Sans KR",sans-serif;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+  .card.text .photo{height:auto;padding:16px 14px 0;background:transparent}
+  .card.text .name{color:var(--ink);text-shadow:none}
+  .last{padding:12px 14px 13px;font:400 13px/1.5 "Noto Sans KR",sans-serif;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .last .t{font:400 10px "IBM Plex Mono",monospace;color:var(--ink-3);margin-left:8px;letter-spacing:.04em}
+
+  /* fade by count */
+  .row[data-tier="calm"]{opacity:1}
+  .row[data-tier="dim"]{opacity:.68}
+  .row[data-tier="warn"]{opacity:.5}
+  .row[data-tier="zero"]{opacity:.44}
+  .row[data-tier="zero"] .count .n{color:var(--zero);opacity:1}
+  .row[data-tier="zero"]{opacity:1}
+  .row[data-tier="zero"] .card{opacity:.42}
+  .row[data-tier="zero"] .count .k{color:var(--zero);opacity:.8}
+
+  .req{margin:4px 0 0;padding:14px 16px;border:1px dashed var(--line);border-radius:14px;font:400 13px "Noto Sans KR",sans-serif;color:var(--ink-2);display:flex;justify-content:space-between;align-items:center}
+  .req .k{font:400 10px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-3)}
+
+  /* placeholder "photos" */
+  .p1{background:linear-gradient(160deg,#9db7c9,#4f6f86 60%,#2d4557)}
+  .p2{background:linear-gradient(160deg,#e8c9a3,#b6784a 55%,#6b3f22)}
+  .p3{background:linear-gradient(160deg,#c9cfb8,#7d8a63 60%,#3f4a2e)}
+  .p4{background:linear-gradient(160deg,#d9b8c9,#8c5a7a 60%,#4a2e42)}
+  .card:not(.text) .photo::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 30% 20%,rgba(255,255,255,.25),transparent 55%),linear-gradient(to top,rgba(0,0,0,.35),transparent 55%);pointer-events:none}
+
+  /* chat */
+  .chead{display:flex;align-items:center;gap:12px;padding:6px 20px 12px;border-bottom:1px solid var(--line);flex:none}
+  .back{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;color:var(--ink-2);cursor:pointer}
+  .back svg{width:16px;height:16px}
+  .cname{flex:1;font:700 16px "Noto Sans KR",sans-serif}
+  .cname small{display:block;font:400 10px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--ink-3);margin-top:3px}
+  .ccount{font:400 34px/1 Oswald,"Arial Narrow",sans-serif;font-variant-numeric:tabular-nums}
+  .ccount.zero{color:var(--zero)}
+  .days{flex:1;overflow:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px;scrollbar-width:none}
+  .days::-webkit-scrollbar{display:none}
+  .day{display:grid;grid-template-columns:64px 1fr;gap:10px}
+  .date{display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px}
+  .date .n{font:400 30px/1 Oswald,"Arial Narrow",sans-serif;font-variant-numeric:tabular-nums}
+  .date .k{font:400 9px "IBM Plex Mono",monospace;letter-spacing:.16em;color:var(--ink-3)}
+  .dcard{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;gap:8px}
+  .msg{max-width:84%;padding:9px 12px;border-radius:14px;font:400 13px/1.5 "Noto Sans KR",sans-serif;background:var(--bubble-you);color:var(--ink);align-self:flex-start}
+  .msg.me{background:var(--bubble-me);color:var(--bubble-me-ink);align-self:flex-end}
+  .msg.img{padding:0;overflow:hidden;width:64%;height:110px;border-radius:12px}
+  .input{flex:none;padding:12px 16px 34px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  .input .box{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);padding:0 16px;display:flex;align-items:center;font:400 13px "Noto Sans KR",sans-serif;color:var(--ink-3)}
+  .input .send{width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center}
+  .input .send svg{width:16px;height:16px}
+  .home{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.5}
+</style>
+
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="status"><span>9:41</span><span class="isl"></span><span>●●●</span></div>
+
+    <!-- Till -->
+    <section class="screen" id="list" aria-label="Till">
+      <div class="head">
+        <div class="total"><span class="n" id="total">5</span><span class="l">Till</span></div>
+        <button class="gear" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      </div>
+      <div class="rows" id="rows"></div>
+    </section>
+
+    <!-- Chat -->
+    <section class="screen" id="chat" aria-label="대화방">
+      <div class="chead">
+        <button class="back" id="back" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="cname" id="cname">수아<small>KEEP 18 · DAYS 540</small></div>
+        <div class="ccount" id="ccount">6</div>
+      </div>
+      <div class="days" id="days"></div>
+      <div class="input"><div class="box">메시지</div><div class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14M12 5l7 7-7 7"/></svg></div></div>
+    </section>
+
+    <div class="home"></div>
+  </div>
+  <p class="note"><b>Till Zero 프로토타입 v0.1</b> · 줄을 누르면 대화방, ← 로 돌아오기<br>사진과 이름은 임시 예시 · 밝은 바탕 기본, 시스템 다크 모드 지원</p>
+</div>
+
+<script>
+  const people = [
+    {name:"지민", count:2,  keep:4,  days:128, photo:"p1", last:"시험 끝나면 보자", t:"8.06",
+      chat:[{d:"06",w:"AUG",m:[["you","시험 언제 끝나?"],["me","다음 주 금요일"],["you","시험 끝나면 보자"]]},
+            {d:"09",w:"JUL",m:[["me","사진 봤어? 그때 거"],["you","img"],["you","이거 맞지"]]}]},
+    {name:"수아", count:6,  keep:18, days:540, photo:"p2", last:"ㅋㅋ 그건 좀 아니지", t:"8.10",
+      chat:[{d:"10",w:"AUG",m:[["you","그 얘기 들었어?"],["me","뭔데"],["you","ㅋㅋ 그건 좀 아니지"]]},
+            {d:"12",w:"JUL",m:[["me","잘 지내지"],["you","응 너는"],["me","그냥저냥"]]},
+            {d:"14",w:"JUN",m:[["you","생일 축하해"],["me","고마워 진짜"]]}]},
+    {name:"도윤", count:29, keep:3,  days:73,  photo:"p3", last:"내일 몇 시?", t:"9.02",
+      chat:[{d:"02",w:"SEP",m:[["me","내일 시간 돼?"],["you","내일 몇 시?"]]}]},
+    {name:"하린", count:30, keep:11, days:331, photo:"p4", last:"도착했어", t:"9.03",
+      chat:[{d:"03",w:"SEP",m:[["you","나 지금 출발"],["me","조심히 와"],["you","도착했어"]]}]},
+    {name:"준서", count:30, keep:0,  days:1,   photo:null, last:"맞틸 완료", t:"9.03",
+      chat:[{d:"03",w:"SEP",m:[["me","맞틸 완료"]]}]},
+  ];
+  const tier = c => c>=15?"calm":c>=8?"dim":c>=4?"warn":"zero";
+  const rows = document.getElementById("rows");
+  people.sort((a,b)=>a.count-b.count||a.name.localeCompare(b.name,"ko"));
+  document.getElementById("total").textContent = people.length;
+  people.forEach((p,i)=>{
+    const r = document.createElement("div");
+    r.className="row"; r.tabIndex=0; r.dataset.tier=tier(p.count);
+    r.innerHTML = `
+      <div class="count"><span class="n">${p.count}</span><span class="k">keep ${p.keep}</span></div>
+      <div class="card ${p.photo?"":"text"}">
+        <div class="photo ${p.photo||""}"><span class="name">${p.name}</span></div>
+        <div class="last">${p.last}<span class="t">${p.t}</span></div>
+      </div>`;
+    r.addEventListener("click",()=>openChat(p));
+    r.addEventListener("keydown",e=>{if(e.key==="Enter")openChat(p)});
+    rows.appendChild(r);
+  });
+  const req = document.createElement("div");
+  req.className="req"; req.innerHTML=`<span>받은 요청 1</span><span class="k">TILL CODE</span>`;
+  rows.appendChild(req);
+
+  const chat=document.getElementById("chat"), list=document.getElementById("list");
+  function openChat(p){
+    document.getElementById("cname").innerHTML=`${p.name}<small>KEEP ${p.keep} · DAYS ${p.days}</small>`;
+    const cc=document.getElementById("ccount"); cc.textContent=p.count; cc.className="ccount"+(p.count<=3?" zero":"");
+    const days=document.getElementById("days"); days.innerHTML="";
+    p.chat.forEach(d=>{
+      const el=document.createElement("div"); el.className="day";
+      el.innerHTML=`<div class="date"><span class="n">${d.d}</span><span class="k">${d.w}</span></div>
+        <div class="dcard">${d.m.map(([who,txt])=>txt==="img"
+          ?`<div class="msg img ${who==="me"?"me":""} ${p.photo||"p1"}"></div>`
+          :`<div class="msg ${who==="me"?"me":""}">${txt}</div>`).join("")}</div>`;
+      days.appendChild(el);
+    });
+    chat.classList.add("on"); list.classList.add("off");
+  }
+  document.getElementById("back").addEventListener("click",()=>{chat.classList.remove("on");list.classList.remove("off")});
+</script>
