@@ -20,7 +20,7 @@
     --track-label:.12em;
     /* space */
     --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
-    --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:54px;
+    --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:calc(env(safe-area-inset-top, 0px) + 8px);
     /* radius */
     --r-card:14px; --r-bubble:16px; --r-bubble-tail:4px; --r-field:14px; --r-pill:25px; --r-sheet:22px; --r-chead:24px; --r-list:18px;
     /* controls */
@@ -40,15 +40,10 @@
   body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
   input,textarea{font:inherit;color:inherit}
-  .stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px 12px}
+  .stage{min-height:100dvh;display:flex;flex-direction:column;align-items:center}
   .note{font:12px/1.6 var(--font-body);color:var(--ink-3);text-align:center;max-width:440px}
   .note b{color:var(--ink-2);font-weight:500}
-  .phone{width:390px;height:844px;background:var(--paper);border-radius:44px;box-shadow:var(--shadow),0 0 0 10px var(--ink);overflow:hidden;position:relative}
-  @media (max-width:420px){.stage{padding:0}.phone{width:100vw;height:100dvh;border-radius:0;box-shadow:none}.note{display:none}}
-  .status{position:absolute;top:0;left:0;right:0;z-index:20;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 34px;font:500 13px var(--font-body);color:var(--ink);pointer-events:none;transition:color .2s}
-  .status .isl{width:110px;height:32px;border-radius:20px;background:#0a0a0a;position:absolute;left:50%;top:12px;transform:translateX(-50%)}
-  .phone.light-status .status{color:#fff}
-  .home{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.5;z-index:20;pointer-events:none}
+  .phone{width:100%;max-width:520px;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
@@ -277,8 +272,6 @@
 
 <div class="stage">
 <div class="phone" id="phone">
-  <div class="status"><span>9:41</span><span class="isl"></span><span>●●●</span></div>
-  <div class="home"></div>
 
   <!-- 0. splash -->
   <section class="screen base" id="splash"><div class="zero">0</div><div class="wm">Till Zero</div></section>
@@ -419,7 +412,6 @@
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="toast" id="toast"></div>
 </div>
-<p class="note"><b>Till Zero 프로토타입</b> · 이 폰 안에서 되는 건 전부 실제로 동작해요 (저장됨)<br>상대 수신·영상통화 연결·푸시는 서버가 필요해서 화면까지만</p>
 </div>
 
 <script>
@@ -470,20 +462,17 @@ function savePeople(){return store.set("people",people)}
 
 /* ---------- nav ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const phone=$("#phone");
 let stack=[];
 function go(id,{replace=false}={}){
   const cur=stack[stack.length-1];
   if(cur&&cur!==id){$("#"+cur).classList.add("under")}
   if(replace&&cur){$("#"+cur).classList.remove("on","under");stack.pop()}
   const el=$("#"+id); el.classList.remove("under"); el.classList.add("on"); stack.push(id);
-  phone.classList.toggle("light-status", id==="splash");
 }
 function back(to){
   const cur=stack.pop(); if(cur) $("#"+cur).classList.remove("on","under");
   if(to && stack[stack.length-1]!==to){ stack=[to]; $("#"+to).classList.add("on"); }
   const top=stack[stack.length-1]; if(top){$("#"+top).classList.remove("under")}
-  phone.classList.remove("light-status");
   if(top==="till") renderTill(); if(top==="settings") renderSettings();
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",()=>back(b.dataset.back)));
@@ -501,9 +490,7 @@ setTimeout(()=>{
   $("#splash").classList.remove("base"); $("#splash").style.display="none";
   if(me){ if(!people){people=seedPeople();savePeople()} $("#till").classList.add("base"); stack=["till"]; renderTill(); }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
-  phone.classList.remove("light-status");
 },1400);
-phone.classList.add("light-status");
 
 /* ---------- onboarding ---------- */
 const phoneIn=$("#phoneIn");
@@ -521,7 +508,7 @@ $("#ruleNext").addEventListener("click",()=>{
   me={name:$("#nameIn").value.trim(),photo:draftAvatar,phone:phoneIn.value,dob:$("#dobIn").value,since:NOW()};
   store.set("me",me); people=seedPeople(); savePeople();
   ["ob-phone","ob-code","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
-  $("#till").classList.add("base"); stack=["till"]; renderTill(); phone.classList.remove("light-status");
+  $("#till").classList.add("base"); stack=["till"]; renderTill();
 });
 
 /* ---------- Till ---------- */

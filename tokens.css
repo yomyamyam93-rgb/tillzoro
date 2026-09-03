@@ -13,7 +13,7 @@
     --track-label:.12em;
     /* space */
     --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
-    --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:54px;
+    --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:calc(env(safe-area-inset-top, 0px) + 8px);
     /* radius */
     --r-card:14px; --r-bubble:16px; --r-bubble-tail:4px; --r-field:14px; --r-pill:25px; --r-sheet:22px; --r-chead:24px; --r-list:16px;
     /* controls */
