@@ -381,7 +381,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1617</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1623</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -563,18 +563,26 @@ $$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.
 
 /* ---------- splash → route ---------- */
 applyTheme();
-setTimeout(async()=>{
-  $("#splash").classList.remove("base"); $("#splash").style.display="none";
+(async()=>{
+  // 시작 화면을 보여주는 동안 서버에서 미리 받아온다. 다 뜬 뒤에 부르면 그만큼 늦다.
+  const 최소노출 = new Promise(r=>setTimeout(r,700));
+  let 준비 = Promise.resolve();
   if(auth){
     const local=store.get("me",{});
     me={name:auth.me.nickname,dob:auth.me.dob,photo:local.photo||null,since:local.since||NOW()};
     people=store.get("bonds",[]);   // 기억해둔 목록으로 곧바로 그린다
+    준비 = syncTill().catch(e=>{ if(!requireLogin()) toast(e.message) });
+  }
+  // 서버가 느려도 시작 화면에 갇히지 않게 한다
+  await Promise.all([최소노출, Promise.race([준비, new Promise(r=>setTimeout(r,2500))])]);
+  $("#splash").classList.remove("base"); $("#splash").style.display="none";
+  if(auth){
     $("#till").classList.add("base"); stack=["till"];
     renderTill();
-    try{ await syncTill(); await tryUrlCode(); connectWS() }catch(e){ if(!requireLogin()) toast(e.message) }
+    tryUrlCode(); connectWS();
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
-},1400);
+})();
 
 /* ---------- onboarding ---------- */
 const phoneIn=$("#phoneIn");
@@ -664,7 +672,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 let cur=null;
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
-  cur.unread=false; cur.msgs=[];
+  cur.unread=false; cur.msgs=store.get("msgs:"+id,[]);   // 지난번에 본 대화를 먼저 보여준다
   $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
     :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
   $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
@@ -679,7 +687,7 @@ async function openChat(id){
       $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${d.bond.keep} · DAYS ${d.bond.days}</small>`;
       cc.textContent=d.bond.dday; cc.className="ccount"+(d.bond.dday<=3?" zero":"");
     }
-    renderMsgs();
+    renderMsgs(); saveMsgs();
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
@@ -715,6 +723,7 @@ function bubble(m,showStamp=true){
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
   return el;
 }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.slice(-200))) }catch(e){} }
 function appendBubble(m){
   const prev=cur.msgs[cur.msgs.length-1];
   cur.msgs.push(m);
@@ -727,7 +736,7 @@ function appendBubble(m){
   const d=new Date(m.ts); const lastSep=[...days.querySelectorAll(".sep")].pop();
   const label=sepLabel(d);
   if(!lastSep||lastSep.textContent!==label) days.insertAdjacentHTML("beforeend",`<div class="sep">${label}</div>`);
-  days.appendChild(bubble(m)); days.scrollTop=days.scrollHeight;
+  days.appendChild(bubble(m)); days.scrollTop=days.scrollHeight; saveMsgs();
 }
 async function push(m){
   if(m.type!=="text"){ toast("사진은 아직 서버에 안 올라가요"); return }
