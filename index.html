@@ -486,7 +486,7 @@ function renderTill(){
   $("#total").textContent=live.length;
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
-  const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/(30*DAY)):0;
+  const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/DAY):0;
   const meRow=document.createElement("div"); meRow.className="row me";
   meRow.innerHTML=`<div class="count"><span class="n">0</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
     <div class="card ${me.photo?"":"text"}"><div class="photo" style="${me.photo?`background-image:url(${me.photo})`:""}"><span class="name">${esc(me.name)}</span></div>
