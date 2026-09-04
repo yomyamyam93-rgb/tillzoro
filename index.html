@@ -22,6 +22,7 @@
     --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
     --screen-x:20px; --row-gap:14px; --col-num:72px; --photo-h:76px; --chead-h:150px; --statusbar:calc(env(safe-area-inset-top, 0px) + 8px);
     /* radius */
+    --tool-h:84px;
     --r-card:14px; --r-bubble:16px; --r-bubble-tail:4px; --r-field:14px; --r-pill:25px; --r-sheet:22px; --r-chead:24px; --r-list:18px;
     /* controls */
     --btn-h:50px; --icon-btn:38px; --row-h:56px; --row-icon:22px; --avatar-lg:96px; --field-h:52px; --toggle-w:46px; --toggle-h:28px; --icon-stroke:2px; --icon-size:16px;
@@ -229,15 +230,16 @@
   /* 도구 미리보기 — 실제로 놓일 자리의 모양 그대로 보여준다 */
   .tool{margin-top:16px}
   .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
-  .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.5;color:var(--ink)}
-  .tool .pv.bubble{max-width:82%;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail)}
+  /* 상자는 하나의 규격이다. 어떤 도구든 이 안에서 해결한다. */
+  .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.45;color:var(--ink);
+            height:var(--tool-h);display:flex;flex-direction:column;justify-content:center;gap:2px;overflow:hidden}
   .tool .pvrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .tool .bar{height:6px;border-radius:3px;background:var(--paper-2);overflow:hidden;margin-top:9px}
+  .tool .bar{height:6px;border-radius:3px;background:var(--paper-2);overflow:hidden;margin-top:7px;flex:none}
   .tool .bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
   .tool .dim{color:var(--ink-3)}
   .tool .num{font:500 15px/1 var(--font-num);letter-spacing:.02em}
-  .tool .go{display:inline-block;margin-top:10px;padding:7px 15px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:12px;font-weight:500}
-  .tool .dots{display:flex;gap:5px;margin-top:9px}
+  .tool .go{display:inline-block;padding:6px 13px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:12px;font-weight:500}
+  .tool .dots{display:flex;gap:5px;margin-top:7px}
   .tool .dots i{width:22px;height:6px;border-radius:3px;background:var(--paper-2)}
   .tool .dots i.on{background:var(--ink)}
   .item .t{font-size:15px;font-weight:500;letter-spacing:.01em}
@@ -407,7 +409,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1710</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1718</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -829,21 +831,20 @@ const TOOLS=[
     <div class="pvrow"><span class="dim">이번 달 남은 돈</span><span class="num">38만</span></div>
     <div class="bar"><i style="width:31%"></i></div>`},
   {name:"감정 온도계", slot:"top", pv:`
-    <div class="pvrow"><span>오늘 기분</span><span class="dim">보통보다 조금 좋음</span></div>
+    <div class="pvrow"><span>오늘 기분</span><span class="dim">조금 좋음</span></div>
     <div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>`},
   {name:"룰렛", slot:"bubble", pv:`
-    <div>오늘 뭐 먹지?</div>
-    <div class="dim" style="margin-top:3px">삼겹살 · 국밥 · 파스타 · 초밥</div>
-    <span class="go">돌리기</span>`},
+    <div class="pvrow"><span>오늘 뭐 먹지?</span><span class="go">돌리기</span></div>
+    <div class="dim">삼겹살 · 국밥 · 파스타 · 초밥</div>`},
   {name:"타임캡슐", slot:"bubble", pv:`
-    <div class="dim">2027년 1월 1일에 열려요</div>
-    <div style="margin-top:4px">🔒 아직 잠겨 있어요</div>`},
+    <div>🔒 아직 잠겨 있어요</div>
+    <div class="dim">2027년 1월 1일에 열려요</div>`},
   {name:"귀가 핑", slot:"bubble", pv:`
     <div>지금 출발했어</div>
-    <div class="pvrow" style="margin-top:6px"><span class="dim">도착까지</span><span class="num">8분</span></div>`},
+    <div class="pvrow"><span class="dim">도착까지</span><span class="num">8분</span></div>`},
   {name:"더치페이", slot:"bubble", pv:`
     <div class="pvrow"><span>삼겹살</span><span class="num">48,000</span></div>
-    <div class="pvrow" style="margin-top:4px"><span class="dim">둘이 나눠서</span><span class="num">24,000</span></div>`},
+    <div class="pvrow"><span class="dim">둘이 나눠서</span><span class="num">24,000</span></div>`},
 ];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
 function renderTools(q=""){
@@ -854,7 +855,7 @@ function renderTools(q=""){
   found.forEach(t=>{
     const el=document.createElement("div"); el.className="tool";
     el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
-      <div class="pv ${t.slot==="bubble"?"bubble":""}">${t.pv}</div>`;
+      <div class="pv">${t.pv}</div>`;
     el.addEventListener("click",()=>toast("아직 준비 중이에요"));
     list.appendChild(el);
   });
