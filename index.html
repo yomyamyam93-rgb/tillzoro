@@ -102,10 +102,12 @@
   .tools{display:flex;justify-content:flex-end;height:36px;align-items:center}
   .me-btn{width:36px;height:36px;border-radius:50%;padding:2px;background:var(--card);border:1px solid var(--line)}
   .me-av{display:block;width:100%;height:100%;border-radius:50%;background:var(--line) center/cover}
-  .headtop{display:flex;justify-content:space-between;margin:-4px -9px -8px -9px}
-  .headtop #tillTools svg{fill:currentColor;stroke:none}
-  .headtop .sq{width:40px;height:40px;background:transparent;display:grid;place-items:center;color:var(--ink);flex:none}
-  .headtop .sq svg{width:21px;height:21px;fill:currentColor;stroke:none}
+  .tabs{flex:none;display:flex;align-items:center;justify-content:space-around;
+        padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
+  .tabs button{width:80px;height:44px;display:grid;place-items:center;color:var(--ink-3)}
+  .tabs button.on{color:var(--ink)}
+  .tabs svg{width:22px;height:22px;fill:currentColor;stroke:none}
+  .tabs .n{font:500 21px/1 var(--font-num);letter-spacing:.02em}
   .total{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 0 4px}
   .total .l,.total .n{font:600 var(--num-hero)/1 var(--font-num);letter-spacing:0;font-variant-numeric:tabular-nums;color:var(--ink)}
   .rows{flex:1;overflow:auto;padding:10px var(--screen-x) 40px;display:flex;flex-direction:column;gap:var(--row-gap);scrollbar-width:none}
@@ -309,10 +311,14 @@
   <!-- 2. Till -->
   <section class="screen" id="till">
     <div class="head">
-      <div class="headtop"><button class="sq" id="tillTools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button><button class="sq" id="tillSettings" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button></div>
       <div class="total"><span class="l">TILL</span><span class="n" id="total">0</span></div>
     </div>
     <div class="rows" id="rows"></div>
+    <div class="tabs">
+      <button id="tabTill" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
+      <button id="tabTools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
+      <button id="tabSettings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+    </div>
     <div class="scrim" id="scrim2"></div>
     <div class="sheet" id="reqSheet"><h3>받은 요청</h3><div class="reqlist" id="reqList"></div></div>
   </section>
@@ -344,7 +350,6 @@
   <section class="screen" id="s-tools">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
     <div class="pad">
-      <p class="note" style="margin:0;text-align:left">도구는 두 자리에만 나타나요. <b>대화방 맨 위</b>의 가로 칸, 또는 <b>말풍선 안</b>. 그래서 무엇을 넣어도 화면이 흐트러지지 않아요.</p>
       <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
       <div id="toolList"></div>
       <p id="toolEmpty" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0">찾는 도구가 없어요</p>
@@ -400,7 +405,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1723</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1726</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -654,7 +659,7 @@ function renderTill(){
   if(!me) return;              // 로그인 전에는 그릴 것이 없다
   const rows=$("#rows"); rows.innerHTML="";
   const live=people.filter(p=>!p.self && dday(p)>0 && !prefs.blocked.includes(p.id));
-  $("#total").textContent=live.length;
+  $("#total").textContent=live.length; $("#tabCount").textContent=live.length;
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
   const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/DAY):0;
@@ -804,7 +809,7 @@ scrim.addEventListener("click",closeSheets);
 const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
-$("#tillSettings").addEventListener("click",()=>{renderSettings();go("settings")});
+$("#tabSettings").addEventListener("click",()=>{renderSettings();go("settings")});
 
 /* ---------- Tools ----------
    도구가 나타날 수 있는 자리는 둘뿐이다.
@@ -829,7 +834,7 @@ function renderTools(q=""){
     list.appendChild(el);
   });
 }
-$("#tillTools").addEventListener("click",()=>{$("#toolSearch").value="";renderTools();go("s-tools")});
+$("#tabTools").addEventListener("click",()=>{$("#toolSearch").value="";renderTools();go("s-tools")});
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
