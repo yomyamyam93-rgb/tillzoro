@@ -21,6 +21,17 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const app = express();
 app.use(express.json({ limit: "64kb" }));
 
+// 앱은 다른 주소(GitHub Pages)에서 열리므로 브라우저에 교차 요청을 허락한다.
+// 인증은 쿠키가 아니라 Bearer 토큰이므로 출처를 좁힐 필요가 없다.
+app.use((req, res, next) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Headers", "authorization, content-type");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 /* ---------- 도우미 ---------- */
 
 const token = () => crypto.randomBytes(24).toString("base64url");
