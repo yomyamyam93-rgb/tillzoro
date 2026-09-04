@@ -412,6 +412,12 @@ async function api(path,{method="GET",body}={}){
   return d;
 }
 
+function requireLogin(){
+  if(store.get("auth",null)) return false;
+  location.replace(location.pathname);   // 토큰이 사라졌으면 처음 화면으로
+  return true;
+}
+
 let me = null;
 let people = [];
 let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false,theme:"light",code:null,codeOn:false,blocked:[]});
@@ -456,7 +462,7 @@ function connectWS(){
     if(d.type==="message"&&cur&&cur.id===d.bondId){
       appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
     }
-    syncTill().then(refreshChat).catch(()=>{});
+    syncTill().then(refreshChat).catch(requireLogin);
   };
   ws.onclose=()=>{ ws=null; setTimeout(connectWS,4000) };
 }
@@ -493,7 +499,7 @@ setTimeout(async()=>{
     const local=store.get("me",{});
     me={name:auth.me.nickname,dob:auth.me.dob,photo:local.photo||null,since:local.since||NOW()};
     $("#till").classList.add("base"); stack=["till"];
-    try{ await syncTill(); await tryUrlCode(); connectWS() }catch(e){ toast(e.message) }
+    try{ await syncTill(); await tryUrlCode(); connectWS() }catch(e){ if(!requireLogin()) toast(e.message) }
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
 },1400);
@@ -588,7 +594,7 @@ async function openChat(id){
     cc.textContent=d.bond.dday; cc.className="ccount"+(d.bond.dday<=3?" zero":"");
     renderMsgs();
     const v=$("#days"); v.scrollTop=v.scrollHeight;
-  }catch(e){ toast(e.message) }
+  }catch(e){ if(!requireLogin()) toast(e.message) }
 }
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
@@ -631,7 +637,7 @@ async function push(m){
     cur.mySent=true;
     if(r.reset) toast("30으로 돌아왔어요");
     syncTill().then(refreshChat).catch(()=>{});
-  }catch(e){ el.ok=false; renderMsgs(); toast(e.message) }
+  }catch(e){ el.ok=false; renderMsgs(); if(!requireLogin()) toast(e.message) }
 }
 const msgIn=$("#msgIn");
 msgIn.addEventListener("input",()=>{msgIn.style.height="auto";msgIn.style.height=Math.min(120,msgIn.scrollHeight)+"px"});
