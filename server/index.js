@@ -19,7 +19,7 @@ const DAY = 86400000;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const app = express();
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: "1mb" }));
 
 // 앱은 다른 주소(GitHub Pages)에서 열리므로 브라우저에 교차 요청을 허락한다.
 // 인증은 쿠키가 아니라 Bearer 토큰이므로 출처를 좁힐 필요가 없다.
@@ -48,7 +48,7 @@ async function auth(req, res, next) {
   const t = (req.get("authorization") || "").replace(/^Bearer /, "");
   if (!t) return res.status(401).json({ error: "로그인이 필요해요" });
   const { rows } = await pool.query(
-    "select u.id, u.nickname, u.dob from sessions s join users u on u.id = s.user_id where s.token = $1",
+    "select u.id, u.nickname, u.dob, u.photo from sessions s join users u on u.id = s.user_id where s.token = $1",
     [t]
   );
   if (!rows[0]) return res.status(401).json({ error: "로그인이 필요해요" });
@@ -62,6 +62,7 @@ function shape(row, meId) {
   return {
     id: row.id,
     name: iAmA ? row.b_nickname : row.a_nickname,
+    photo: iAmA ? row.b_photo : row.a_photo,
     dday: ddayOf(row.last_reset_at),
     keep: row.keep,
     days: daysOf(row.bond_at),
@@ -81,6 +82,8 @@ const BOND_SELECT = `
   select b.*,
          ua.nickname as a_nickname,
          ub.nickname as b_nickname,
+         ua.photo    as a_photo,
+         ub.photo    as b_photo,
          m.body      as last_body,
          m.created_at as last_at,
          m.sender_id  as last_sender
@@ -136,6 +139,36 @@ app.get("/api/till", auth, async (req, res) => {
       x.name.localeCompare(y.name)
   );
   res.json({ me: req.user, bonds });
+});
+
+app.post("/api/profile", auth, async (req, res) => {
+  const nickname = req.body?.nickname === undefined ? null : String(req.body.nickname).trim();
+  if (nickname !== null && !nickname) return res.status(400).json({ error: "이름은 비울 수 없어요" });
+  // photo: 문자열이면 새 사진, null이면 지우기, 없으면 그대로 둔다
+  const photo = req.body?.photo === undefined ? req.user.photo : req.body.photo;
+  if (typeof photo === "string" && photo.length > 400000)
+    return res.status(413).json({ error: "사진이 너무 커요" });
+
+  try {
+    const { rows } = await pool.query(
+      `update users set nickname = coalesce($2, nickname), photo = $3
+        where id = $1 returning id, nickname, dob, photo`,
+      [req.user.id, nickname, photo]
+    );
+    // 내 이름·사진은 상대 Till에도 보이므로 다시 그리게 알린다
+    const { rows: bs } = await pool.query(
+      "select a_id, b_id from bonds where a_id = $1 or b_id = $1",
+      [req.user.id]
+    );
+    notify(
+      bs.map((b) => (String(b.a_id) === String(req.user.id) ? b.b_id : b.a_id)),
+      { type: "till" }
+    );
+    res.json({ me: rows[0] });
+  } catch (e) {
+    if (e.code === "23505") return res.status(409).json({ error: "이미 쓰는 닉네임이에요" });
+    res.status(500).json({ error: "저장하지 못했어요" });
+  }
 });
 
 /* ---------- Bond 맺기 ---------- */

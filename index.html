@@ -160,20 +160,21 @@
   /* chat */
   #chat{z-index:3;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
   #chat{background:var(--paper-2)}
-  .chead{flex:none;display:flex;align-items:center;gap:12px;padding:8px 14px 10px;background:var(--paper-2)}
+  .chead{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px 10px;background:var(--paper-2)}
   .chead .sq{width:40px;height:40px;border-radius:12px;background:var(--card);display:grid;place-items:center;color:var(--ink);flex:none}
   .chead .sq svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .chead .av{width:44px;height:44px;border-radius:50%;background:var(--line) center/cover;flex:none}
   .chead .who{flex:1;min-width:0}
   .cname{font:500 15px/1.1 var(--font-num);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cname small{display:block;font:500 11px/1 var(--font-body);letter-spacing:.04em;color:var(--ink-3);margin-top:5px}
-  .ccount{font:500 32px/1 var(--font-num);color:var(--ink);flex:none;margin-right:6px;text-align:right;min-width:44px}
+  .ccount{font:500 28px/1 var(--font-num);color:var(--ink);flex:none}
+  .chead #chatMenu svg{width:20px;height:20px;fill:currentColor;stroke:none}
   .ccount.zero{color:var(--zero)}
   .days{flex:1;overflow:auto;padding:10px 16px 16px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
   .days::-webkit-scrollbar{display:none}
   .sep{flex:none;align-self:center;margin:12px 0 6px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
   .empty{margin:auto;font-size:13px;color:var(--ink-3)}
-  .msg{flex:none;max-width:78%;padding:10px 14px 8px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--text-body);line-height:1.5;background:var(--card);color:var(--ink);align-self:flex-start;position:relative;word-break:break-word}
+  .msg{flex:none;max-width:78%;padding:10px 14px 8px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);align-self:flex-start;position:relative;word-break:break-word}
   .msg.me{background:var(--bubble-me);color:var(--bubble-me-ink);align-self:flex-end;border-bottom-left-radius:var(--r-bubble);border-bottom-right-radius:var(--r-bubble-tail)}
   .msg.media{padding:4px;overflow:hidden;width:68%;border-radius:var(--r-bubble);background:var(--card)}
   .msg.media.me{background:var(--bubble-me)}
@@ -307,8 +308,9 @@
     <div class="chead" id="chead">
       <button class="sq" data-back="till" id="chatBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="av" id="cavatar"></div>
-      <div class="who"><div class="cname" id="cname">이름<small>KEEP 0 · DAYS 1</small></div></div>
       <div class="ccount" id="ccount">30</div>
+      <div class="who"><div class="cname" id="cname">이름<small>KEEP 0 · DAYS 1</small></div></div>
+      <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
     </div>
     <div class="days" id="days"></div>
     <div class="compose">
@@ -319,6 +321,13 @@
       </div>
     </div>
     <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="chatSheet">
+      <h3>대화방 설정</h3>
+      <div class="lbl">글자 크기</div>
+      <div class="seg" id="segSize"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button><button data-v="xl">아주 크게</button></div>
+      <div class="lbl" style="margin-top:12px">글꼴</div>
+      <div class="seg" id="segFont"><button data-v="default">기본</button><button data-v="gothic">고딕</button><button data-v="system">시스템</button></div>
+    </div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
     <input type="file" id="albumFile" accept="image/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
@@ -449,10 +458,10 @@ function savePeople(){return true}   // 기록은 서버가 갖는다
 /* 서버의 Bond를 화면이 쓰던 모양으로 옮긴다. dday·daysOf 계산이 그대로 맞도록 시각을 거꾸로 만든다. */
 async function syncTill(){
   const d=await api("/api/till");
-  me={...(me||{}), name:d.me.nickname, dob:d.me.dob};
+  me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null};
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
-    id:b.id, name:b.name, keep:b.keep, photo:null,
+    id:b.id, name:b.name, keep:b.keep, photo:b.photo||null,
     bondAt:NOW()-b.days*DAY,
     lastResetAt:NOW()-(30-b.dday)*DAY,
     mySent:b.waiting, unread:b.unread,
@@ -461,6 +470,9 @@ async function syncTill(){
   // 대화방이 열려 있을 때만 읽어둔 대화를 이어 쓴다. 닫혀 있으면 목록은 서버 것을 그대로 보여준다.
   if(prev&&chatOpen){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } }
   else if(!chatOpen) cur=null;
+  // 다음에 열 때 곧바로 보여주려고 목록을 기억해둔다.
+  // bondAt·lastResetAt은 절대 시각이라 나중에 다시 계산해도 값이 맞는다.
+  store.set("bonds", people.map(p=>({...p, msgs:p.msgs.slice(-1)})));
   renderTill();
 }
 
@@ -536,8 +548,9 @@ setTimeout(async()=>{
   if(auth){
     const local=store.get("me",{});
     me={name:auth.me.nickname,dob:auth.me.dob,photo:local.photo||null,since:local.since||NOW()};
+    people=store.get("bonds",[]);   // 기억해둔 목록으로 곧바로 그린다
     $("#till").classList.add("base"); stack=["till"];
-    renderTill();   // 서버를 기다리는 동안에도 백지로 두지 않는다
+    renderTill();
     try{ await syncTill(); await tryUrlCode(); connectWS() }catch(e){ if(!requireLogin()) toast(e.message) }
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
@@ -569,7 +582,7 @@ $("#codeNext").addEventListener("click",async()=>{
 });
 let draftAvatar=null;
 function readImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.78))};im.src=r.result};r.readAsDataURL(file)}
-$("#avatarFile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,720,d=>{draftAvatar=d;$("#avatarPick").style.backgroundImage=`url(${d})`;$("#avatarPick").textContent=""})});
+$("#avatarFile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,480,d=>{draftAvatar=d;$("#avatarPick").style.backgroundImage=`url(${d})`;$("#avatarPick").textContent=""})});
 function checkProfile(){const dob=$("#dobIn").value;let young=false;if(dob){const a=(NOW()-new Date(dob).getTime())/(365.25*DAY);young=a<14;}$("#dobWarn").style.display=young?"block":"none";$("#profileNext").disabled=!dob||young}
 $("#dobIn").addEventListener("input",checkProfile);
 $("#profileNext").addEventListener("click",()=>go("ob-rule"));
@@ -585,6 +598,7 @@ async function enter(d){
   store.set("me",{photo:me.photo,since:me.since});
   ["ob-phone","ob-code","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
   $("#till").classList.add("base"); stack=["till"];
+  if(draftAvatar){ try{ await api("/api/profile",{method:"POST",body:{photo:draftAvatar}}) }catch(e){} }
   await syncTill(); await tryUrlCode(); connectWS();
 }
 
@@ -630,7 +644,7 @@ async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
   cur.unread=false; cur.msgs=[];
   $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
-  $("#cavatar").style.backgroundImage="none";
+  $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
   const cc=$("#ccount"); cc.textContent=dday(cur); cc.className="ccount"+(dday(cur)<=3?" zero":"");
   renderMsgs(); go("chat");
   try{
@@ -654,23 +668,35 @@ function renderMsgs(){
   const days=$("#days"); days.innerHTML="";
   if(!cur.msgs.length){days.innerHTML=`<div class="empty">아직 대화가 없어요</div>`;return}
   let lastDay="";
-  cur.msgs.forEach(m=>{
+  cur.msgs.forEach((m,i)=>{
     const d=new Date(m.ts), key=d.toDateString();
     if(key!==lastDay){lastDay=key;days.insertAdjacentHTML("beforeend",`<div class="sep">${sepLabel(d)}</div>`)}
-    days.appendChild(bubble(m));
+    days.appendChild(bubble(m, !sameGroup(m, cur.msgs[i+1])));
   });
 }
-function bubble(m){
+// 같은 사람이 같은 분에 이어 보낸 것은 한 묶음으로 본다
+function sameGroup(a,b){
+  return a && b && a.who===b.who && Math.floor(a.ts/60000)===Math.floor(b.ts/60000)
+    && new Date(a.ts).toDateString()===new Date(b.ts).toDateString();
+}
+function bubble(m,showStamp=true){
   const el=document.createElement("div"); el.className=`msg ${m.who==="me"?"me":""} ${m.ok===false?"failed":""}`; el.dataset.id=m.id;
-  if(m.type==="text"){el.innerHTML=`${esc(m.text)}<span class="stamp">${fmtT(m.ts)}</span>`}
+  const stamp = showStamp ? `<span class="stamp">${fmtT(m.ts)}</span>` : "";
+  if(m.type==="text"){el.innerHTML=`${esc(m.text)}${stamp}`}
   else if(m.type==="image"){el.classList.add("media");el.innerHTML=`<img src="${m.src}" alt="">`;el.addEventListener("click",()=>viewer(m))}
   let pt; el.addEventListener("pointerdown",()=>{pt=setTimeout(()=>{if(m.who==="me")confirmBox("이 메시지를 내 화면에서 지울까요? 상대 화면에는 남아요.",()=>{cur.msgs=cur.msgs.filter(x=>x.id!==m.id);savePeople();renderMsgs()})},600)});
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
   return el;
 }
 function appendBubble(m){
+  const prev=cur.msgs[cur.msgs.length-1];
   cur.msgs.push(m);
   const days=$("#days"); if(cur.msgs.length===1) days.innerHTML="";
+  // 앞 것과 한 묶음이면 앞 것의 시간은 뗀다
+  if(sameGroup(prev,m)){
+    const st=days.querySelector(`.msg[data-id="${CSS.escape(String(prev.id))}"] .stamp`);
+    if(st) st.remove();
+  }
   const d=new Date(m.ts); const lastSep=[...days.querySelectorAll(".sep")].pop();
   const label=sepLabel(d);
   if(!lastSep||lastSep.textContent!==label) days.insertAdjacentHTML("beforeend",`<div class="sep">${label}</div>`);
@@ -697,7 +723,25 @@ $("#sendBtn").addEventListener("click",sendText);
 /* attach sheet */
 const sheet=$("#sheet"),scrim=$("#scrim");
 function sheetOpen(v){sheet.classList.toggle("on",v);scrim.classList.toggle("on",v)}
-$("#plusBtn").addEventListener("click",()=>sheetOpen(true)); scrim.addEventListener("click",()=>sheetOpen(false));
+$("#plusBtn").addEventListener("click",()=>sheetOpen(true));
+scrim.addEventListener("click",()=>{sheetOpen(false);chatSheetOpen(false)});
+
+/* 대화방 설정 — 글자 크기와 글꼴 */
+const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
+const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
+function chatSheetOpen(v){$("#chatSheet").classList.toggle("on",v);scrim.classList.toggle("on",v)}
+$("#chatMenu").addEventListener("click",()=>chatSheetOpen(true));
+function applyChat(){
+  const size=prefs.chatSize||"m", font=prefs.chatFont||"default";
+  const st=$("#chat").style;
+  st.setProperty("--chat-size",CHAT_SIZE[size]||CHAT_SIZE.m);
+  st.setProperty("--chat-font",CHAT_FONT[font]||CHAT_FONT.default);
+  $$("#segSize button").forEach(b=>b.classList.toggle("on",b.dataset.v===size));
+  $$("#segFont button").forEach(b=>b.classList.toggle("on",b.dataset.v===font));
+}
+$$("#segSize button").forEach(b=>b.addEventListener("click",()=>{prefs.chatSize=b.dataset.v;store.set("prefs",prefs);applyChat()}));
+$$("#segFont button").forEach(b=>b.addEventListener("click",()=>{prefs.chatFont=b.dataset.v;store.set("prefs",prefs);applyChat()}));
+applyChat();
 $$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam,block:blockCur,report:()=>toast("신고를 접수했어요")})[b.dataset.act]()}));
 $("#albumFile").addEventListener("change",e=>{[...e.target.files].forEach(f=>readImage(f,1280,d=>push({type:"image",src:d}))); e.target.value=""});
 
@@ -749,9 +793,21 @@ function renderSettings(){
 $$("#notiList .toggle").forEach(t=>t.addEventListener("click",()=>{prefs[t.dataset.k]=!prefs[t.dataset.k];store.set("prefs",prefs);t.classList.toggle("on")}));
 function fillProfileEdit(){$("#nameIn2").value=me.name;const p=$("#avatarPick2");p.style.backgroundImage=me.photo?`url(${me.photo})`:"none";p.childNodes[0].textContent=me.photo?"":"사진 넣기"}
 let editAvatar;
-$("#avatarFile2").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,720,d=>{editAvatar=d;$("#avatarPick2").style.backgroundImage=`url(${d})`;$("#avatarPick2").childNodes[0].textContent=""})});
+$("#avatarFile2").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,480,d=>{editAvatar=d;$("#avatarPick2").style.backgroundImage=`url(${d})`;$("#avatarPick2").childNodes[0].textContent=""})});
 $("#avatarRemove").addEventListener("click",()=>{editAvatar="";$("#avatarPick2").style.backgroundImage="none";$("#avatarPick2").childNodes[0].textContent="사진 넣기"});
-$("#profileSave").addEventListener("click",()=>{const n=$("#nameIn2").value.trim();if(!n){toast("이름은 비울 수 없어요");return}me.name=n;if(editAvatar!==undefined)me.photo=editAvatar||null;editAvatar=undefined;store.set("me",me);toast("저장했어요");back("settings")});
+$("#profileSave").addEventListener("click",async()=>{
+  const n=$("#nameIn2").value.trim(); if(!n){toast("이름은 비울 수 없어요");return}
+  const btn=$("#profileSave"); btn.disabled=true;
+  try{
+    const d=await api("/api/profile",{method:"POST",
+      body:{nickname:n, ...(editAvatar===undefined?{}:{photo:editAvatar||null})}});
+    me={...me, name:d.me.nickname, photo:d.me.photo||null};
+    auth.me={...auth.me, nickname:d.me.nickname}; store.set("auth",auth);
+    editAvatar=undefined;
+    await syncTill(); toast("저장했어요"); back("settings");
+  }catch(e){ if(!requireLogin()) toast(e.message) }
+  btn.disabled=false;
+});
 function genCode(){return Array.from({length:4},()=>"ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*31)]).join("")}
 function renderInvite(){$("#codeToggle").classList.toggle("on",prefs.codeOn);$("#codeOut").textContent=prefs.codeOn&&prefs.code?prefs.code.split("").join(" "):"— — — —";$("#linkOut").style.display="none"}
 $("#codeToggle").addEventListener("click",()=>{prefs.codeOn=!prefs.codeOn;if(prefs.codeOn&&!prefs.code)prefs.code=genCode();store.set("prefs",prefs);renderInvite()});

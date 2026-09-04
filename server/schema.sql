@@ -6,6 +6,8 @@ create table if not exists users (
   nickname   text unique not null,
   dob        date,
   pass_hash  text not null,
+  photo      text,          -- 프로필 사진 (data URL). 상대 Till에도 보이므로 서버가 갖는다.
+
   created_at timestamptz not null default now()
 );
 
