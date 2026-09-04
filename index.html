@@ -101,6 +101,9 @@
   .tools{display:flex;justify-content:flex-end;height:36px;align-items:center}
   .me-btn{width:36px;height:36px;border-radius:50%;padding:2px;background:var(--card);border:1px solid var(--line)}
   .me-av{display:block;width:100%;height:100%;border-radius:50%;background:var(--line) center/cover}
+  .headtop{display:flex;justify-content:flex-end;margin:-4px -9px -8px 0}
+  .headtop .sq{width:40px;height:40px;background:transparent;display:grid;place-items:center;color:var(--ink);flex:none}
+  .headtop .sq svg{width:21px;height:21px;fill:currentColor;stroke:none}
   .total{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 0 4px}
   .total .l,.total .n{font:600 var(--num-hero)/1 var(--font-num);letter-spacing:0;font-variant-numeric:tabular-nums;color:var(--ink)}
   .rows{flex:1;overflow:auto;padding:10px var(--screen-x) 40px;display:flex;flex-direction:column;gap:var(--row-gap);scrollbar-width:none}
@@ -297,7 +300,7 @@
   <!-- 2. Till -->
   <section class="screen" id="till">
     <div class="head">
-      
+      <div class="headtop"><button class="sq" id="tillSettings" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button></div>
       <div class="total"><span class="l">TILL</span><span class="n" id="total">0</span></div>
     </div>
     <div class="rows" id="rows"></div>
@@ -378,7 +381,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1600</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1613</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -748,6 +751,7 @@ scrim.addEventListener("click",closeSheets);
 const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
+$("#tillSettings").addEventListener("click",()=>{renderSettings();go("settings")});
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
