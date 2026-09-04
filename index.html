@@ -381,7 +381,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1628</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1630</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -660,8 +660,27 @@ function renderTill(){
       <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${last?preview(last):'<span class="dim">아직 대화가 없어요</span>'}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
+  fitRows(live.length);
   const reqs=store.get("reqs",[]); if(reqs.length){const q=document.createElement("div");q.className="req";q.innerHTML=`<span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="t">받은 요청 ${reqs.length}</span>`;q.addEventListener("click",openReqs);rows.appendChild(q)}
 
+}
+/* R-4.10 적을수록 크게.
+   살아 있는 사람이 1~2명이면 카드(나 포함)가 한 화면을 나눠 채운다.
+   3명부터는 원래 크기. 폰마다 화면이 다르므로 높이를 직접 재서 나눈다. */
+function fitRows(live){
+  const rows=$("#rows");
+  rows.style.removeProperty("--photo-h");
+  if(live<1||live>2) return;
+  requestAnimationFrame(()=>{
+    const cards=[...rows.querySelectorAll(".row .card")];
+    if(cards.length<2||!rows.clientHeight) return;
+    const cs=getComputedStyle(rows);
+    const gap=parseFloat(cs.rowGap)||14;
+    const lastH=cards[0].querySelector(".last")?.getBoundingClientRect().height||41;
+    const avail=rows.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-gap*(cards.length-1);
+    const photo=Math.floor(avail/cards.length-lastH);
+    if(photo>76) rows.style.setProperty("--photo-h",photo+"px");
+  });
 }
 function preview(m){return m.type==="text"?esc(m.text):"사진"}
 function fmtD(ts){const d=new Date(ts);return `${d.getMonth()+1}.${String(d.getDate()).padStart(2,"0")}`}
