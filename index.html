@@ -203,13 +203,15 @@
   .days::-webkit-scrollbar{display:none}
   .sep{flex:none;align-self:center;margin:12px 0 6px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
   .empty{margin:auto;font-size:13px;color:var(--ink-3)}
-  .msg{flex:none;max-width:78%;padding:10px 14px 8px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);align-self:flex-start;position:relative;word-break:break-word}
-  .msg.me{background:var(--bubble-me);color:var(--bubble-me-ink);align-self:flex-end;border-bottom-left-radius:var(--r-bubble);border-bottom-right-radius:var(--r-bubble-tail)}
+  .msg{flex:none;max-width:78%;padding:10px 14px 8px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0}
+  .msg.me{background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-left-radius:var(--r-bubble);border-bottom-right-radius:var(--r-bubble-tail)}
   .msg.media{padding:4px;overflow:hidden;width:68%;border-radius:var(--r-bubble);background:var(--card)}
   .msg.media.me{background:var(--bubble-me)}
   .msg.media img,.msg.media video{border-radius:calc(var(--r-bubble) - 4px)}
   .msg.media img,.msg.media video{display:block;width:100%;max-height:260px;object-fit:cover}
-  .msg .stamp{display:block;font:400 10px var(--font-body);opacity:.5;margin-top:3px;text-align:right}
+  .line{display:flex;align-items:flex-end;gap:6px;align-self:flex-start;max-width:100%}
+  .line.me{align-self:flex-end;flex-direction:row-reverse}
+  .line .stamp{font:400 10px var(--font-body);color:var(--ink-3);flex:none;padding-bottom:3px;white-space:nowrap}
   .msg.failed{outline:1px solid var(--zero)}
   .compose{flex:none;padding:8px 12px 30px;background:var(--paper-2)}
   .compose .bar2{display:flex;gap:8px;align-items:flex-end;padding:7px;background:var(--card);border-radius:34px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06)}
@@ -425,7 +427,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1810</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1813</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -854,13 +856,16 @@ function sameGroup(a,b){
     && new Date(a.ts).toDateString()===new Date(b.ts).toDateString();
 }
 function bubble(m,showStamp=true){
+  const line=document.createElement("div");
+  line.className=`line ${m.who==="me"?"me":""}`; line.dataset.id=m.id;
   const el=document.createElement("div"); el.className=`msg ${m.who==="me"?"me":""} ${m.ok===false?"failed":""}`; el.dataset.id=m.id;
-  const stamp = showStamp ? `<span class="stamp">${fmtT(m.ts)}</span>` : "";
-  if(m.type==="text"){el.innerHTML=`${esc(m.text)}${stamp}`}
+  if(m.type==="text"){el.innerHTML=esc(m.text)}
   else if(m.type==="image"){el.classList.add("media");el.innerHTML=`<img src="${m.src}" alt="">`;el.addEventListener("click",()=>viewer(m))}
   let pt; el.addEventListener("pointerdown",()=>{pt=setTimeout(()=>{if(m.who==="me")confirmBox("이 메시지를 내 화면에서 지울까요? 상대 화면에는 남아요.",()=>{cur.msgs=cur.msgs.filter(x=>x.id!==m.id);savePeople();renderMsgs()})},600)});
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
-  return el;
+  line.appendChild(el);
+  if(showStamp){ const st=document.createElement("span"); st.className="stamp"; st.textContent=fmtT(m.ts); line.appendChild(st) }
+  return line;
 }
 function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.slice(-200))) }catch(e){} }
 function appendBubble(m){
@@ -869,7 +874,7 @@ function appendBubble(m){
   const days=$("#days"); if(cur.msgs.length===1) days.innerHTML="";
   // 앞 것과 한 묶음이면 앞 것의 시간은 뗀다
   if(sameGroup(prev,m)){
-    const st=days.querySelector(`.msg[data-id="${CSS.escape(String(prev.id))}"] .stamp`);
+    const st=days.querySelector(`.line[data-id="${CSS.escape(String(prev.id))}"] .stamp`);
     if(st) st.remove();
   }
   const d=new Date(m.ts); const lastSep=[...days.querySelectorAll(".sep")].pop();
