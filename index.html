@@ -165,16 +165,6 @@
   .msg.media.me{background:var(--bubble-me)}
   .msg.media img,.msg.media video{border-radius:calc(var(--r-bubble) - 4px)}
   .msg.media img,.msg.media video{display:block;width:100%;max-height:260px;object-fit:cover}
-  .msg.audio{display:flex;align-items:center;gap:10px;min-width:180px}
-  .msg.audio button{width:30px;height:30px;border-radius:50%;background:rgba(127,127,127,.2);display:grid;place-items:center}
-  .msg.audio svg{width:12px;height:12px;fill:currentColor}
-  .msg.audio .bars{flex:1;height:18px;display:flex;align-items:center;gap:2px}
-  .msg.audio .bars i{flex:1;height:30%;background:currentColor;opacity:.5;border-radius:1px}
-  .msg.audio .dur{font:400 10px var(--font-body)}
-  .msg.loc{display:flex;flex-direction:column;gap:6px;min-width:190px}
-  .msg.loc .map{height:90px;border-radius:10px;background:repeating-linear-gradient(0deg,rgba(127,127,127,.12) 0 1px,transparent 1px 14px),repeating-linear-gradient(90deg,rgba(127,127,127,.12) 0 1px,transparent 1px 14px),rgba(127,127,127,.08);position:relative}
-  .msg.loc .map::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;border-radius:50% 50% 50% 0;transform:translate(-50%,-70%) rotate(-45deg);background:var(--zero)}
-  .msg.loc a{color:inherit;font-size:12px;text-decoration:underline}
   .msg .stamp{display:block;font:400 10px var(--font-body);opacity:.5;margin-top:3px;text-align:right}
   .msg.failed{outline:1px solid var(--zero)}
   .compose{flex:none;padding:8px 12px 30px;background:var(--paper-2)}
@@ -201,30 +191,17 @@
   .scrim.on{opacity:1;pointer-events:auto}
   .toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--paper);font-size:13px;padding:10px 16px;border-radius:20px;opacity:0;transition:.2s;z-index:30;white-space:nowrap;pointer-events:none}
   .toast.on{opacity:1;transform:translateX(-50%)}
-  .rec{display:none;flex:1;align-items:center;gap:12px;height:44px;padding:0 6px 0 14px;border-radius:22px;background:var(--paper-2)}
-  .rec.on{display:flex}
-  .rec .pulse{width:10px;height:10px;border-radius:50%;background:var(--zero);animation:pulse 1s infinite}
-  @keyframes pulse{50%{opacity:.3}}
-  .rec .time{flex:1;font:400 13px var(--font-body)}
 
-  /* viewer / camera / call */
+  /* viewer / camera */
   .full{position:absolute;inset:0;background:#000;z-index:25;display:none;flex-direction:column;color:#fff}
   .full.on{display:flex}
   .full .bar{padding-top:54px;height:106px}
   .full .bar .icon{background:rgba(255,255,255,.14);color:#fff;border:0}
   .full .body{flex:1;display:grid;place-items:center;overflow:hidden}
   .full img,.full video{max-width:100%;max-height:100%;object-fit:contain}
-  #cam video,#call video{width:100%;height:100%;object-fit:cover}
+  #cam video{width:100%;height:100%;object-fit:cover}
   .full .foot{padding:18px 0 44px;display:flex;justify-content:center;gap:28px;align-items:center}
   .shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}
-  .hang{width:64px;height:64px;border-radius:50%;background:var(--zero);display:grid;place-items:center}
-  .hang svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2}
-  .call-meta{position:absolute;top:120px;left:0;right:0;text-align:center;text-shadow:0 1px 10px rgba(0,0,0,.6)}
-  .call-meta b{font-size:24px;display:block}
-  .call-meta span{font:400 12px var(--font-body);letter-spacing:.1em;opacity:.8}
-  .selfpip{position:absolute;right:16px;top:120px;width:96px;height:130px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.3);background:#111}
-  .selfpip video{width:100%;height:100%;object-fit:cover}
-  .callnote{position:absolute;left:24px;right:24px;bottom:150px;text-align:center;font-size:13px;line-height:1.6;color:rgba(255,255,255,.75)}
 
   /* settings */
     .list{display:flex;flex-direction:column;background:var(--card);border-radius:var(--r-list);overflow:hidden}
@@ -328,13 +305,12 @@
       <div class="bar2">
         <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea><button class="emo" id="emoBtn" aria-label="이모지"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="10" r=".8" fill="currentColor"/><circle cx="15" cy="10" r=".8" fill="currentColor"/></svg></button></div>
-        <div class="rec" id="rec"><span class="pulse"></span><span class="time" id="recTime">0:00</span><button class="icon" id="recCancel" aria-label="취소" style="width:32px;height:32px;background:transparent"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
         <button class="icon send" id="sendBtn" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button>
       </div>
     </div>
     <div class="scrim" id="scrim"></div>
-    <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="voice"><svg viewBox="0 0 24 24"><path d="M12 2a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0v-6A3.5 3.5 0 0 1 12 2zM5.5 11.5h2a4.5 4.5 0 0 0 9 0h2a6.5 6.5 0 0 1-5.5 6.4V21h-2v-3.1a6.5 6.5 0 0 1-5.5-6.4z"/></svg>음성</button><button data-act="loc"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>위치</button><button data-act="call"><svg viewBox="0 0 24 24"><path d="M3 6h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm14 4.5 5-3v9l-5-3z"/></svg>영상통화</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
-    <input type="file" id="albumFile" accept="image/*,video/*" multiple hidden>
+    <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
+    <input type="file" id="albumFile" accept="image/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
   </section>
 
@@ -407,7 +383,6 @@
   <!-- overlays -->
   <div class="full" id="viewer"><div class="bar"><button class="icon" id="viewerClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff"></h2><a class="icon" id="viewerSave" download="tillzero"><svg viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></a></div><div class="body" id="viewerBody"></div></div>
   <div class="full" id="cam"><div class="bar"><button class="icon" id="camClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff">촬영</h2><button class="icon" id="camFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></button></div><div class="body"><video id="camVideo" autoplay playsinline muted></video></div><div class="foot"><button class="shutter" id="shutter" aria-label="찍기"></button></div></div>
-  <div class="full" id="call"><video id="callRemote" autoplay playsinline muted></video><div class="call-meta"><b id="callName">이름</b><span id="callState">연결 중</span></div><div class="selfpip"><video id="callSelf" autoplay playsinline muted></video></div><p class="callnote">상대 화면은 서버(시그널링)가 있어야 연결돼요.<br>지금은 내 카메라만 보여요.</p><div class="foot" style="position:absolute;bottom:0;left:0;right:0"><button class="hang" id="hangBtn" aria-label="끊기"><svg viewBox="0 0 24 24"><path d="M3 15c3-3 15-3 18 0l-2 4c-3-1-11-1-14 0z"/></svg></button></div></div>
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -535,7 +510,7 @@ function renderTill(){
   const reqs=store.get("reqs",null)??seedReqs(); if(reqs.length){const q=document.createElement("div");q.className="req";q.innerHTML=`<span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="t">받은 요청 ${reqs.length}</span>`;q.addEventListener("click",openReqs);rows.appendChild(q)}
 
 }
-function preview(m){return m.type==="text"?esc(m.text):m.type==="image"?"사진":m.type==="video"?"동영상":m.type==="audio"?"음성 메시지":"위치"}
+function preview(m){return m.type==="text"?esc(m.text):"사진"}
 function fmtD(ts){const d=new Date(ts);return `${d.getMonth()+1}.${String(d.getDate()).padStart(2,"0")}`}
 function fmtT(ts){const d=new Date(ts);return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
@@ -564,10 +539,6 @@ function bubble(m){
   const el=document.createElement("div"); el.className=`msg ${m.who==="me"?"me":""} ${m.ok===false?"failed":""}`; el.dataset.id=m.id;
   if(m.type==="text"){el.innerHTML=`${esc(m.text)}<span class="stamp">${fmtT(m.ts)}</span>`}
   else if(m.type==="image"){el.classList.add("media");el.innerHTML=`<img src="${m.src}" alt="">`;el.addEventListener("click",()=>viewer(m))}
-  else if(m.type==="video"){el.classList.add("media");el.innerHTML=`<video src="${m.src}" controls playsinline></video>`}
-  else if(m.type==="audio"){el.classList.add("audio");el.innerHTML=`<button aria-label="재생"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></button><div class="bars">${Array.from({length:22},()=>`<i style="height:${20+Math.random()*70}%"></i>`).join("")}</div><span class="dur">${m.dur||"0:00"}</span>`;
-    const a=new Audio(m.src); el.querySelector("button").addEventListener("click",()=>{a.paused?a.play():a.pause()})}
-  else if(m.type==="loc"){el.classList.add("loc");el.innerHTML=`<div class="map"></div><div>지금 여기</div><a href="https://www.openstreetmap.org/?mlat=${m.lat}&mlon=${m.lon}#map=16/${m.lat}/${m.lon}" target="_blank" rel="noopener">${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}</a><span class="stamp">${fmtT(m.ts)}</span>`}
   let pt; el.addEventListener("pointerdown",()=>{pt=setTimeout(()=>{if(m.who==="me")confirmBox("이 메시지를 내 화면에서 지울까요? 상대 화면에는 남아요.",()=>{cur.msgs=cur.msgs.filter(x=>x.id!==m.id);savePeople();renderMsgs()})},600)});
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
   return el;
@@ -586,7 +557,7 @@ const msgIn=$("#msgIn");
 msgIn.addEventListener("input",()=>{msgIn.style.height="auto";msgIn.style.height=Math.min(120,msgIn.scrollHeight)+"px"});
 msgIn.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendText()}});
 function sendText(){const t=msgIn.value.trim(); if(!t)return; push({type:"text",text:t}); msgIn.value=""; msgIn.style.height="auto"}
-$("#sendBtn").addEventListener("click",()=>{ if($("#rec").classList.contains("on")) stopRec(true); else sendText() });
+$("#sendBtn").addEventListener("click",sendText);
 
 /* emoji strip */
 const EMO=["😀","😂","🥹","😍","😎","🥲","👍","🙏","❤️","🔥","🎉","😴"];
@@ -597,11 +568,8 @@ $("#emoBtn").addEventListener("click",()=>emojis.classList.toggle("on"));
 const sheet=$("#sheet"),scrim=$("#scrim");
 function sheetOpen(v){sheet.classList.toggle("on",v);scrim.classList.toggle("on",v)}
 $("#plusBtn").addEventListener("click",()=>sheetOpen(true)); scrim.addEventListener("click",()=>sheetOpen(false));
-$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam,voice:startRec,loc:sendLoc,call:startCall,block:blockCur,report:()=>toast("신고를 접수했어요")})[b.dataset.act]()}));
-$("#albumFile").addEventListener("change",e=>{[...e.target.files].forEach(f=>{
-  if(f.type.startsWith("video/")){ if(f.size>3.5e6){toast("동영상은 3.5MB까지만 저장돼요");return} const r=new FileReader();r.onload=()=>push({type:"video",src:r.result});r.readAsDataURL(f)}
-  else readImage(f,1280,d=>push({type:"image",src:d}));
-}); e.target.value=""});
+$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam,block:blockCur,report:()=>toast("신고를 접수했어요")})[b.dataset.act]()}));
+$("#albumFile").addEventListener("change",e=>{[...e.target.files].forEach(f=>readImage(f,1280,d=>push({type:"image",src:d}))); e.target.value=""});
 
 /* camera */
 let camStream=null, facing="environment";
@@ -615,37 +583,9 @@ $("#camFlip").addEventListener("click",()=>{facing=facing==="user"?"environment"
 $("#shutter").addEventListener("click",()=>{const v=$("#camVideo");const c=document.createElement("canvas");const s=Math.min(1,1280/Math.max(v.videoWidth,v.videoHeight));c.width=v.videoWidth*s;c.height=v.videoHeight*s;c.getContext("2d").drawImage(v,0,0,c.width,c.height);push({type:"image",src:c.toDataURL("image/jpeg",.8)});closeCam()});
 $("#captureFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)readImage(f,1280,d=>push({type:"image",src:d}));e.target.value=""});
 
-/* voice */
-let rec=null, recChunks=[], recT0=0, recTimer=null;
-async function startRec(){
-  if(!navigator.mediaDevices||!window.MediaRecorder){toast("이 브라우저는 녹음을 지원하지 않아요");return}
-  try{const st=await navigator.mediaDevices.getUserMedia({audio:true}); rec=new MediaRecorder(st); recChunks=[];
-    rec.ondataavailable=e=>recChunks.push(e.data);
-    rec.onstop=()=>{st.getTracks().forEach(t=>t.stop()); if(rec._send){const b=new Blob(recChunks,{type:rec.mimeType||"audio/webm"}); if(b.size>2.5e6){toast("음성이 너무 길어요 (2.5MB)");return} const r=new FileReader(); r.onload=()=>push({type:"audio",src:r.result,dur:fmtDur(NOW()-recT0)}); r.readAsDataURL(b)}};
-    rec.start(); recT0=NOW(); $("#rec").classList.add("on"); $("#field2").style.display="none"; $("#plusBtn").style.display="none";
-    recTimer=setInterval(()=>$("#recTime").textContent=fmtDur(NOW()-recT0),250);
-  }catch(e){toast("마이크 권한이 필요해요")}
-}
-function stopRec(send){ if(!rec)return; rec._send=send; rec.stop(); rec=null; clearInterval(recTimer); $("#rec").classList.remove("on"); $("#field2").style.display=""; $("#plusBtn").style.display="" }
-$("#recCancel").addEventListener("click",()=>stopRec(false));
-function fmtDur(ms){const s=Math.floor(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`}
-
-/* location */
-function sendLoc(){ if(!navigator.geolocation){toast("위치를 쓸 수 없어요");return} toast("위치 확인 중"); navigator.geolocation.getCurrentPosition(p=>push({type:"loc",lat:p.coords.latitude,lon:p.coords.longitude}),()=>toast("위치 권한이 필요해요"),{timeout:8000}) }
-
 /* viewer */
 function viewer(m){$("#viewerBody").innerHTML=`<img src="${m.src}" alt="">`;$("#viewerSave").href=m.src;$("#viewer").classList.add("on")}
 $("#viewerClose").addEventListener("click",()=>$("#viewer").classList.remove("on"));
-
-/* video call (self preview only) */
-let callStream=null, callTimer=null;
-async function startCall(){
-  $("#callName").textContent=cur.name; $("#callState").textContent="연결 중"; $("#call").classList.add("on");
-  try{callStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:true}); $("#callSelf").srcObject=callStream; $("#callRemote").srcObject=null;
-    const t0=NOW(); callTimer=setInterval(()=>$("#callState").textContent="상대 기다리는 중 · "+fmtDur(NOW()-t0),500);
-  }catch(e){$("#callState").textContent="카메라 권한이 필요해요"}
-}
-$("#hangBtn").addEventListener("click",()=>{if(callStream){callStream.getTracks().forEach(t=>t.stop());callStream=null}clearInterval(callTimer);$("#call").classList.remove("on")});
 
 /* requests */
 function seedReqs(){const r=[{id:"r1",name:"하준",photo:null,via:"코드",at:NOW()-3600000*5}];store.set("reqs",r);return r}
