@@ -153,6 +153,9 @@
   .reqitem .ok{background:var(--ink);color:var(--paper)}
   .reqitem .no{background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
   .sheet h3{margin:4px 6px 12px;font:600 16px var(--font-body)}
+  .mediagrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:52vh;overflow:auto}
+  .mediagrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block;cursor:pointer}
+  .mediagrid .none{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:13px;padding:34px 0}
 
   /* chat */
   #chat{z-index:3;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
@@ -319,11 +322,23 @@
     </div>
     <div class="scrim" id="scrim"></div>
     <div class="sheet" id="chatSheet">
+      <h3>대화방</h3>
+      <div class="list">
+        <div class="item" id="mLook"><div class="t">대화방 설정<div class="sub">글자 크기와 글꼴</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub">주고받은 사진</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+      </div>
+    </div>
+    <div class="sheet" id="lookSheet">
       <h3>대화방 설정</h3>
       <div class="lbl">글자 크기</div>
       <div class="seg" id="segSize"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button><button data-v="xl">아주 크게</button></div>
       <div class="lbl" style="margin-top:12px">글꼴</div>
       <div class="seg" id="segFont"><button data-v="default">기본</button><button data-v="gothic">고딕</button><button data-v="system">시스템</button></div>
+    </div>
+    <div class="sheet" id="mediaSheet">
+      <h3>사진 모아보기</h3>
+      <div class="mediagrid" id="mediaGrid"></div>
     </div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
     <input type="file" id="albumFile" accept="image/*" multiple hidden>
@@ -358,7 +373,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1525</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1537</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -722,13 +737,51 @@ $("#sendBtn").addEventListener("click",sendText);
 const sheet=$("#sheet"),scrim=$("#scrim");
 function sheetOpen(v){sheet.classList.toggle("on",v);scrim.classList.toggle("on",v)}
 $("#plusBtn").addEventListener("click",()=>sheetOpen(true));
-scrim.addEventListener("click",()=>{sheetOpen(false);chatSheetOpen(false)});
+scrim.addEventListener("click",closeSheets);
 
 /* 대화방 설정 — 글자 크기와 글꼴 */
 const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
-function chatSheetOpen(v){$("#chatSheet").classList.toggle("on",v);scrim.classList.toggle("on",v)}
-$("#chatMenu").addEventListener("click",()=>chatSheetOpen(true));
+function closeSheets(){["#sheet","#chatSheet","#lookSheet","#mediaSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
+function openSheet(id){closeSheets();$(id).classList.add("on");scrim.classList.add("on")}
+$("#chatMenu").addEventListener("click",()=>{
+  const n=cur?cur.msgs.filter(m=>m.type==="image").length:0;
+  $("#mMediaSub").textContent = n ? `사진 ${n}장` : "아직 사진이 없어요";
+  openSheet("#chatSheet");
+});
+$("#mLook").addEventListener("click",()=>openSheet("#lookSheet"));
+$("#mMedia").addEventListener("click",()=>{renderMedia();openSheet("#mediaSheet")});
+$("#mExport").addEventListener("click",()=>{closeSheets();exportChat()});
+
+function renderMedia(){
+  const g=$("#mediaGrid"); g.innerHTML="";
+  const pics=(cur?.msgs||[]).filter(m=>m.type==="image");
+  if(!pics.length){ g.innerHTML=`<div class="none">아직 주고받은 사진이 없어요</div>`; return }
+  pics.forEach(m=>{
+    const im=document.createElement("img"); im.src=m.src; im.alt="";
+    im.addEventListener("click",()=>{closeSheets();viewer(m)});
+    g.appendChild(im);
+  });
+}
+
+// 이 대화만 글로 내려받는다
+function exportChat(){
+  if(!cur) return;
+  const two=n=>String(n).padStart(2,"0");
+  const out=[`${cur.name}와의 대화`,`KEEP ${cur.keep} · DAYS ${daysOf(cur)} · 남은 ${dday(cur)}일`];
+  let day="";
+  cur.msgs.forEach(m=>{
+    const d=new Date(m.ts), k=d.toDateString();
+    if(k!==day){ day=k; out.push("",`── ${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())} ──`) }
+    out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":cur.name}  ${m.type==="text"?m.text:"(사진)"}`);
+  });
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([out.join("
+")],{type:"text/plain;charset=utf-8"}));
+  a.download=`tillzero-${cur.name}.txt`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast("내려받기 시작");
+}
 function applyChat(){
   const size=prefs.chatSize||"m", font=prefs.chatFont||"default";
   const st=$("#chat").style;
