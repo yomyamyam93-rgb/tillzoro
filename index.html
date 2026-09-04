@@ -185,6 +185,19 @@
   .ccount{font:500 28px/1 var(--font-num);color:var(--ink);flex:none}
   .chead #chatMenu svg{width:21px;height:21px;fill:currentColor;stroke:none}
   .ccount.zero{color:var(--zero)}
+  /* 대화방 상단 도구 — 상자 규격 그대로 */
+  .roomtool{flex:none;margin:0 16px 8px;background:var(--card);border-radius:var(--r-card);
+            height:var(--tool-h);padding:10px 14px;display:none;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
+  .roomtool.on{display:flex}
+  .rt-row{display:flex;align-items:center;gap:8px;min-width:0}
+  .rt-title{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .rt-title.none{font-weight:400;color:var(--ink-3);cursor:default}
+  .rt-pt{font:500 13px/1 var(--font-num);color:var(--ink-2);flex:none}
+  .rt-btn{flex:none;padding:6px 12px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:12px;font-weight:500}
+  .rt-btn.ghost{background:var(--paper-2);color:var(--ink-2)}
+  .rt-score{font-size:12px;color:var(--ink-3);justify-content:space-between}
+  .rt-score b{font:500 14px/1 var(--font-num);color:var(--ink);margin-left:4px}
+  .rt-in{flex:1;min-width:0;height:30px;border:0;background:var(--paper-2);border-radius:9px;padding:0 10px;font-size:14px;outline:none;color:var(--ink)}
   .days{flex:1;overflow:auto;padding:10px 16px 16px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
   .days::-webkit-scrollbar{display:none}
   .sep{flex:none;align-self:center;margin:12px 0 6px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
@@ -333,6 +346,7 @@
       <div class="who"><div class="cname" id="cname">이름<small>KEEP 0 · DAYS 1</small></div></div>
       <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
+    <div class="roomtool" id="roomTool"></div>
     <div class="days" id="days"></div>
     <div class="compose">
       <div class="bar2">
@@ -406,7 +420,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1737</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1756</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -544,6 +558,9 @@ function connectWS(){
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
       appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
+    }
+    if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)&&d.tool==="quest"){
+      loadQuest().then(renderQuest); return;
     }
     syncTill().then(refreshChat).catch(requireLogin);
   };
@@ -728,7 +745,9 @@ async function openChat(id){
     :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
   $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
   const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
+  questEdit=false; quest=null; renderQuest();
   renderMsgs(); go("chat");
+  loadQuest().then(renderQuest);
   try{
     const d=await api("/api/messages/"+id);
     if(!cur||cur.id!==id) return;
@@ -742,6 +761,70 @@ async function openChat(id){
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
+/* ---------- 대화방 상단 도구: 퀘스트 ----------
+   상자 하나 안에서 등록·수정·삭제·완료가 다 끝난다.
+   퀘스트는 한 번에 하나. 낸 사람은 고치거나 지우고, 상대는 완료해서 점수를 가져간다. */
+let quest=null, questEdit=false;
+const myId=()=>String(auth?.me?.id||"");
+const emptyQuest=()=>({quest:null,score:{}});
+
+async function loadQuest(){
+  if(!cur||cur.self){ quest=null; return }
+  try{ const d=await api(`/api/room/${cur.id}/quest`); quest=d.data||emptyQuest() }
+  catch(e){ quest=null }
+}
+async function saveQuest(){
+  try{ await api(`/api/room/${cur.id}/quest`,{method:"POST",body:{data:quest}}) }
+  catch(e){ toast(e.message) }
+}
+function pts(id){ return Number(quest?.score?.[id]||0) }
+
+function renderQuest(){
+  const box=$("#roomTool");
+  if(!quest||!cur||cur.self){ box.classList.remove("on"); box.innerHTML=""; return }
+  box.classList.add("on");
+  const q=quest.quest;
+  const other=Object.keys(quest.score||{}).find(k=>k!==myId());
+  const score=`<div class="rt-row rt-score"><span>나<b>${pts(myId())}</b></span><span>상대<b>${other?pts(other):0}</b></span></div>`;
+
+  if(questEdit){
+    box.innerHTML=`<div class="rt-row">
+        <input class="rt-in" id="qIn" maxlength="30" placeholder="할 일" value="${q?esc(q.title):""}">
+        <button class="rt-btn ghost" id="qPt">${q?q.pt:1}P</button>
+        <button class="rt-btn" id="qSave">${q?"수정":"등록"}</button>
+      </div>${q?`<div class="rt-row"><button class="rt-btn ghost" id="qDel">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" id="qCancel">취소</button></div>`:score}`;
+    const inp=$("#qIn"); inp.focus();
+    let pt=q?q.pt:1;
+    $("#qPt").addEventListener("click",()=>{ pt=pt%5+1; $("#qPt").textContent=pt+"P" });
+    $("#qSave").addEventListener("click",async()=>{
+      const t=inp.value.trim(); if(!t){ toast("할 일을 적어주세요"); return }
+      quest.quest={title:t,pt,by:myId()}; questEdit=false;
+      renderQuest(); await saveQuest();
+    });
+    $("#qDel")?.addEventListener("click",async()=>{ quest.quest=null; questEdit=false; renderQuest(); await saveQuest() });
+    $("#qCancel")?.addEventListener("click",()=>{ questEdit=false; renderQuest() });
+    return;
+  }
+
+  if(!q){
+    box.innerHTML=`<div class="rt-row"><span class="rt-title none">등록된 퀘스트가 없어요</span>
+        <button class="rt-btn" id="qNew">＋</button></div>${score}`;
+    $("#qNew").addEventListener("click",()=>{ questEdit=true; renderQuest() });
+    return;
+  }
+
+  const mine=String(q.by)===myId();
+  box.innerHTML=`<div class="rt-row">
+      <span class="rt-title" id="qTitle">${esc(q.title)}</span><span class="rt-pt">${q.pt}P</span>
+      ${mine?`<button class="rt-btn ghost" id="qEdit">수정</button>`:`<button class="rt-btn" id="qDone">완료</button>`}
+    </div>${score}`;
+  if(mine) $("#qEdit").addEventListener("click",()=>{ questEdit=true; renderQuest() });
+  else $("#qDone").addEventListener("click",async()=>{
+    quest.score=quest.score||{}; quest.score[myId()]=pts(myId())+Number(q.pt||0);
+    quest.quest=null; renderQuest(); await saveQuest(); toast(`+${q.pt}P`);
+  });
+}
+
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
   $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
