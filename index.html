@@ -393,7 +393,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1659</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1701</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -644,6 +644,7 @@ async function enter(d){
 
 /* ---------- Till ---------- */
 function renderTill(){
+  if(!me) return;              // 로그인 전에는 그릴 것이 없다
   const rows=$("#rows"); rows.innerHTML="";
   const live=people.filter(p=>!p.self && dday(p)>0 && !prefs.blocked.includes(p.id));
   $("#total").textContent=live.length;
