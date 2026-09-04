@@ -53,3 +53,13 @@ create table if not exists invites (
   expires_at timestamptz not null,
   used_by    bigint references users(id)
 );
+
+-- 도구가 쓰는 방 저장소. 도구 하나가 방 하나에 데이터 한 덩어리를 갖는다.
+-- Bond가 사라지면(Zero) 여기 쌓인 것도 함께 사라진다.
+create table if not exists room_state (
+  bond_id    bigint not null references bonds(id) on delete cascade,
+  tool       text   not null,
+  data       jsonb  not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (bond_id, tool)
+);

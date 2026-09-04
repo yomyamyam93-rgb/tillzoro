@@ -290,6 +290,39 @@ async function myBond(bondId, meId) {
   return rows[0];
 }
 
+/* ---------- 도구가 쓰는 방 저장소 ----------
+   도구 하나가 방 하나에 데이터 한 덩어리를 갖는다. 둘이 같이 본다.
+   Bond가 지워지면(Zero) 함께 지워진다 — 테이블의 on delete cascade가 보장한다. */
+
+app.get("/api/room/:bondId/:tool", auth, async (req, res) => {
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  const { rows } = await pool.query(
+    "select data from room_state where bond_id = $1 and tool = $2",
+    [bond.id, req.params.tool]
+  );
+  res.json({ data: rows[0]?.data ?? null });
+});
+
+app.post("/api/room/:bondId/:tool", auth, async (req, res) => {
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  const data = req.body?.data;
+  if (data === undefined || typeof data !== "object" || data === null)
+    return res.status(400).json({ error: "저장할 내용이 없어요" });
+  if (JSON.stringify(data).length > 100000)
+    return res.status(413).json({ error: "내용이 너무 커요" });
+
+  await pool.query(
+    `insert into room_state (bond_id, tool, data) values ($1, $2, $3)
+       on conflict (bond_id, tool) do update set data = $3, updated_at = now()`,
+    [bond.id, req.params.tool, data]
+  );
+  // 상대에게 바뀐 것을 알린다
+  notify([bond.a_id, bond.b_id], { type: "room", bondId: bond.id, tool: req.params.tool }, req.user.id);
+  res.json({ ok: true });
+});
+
 /* ---------- 실시간 알림 ---------- */
 
 const sockets = new Map(); // userId -> Set<ws>
