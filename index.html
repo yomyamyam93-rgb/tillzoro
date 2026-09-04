@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#050506"><link rel="manifest" href="manifest.json"><link rel="icon" href="favicon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"><meta name="color-scheme" content="light dark"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#050506"><link rel="manifest" href="manifest.json"><link rel="icon" href="favicon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Till Zero</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
@@ -43,7 +43,7 @@
   .stage{min-height:100dvh;display:flex;flex-direction:column;align-items:center}
   .note{font:12px/1.6 var(--font-body);color:var(--ink-3);text-align:center;max-width:440px}
   .note b{color:var(--ink-2);font-weight:500}
-  .phone{width:100%;max-width:520px;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
@@ -172,15 +172,10 @@
   .compose .icon{width:44px;height:44px;border:0;background:var(--paper-2);color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
   .compose .field2{flex:1;position:relative;display:flex;align-items:flex-end}
-  .compose textarea{flex:1;min-height:44px;max-height:120px;border-radius:22px;border:0;background:var(--paper-2);padding:12px 44px 12px 18px;resize:none;outline:none;font-size:14px;line-height:1.45;color:var(--ink)}
+  .compose textarea{flex:1;min-height:44px;max-height:120px;border-radius:22px;border:0;background:var(--paper-2);padding:12px 18px;resize:none;outline:none;font-size:14px;line-height:1.45;color:var(--ink)}
   .compose textarea::placeholder{color:var(--ink-3)}
-  .compose .emo{position:absolute;right:8px;bottom:6px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--ink)}
-  .compose .emo svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
   .compose .send{background:var(--ink);color:var(--paper)}
   .compose .send svg{fill:currentColor;stroke:none;width:18px;height:18px}
-  .emojis{display:none;flex-wrap:wrap;gap:6px;padding:8px 10px 0;justify-content:center}
-  .emojis.on{display:flex}
-  .emojis button{font-size:22px;width:38px;height:38px;border-radius:12px;background:var(--card)}
   .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:14px 14px 40px;box-shadow:0 -10px 40px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .25s ease;z-index:5}
   .sheet.on{transform:none}
   .sheet .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -301,10 +296,9 @@
     </div>
     <div class="days" id="days"></div>
     <div class="compose">
-      <div class="emojis" id="emojis"></div>
       <div class="bar2">
         <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea><button class="emo" id="emoBtn" aria-label="이모지"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><circle cx="9" cy="10" r=".8" fill="currentColor"/><circle cx="15" cy="10" r=".8" fill="currentColor"/></svg></button></div>
+        <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
         <button class="icon send" id="sendBtn" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button>
       </div>
     </div>
@@ -559,10 +553,6 @@ msgIn.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isCompo
 function sendText(){const t=msgIn.value.trim(); if(!t)return; push({type:"text",text:t}); msgIn.value=""; msgIn.style.height="auto"}
 $("#sendBtn").addEventListener("click",sendText);
 
-/* emoji strip */
-const EMO=["😀","😂","🥹","😍","😎","🥲","👍","🙏","❤️","🔥","🎉","😴"];
-const emojis=$("#emojis"); EMO.forEach(e=>{const b=document.createElement("button");b.textContent=e;b.addEventListener("click",()=>{msgIn.value+=e;msgIn.focus();msgIn.dispatchEvent(new Event("input"))});emojis.appendChild(b)});
-$("#emoBtn").addEventListener("click",()=>emojis.classList.toggle("on"));
 
 /* attach sheet */
 const sheet=$("#sheet"),scrim=$("#scrim");
@@ -637,6 +627,12 @@ $("#deleteBtn").addEventListener("click",()=>confirmBox("계정을 삭제하면 
 let avT; $("#cavatar").addEventListener("pointerdown",()=>{avT=setTimeout(()=>blockCur(),700)}); ["pointerup","pointerleave","pointercancel"].forEach(e=>$("#cavatar").addEventListener(e,()=>clearTimeout(avT)));
 function blockCur(){confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")})}
 $("#moreBtn")?.addEventListener("click",()=>confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")}));
+/* iOS: 키보드가 올라오면 보이는 영역만큼만 쓰게 한다 */
+(function(){
+  const vv=window.visualViewport; if(!vv)return;
+  const ph=$("#phone"); const fit=()=>{ph.style.height=vv.height+"px"};
+  vv.addEventListener("resize",fit); vv.addEventListener("scroll",fit); fit();
+})();
 </script>
 
 </body></html>
