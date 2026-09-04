@@ -101,7 +101,8 @@
   .tools{display:flex;justify-content:flex-end;height:36px;align-items:center}
   .me-btn{width:36px;height:36px;border-radius:50%;padding:2px;background:var(--card);border:1px solid var(--line)}
   .me-av{display:block;width:100%;height:100%;border-radius:50%;background:var(--line) center/cover}
-  .headtop{display:flex;justify-content:flex-end;margin:-4px -9px -8px 0}
+  .headtop{display:flex;justify-content:space-between;margin:-4px -9px -8px -9px}
+  .headtop #tillTools svg{fill:currentColor;stroke:none}
   .headtop .sq{width:40px;height:40px;background:transparent;display:grid;place-items:center;color:var(--ink);flex:none}
   .headtop .sq svg{width:21px;height:21px;fill:currentColor;stroke:none}
   .total{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 0 4px}
@@ -224,6 +225,7 @@
   .item .ic{width:var(--row-icon);height:var(--row-icon);flex:none;color:var(--ink)}
   .item .ic svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .item .val{font-size:13px;color:var(--ink-3);margin-right:2px}
+  .slot{font:500 10px var(--font-body);letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-2);color:var(--ink-2);flex:none;white-space:nowrap}
   .item .t{font-size:15px;font-weight:500;letter-spacing:.01em}
   .item:last-child{border-bottom:0}
   .item .t{flex:1}
@@ -300,7 +302,7 @@
   <!-- 2. Till -->
   <section class="screen" id="till">
     <div class="head">
-      <div class="headtop"><button class="sq" id="tillSettings" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button></div>
+      <div class="headtop"><button class="sq" id="tillTools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button><button class="sq" id="tillSettings" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button></div>
       <div class="total"><span class="l">TILL</span><span class="n" id="total">0</span></div>
     </div>
     <div class="rows" id="rows"></div>
@@ -330,6 +332,16 @@
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
     <input type="file" id="albumFile" accept="image/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
+  </section>
+
+  <section class="screen" id="s-tools">
+    <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
+    <div class="pad">
+      <p class="note" style="margin:0;text-align:left">도구는 두 자리에만 나타나요. <b>대화방 맨 위</b>의 가로 칸, 또는 <b>말풍선 안</b>. 그래서 무엇을 넣어도 화면이 흐트러지지 않아요.</p>
+      <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
+      <div class="list" id="toolList"></div>
+      <p id="toolEmpty" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0">찾는 도구가 없어요</p>
+    </div>
   </section>
 
   <section class="screen" id="s-chat">
@@ -381,7 +393,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1633</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1659</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -785,6 +797,38 @@ const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 $("#tillSettings").addEventListener("click",()=>{renderSettings();go("settings")});
+
+/* ---------- Tools ----------
+   도구가 나타날 수 있는 자리는 둘뿐이다.
+     top    = 대화방 맨 위의 가로 칸 (계속 보이는 상태 표시)
+     bubble = 말풍선 안 (한 번 쓰고 지나가는 상호작용)
+   자리를 이렇게 묶어두면 어떤 도구가 들어와도 화면이 흐트러지지 않는다. */
+const TOOLS=[
+  {name:"장바구니",   slot:"top",    desc:"둘이 같이 채우는 목록. 하나가 담으면 상대 화면에도 바로 뜬다"},
+  {name:"저금통",     slot:"top",    desc:"목표 금액까지 얼마나 모았는지 막대로 보여준다"},
+  {name:"이달 예산",  slot:"top",    desc:"이번 달 남은 돈이 줄어드는 걸 같이 본다"},
+  {name:"감정 온도계", slot:"top",   desc:"오늘 기분을 한 칸으로 올리고 내린다"},
+  {name:"룰렛",       slot:"bubble", desc:"뭘 먹을지, 누가 낼지 돌려서 정한다"},
+  {name:"타임캡슐",   slot:"bubble", desc:"정한 날이 와야 열리는 메시지"},
+  {name:"귀가 핑",    slot:"bubble", desc:"지금 출발했고 몇 분 뒤 도착하는지 한 번에 보낸다"},
+  {name:"더치페이",   slot:"bubble", desc:"쓴 돈을 나눠 적는다. 실제 송금은 하지 않는다"},
+];
+const SLOT={top:"대화방 위", bubble:"말풍선"};
+function renderTools(q=""){
+  const list=$("#toolList"); list.innerHTML="";
+  const key=q.trim().toLowerCase();
+  const found=TOOLS.filter(t=>!key||(t.name+t.desc).toLowerCase().includes(key));
+  $("#toolEmpty").style.display=found.length?"none":"block";
+  found.forEach((t,i)=>{
+    const el=document.createElement("div"); el.className="item";
+    if(i===found.length-1) el.style.borderBottom="0";
+    el.innerHTML=`<div class="t">${esc(t.name)}<div class="sub">${esc(t.desc)}</div></div><span class="slot">${SLOT[t.slot]}</span>`;
+    el.addEventListener("click",()=>toast("아직 준비 중이에요"));
+    list.appendChild(el);
+  });
+}
+$("#tillTools").addEventListener("click",()=>{$("#toolSearch").value="";renderTools();go("s-tools")});
+$("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
