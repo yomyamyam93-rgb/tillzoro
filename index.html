@@ -37,7 +37,7 @@
     --zero:#FF2D3A; --bubble-me:#F2F2EF; --bubble-me-ink:#0C0C0E; --bubble-you:#1E1E22;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);
   }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0;background:var(--paper-2);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
   input,textarea{font:inherit;color:inherit}
@@ -102,8 +102,11 @@
   .tools{display:flex;justify-content:flex-end;height:36px;align-items:center}
   .me-btn{width:36px;height:36px;border-radius:50%;padding:2px;background:var(--card);border:1px solid var(--line)}
   .me-av{display:block;width:100%;height:100%;border-radius:50%;background:var(--line) center/cover}
-  .tabs{flex:none;display:flex;align-items:center;justify-content:space-around;
+  .tabs{position:absolute;left:0;right:0;bottom:0;z-index:6;display:none;align-items:center;justify-content:space-around;
         padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
+  .tabs.show{display:flex}
+  /* 탭바에 가리지 않도록 아래를 비워둔다 */
+  #till .rows,#s-tools .pad,#settings .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .tabs button{width:80px;height:44px;display:grid;place-items:center;color:var(--ink-3)}
   .tabs button.on{color:var(--ink)}
   .tabs svg{width:22px;height:22px;fill:currentColor;stroke:none}
@@ -314,11 +317,6 @@
       <div class="total"><span class="l">TILL</span><span class="n" id="total">0</span></div>
     </div>
     <div class="rows" id="rows"></div>
-    <div class="tabs">
-      <button id="tabTill" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
-      <button id="tabTools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
-      <button id="tabSettings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
-    </div>
     <div class="scrim" id="scrim2"></div>
     <div class="sheet" id="reqSheet"><h3>받은 요청</h3><div class="reqlist" id="reqList"></div></div>
   </section>
@@ -405,7 +403,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1726</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1729</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -449,6 +447,11 @@
   <div class="full" id="viewer"><div class="bar"><button class="icon" id="viewerClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff"></h2><a class="icon" id="viewerSave" download="tillzero"><svg viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></a></div><div class="body" id="viewerBody"></div></div>
   <div class="full" id="cam"><div class="bar"><button class="icon" id="camClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff">촬영</h2><button class="icon" id="camFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></button></div><div class="body"><video id="camVideo" autoplay playsinline muted></video></div><div class="foot"><button class="shutter" id="shutter" aria-label="찍기"></button></div></div>
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
+  <div class="tabs" id="tabs">
+      <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
+      <button id="tabTools" data-tab="s-tools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
+      <button id="tabSettings" data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+  </div>
   <div class="toast" id="toast"></div>
 </div>
 </div>
@@ -564,6 +567,7 @@ function go(id,{replace=false}={}){
   if(cur&&cur!==id){$("#"+cur).classList.add("under")}
   if(replace&&cur){$("#"+cur).classList.remove("on","under");stack.pop()}
   const el=$("#"+id); el.classList.remove("under"); el.classList.add("on"); stack.push(id);
+  syncTabs();
 }
 function back(to){
   if(to){
@@ -575,6 +579,7 @@ function back(to){
   }
   const top=stack[stack.length-1]; if(top){$("#"+top).classList.remove("under")}
   if(top==="till") renderTill(); if(top==="settings") renderSettings();
+  syncTabs();
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",()=>back(b.dataset.back)));
 $$("[data-go]").forEach(b=>b.addEventListener("click",()=>{go(b.dataset.go); if(b.dataset.go==="s-profile") fillProfileEdit(); if(b.dataset.go==="s-invite") renderInvite(); if(b.dataset.go==="s-blocked") renderBlocked();}));
@@ -602,7 +607,7 @@ applyTheme();
   $("#splash").classList.remove("base"); $("#splash").style.display="none";
   if(auth){
     $("#till").classList.add("base"); stack=["till"];
-    renderTill();
+    renderTill(); syncTabs();
     tryUrlCode(); connectWS();
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
@@ -649,7 +654,7 @@ async function enter(d){
   me={name:d.me.nickname,dob:d.me.dob,photo:draftAvatar||null,since:NOW()};
   store.set("me",{photo:me.photo,since:me.since});
   ["ob-phone","ob-code","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
-  $("#till").classList.add("base"); stack=["till"];
+  $("#till").classList.add("base"); stack=["till"]; syncTabs();
   if(draftAvatar){ try{ await api("/api/profile",{method:"POST",body:{photo:draftAvatar}}) }catch(e){} }
   await syncTill(); await tryUrlCode(); connectWS();
 }
@@ -809,7 +814,20 @@ scrim.addEventListener("click",closeSheets);
 const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
-$("#tabSettings").addEventListener("click",()=>{renderSettings();go("settings")});
+/* 탭바는 세 화면에서만 뜨고, 탭끼리는 쌓이지 않고 갈아탄다 */
+const TABBED=["till","s-tools","settings"];
+function syncTabs(){
+  const top=stack[stack.length-1];
+  $("#tabs").classList.toggle("show",TABBED.includes(top));
+  $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===top));
+}
+function goTab(id){
+  back("till");
+  if(id==="settings"){ renderSettings(); go(id) }
+  else if(id==="s-tools"){ $("#toolSearch").value=""; renderTools(); go(id) }
+  syncTabs();
+}
+$$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab)));
 
 /* ---------- Tools ----------
    도구가 나타날 수 있는 자리는 둘뿐이다.
@@ -834,7 +852,7 @@ function renderTools(q=""){
     list.appendChild(el);
   });
 }
-$("#tabTools").addEventListener("click",()=>{$("#toolSearch").value="";renderTools();go("s-tools")});
+
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
