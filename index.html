@@ -783,7 +783,10 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
 /* iOS: 키보드가 올라오면 보이는 영역만큼만 쓰게 한다 */
 (function(){
   const vv=window.visualViewport; if(!vv)return;
-  const ph=$("#phone"); const fit=()=>{ph.style.height=vv.height+"px"};
+  const ph=$("#phone");
+  // 앱을 전환하거나 회전하는 순간 0 같은 엉뚱한 값이 오기도 한다.
+  // 그대로 쓰면 앱이 통째로 찌그러지므로, 말이 되는 값일 때만 쓴다.
+  const fit=()=>{ const h=vv.height; ph.style.height = h>200 ? h+"px" : "" };
   vv.addEventListener("resize",fit); vv.addEventListener("scroll",fit); fit();
 })();
 </script>
