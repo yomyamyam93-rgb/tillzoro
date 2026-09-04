@@ -499,6 +499,7 @@ setTimeout(async()=>{
     const local=store.get("me",{});
     me={name:auth.me.nickname,dob:auth.me.dob,photo:local.photo||null,since:local.since||NOW()};
     $("#till").classList.add("base"); stack=["till"];
+    renderTill();   // 서버를 기다리는 동안에도 백지로 두지 않는다
     try{ await syncTill(); await tryUrlCode(); connectWS() }catch(e){ if(!requireLogin()) toast(e.message) }
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
