@@ -470,14 +470,15 @@ function connectWS(){
 
 /* 폰은 수시로 앱을 뒤로 보낸다. 돌아왔을 때, 그리고 인터넷이 다시 붙었을 때 새로 받아온다. */
 function catchUp(){
-  if(!auth||document.visibilityState!=="visible") return;
+  if(!auth) return;
   connectWS();
   syncTill().then(refreshChat).catch(()=>{ requireLogin() });
 }
-document.addEventListener("visibilitychange",catchUp);
-window.addEventListener("online",catchUp);
+const whenVisible=()=>{ if(document.visibilityState==="visible") catchUp() };
+document.addEventListener("visibilitychange",whenVisible);
+setInterval(whenVisible,60000);   // 연결이 조용히 죽어도 1분 안에 따라잡는다
+window.addEventListener("online",catchUp);   // 화면 상태와 무관하게 따라잡는다
 window.addEventListener("focus",catchUp);
-setInterval(catchUp,60000);   // 연결이 조용히 죽어도 1분 안에 따라잡는다
 
 /* ---------- nav ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
