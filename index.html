@@ -661,6 +661,7 @@ async function openChat(id){
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
   $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
+  $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
   const cc=$("#ccount"); cc.textContent=dday(cur); cc.className="ccount"+(dday(cur)<=3?" zero":"");
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
