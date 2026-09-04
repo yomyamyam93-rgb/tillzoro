@@ -50,6 +50,8 @@
   .screen.on{transform:translateX(0);visibility:visible}
   .screen.base{transform:none;visibility:visible}
   .screen.under{transform:translateX(-14%)}
+  .screen.left{transform:translateX(-100%)}
+  .screen.leaving{visibility:visible}
   @media (prefers-reduced-motion: reduce){.screen{transition:none}}
 
   /* generic */
@@ -404,7 +406,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1731</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1733</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -825,11 +827,43 @@ function syncTabs(){
   const cur=TAB_OF[top];
   $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===cur));
 }
+const TAB_ORDER=["till","s-tools","settings"];
+let tabBusy=false;
 function goTab(id){
-  back("till");
-  if(id==="settings"){ renderSettings(); go(id) }
-  else if(id==="s-tools"){ $("#toolSearch").value=""; renderTools(); go(id) }
+  const from=stack[stack.length-1];
+  const cur=TAB_OF[from]||from;
+  if(tabBusy||cur===id) return;
+  const dir=TAB_ORDER.indexOf(id)>TAB_ORDER.indexOf(cur)?1:-1;   // 1이면 오른쪽 탭으로
+
+  if(id==="settings") renderSettings();
+  if(id==="s-tools"){ $("#toolSearch").value=""; renderTools() }
+  if(id==="till") renderTill();
+
+  // 현재 탭 위에 쌓인 화면은 애니메이션 없이 걷어낸다
+  while(stack.length&&stack[stack.length-1]!==cur){
+    const el=$("#"+stack.pop());
+    el.style.transition="none"; el.classList.remove("on","under","left","leaving");
+    void el.offsetWidth; el.style.transition="";
+  }
+
+  const a=$("#"+cur), b=$("#"+id);
+  tabBusy=true;
+
+  // 들어올 화면을 반대편에 세워둔다
+  b.style.transition="none";
+  b.classList.remove("on","base","under","leaving");
+  b.classList.toggle("left",dir<0);
+  void b.offsetWidth; b.style.transition="";
+
+  // 나가는 화면과 들어오는 화면을 같이 민다
+  a.classList.add("leaving");
+  a.classList.remove("on","base","under");
+  a.classList.toggle("left",dir>0);
+  b.classList.remove("left"); b.classList.add("on");
+
+  stack=[id];
   syncTabs();
+  setTimeout(()=>{ a.classList.remove("leaving","left"); tabBusy=false },320);
 }
 $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab)));
 
