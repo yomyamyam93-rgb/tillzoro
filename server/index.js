@@ -58,12 +58,14 @@ async function auth(req, res, next) {
 
 // Bond 한 건을 "내 쪽에서 본" 모양으로 바꾼다.
 function shape(row, meId) {
+  const self = String(row.a_id) === String(row.b_id);
   const iAmA = row.a_id === meId;
   return {
     id: row.id,
+    self,                     // 나와의 대화방. 사라지지 않는다.
     name: iAmA ? row.b_nickname : row.a_nickname,
     photo: iAmA ? row.b_photo : row.a_photo,
-    dday: ddayOf(row.last_reset_at),
+    dday: self ? 0 : ddayOf(row.last_reset_at),   // 나는 나를 잃지 않는다
     keep: row.keep,
     days: daysOf(row.bond_at),
     // R-6.4: 내가 보내고 상대가 아직 안 보낸 상태
@@ -125,7 +127,15 @@ app.post("/api/login", async (req, res) => {
 
 /* ---------- Till ---------- */
 
+async function ensureSelfBond(userId) {
+  await pool.query(
+    "insert into bonds (a_id, b_id) values ($1, $1) on conflict (a_id, b_id) do nothing",
+    [userId]
+  );
+}
+
 app.get("/api/till", auth, async (req, res) => {
+  await ensureSelfBond(req.user.id);
   const { rows } = await pool.query(
     `${BOND_SELECT} where b.a_id = $1 or b.b_id = $1`,
     [req.user.id]
@@ -239,15 +249,22 @@ app.post("/api/messages", auth, async (req, res) => {
 
   const bond = await myBond(req.body?.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  // R-11: Zero 처리가 먼저면 메시지는 거부된다. 경계는 서버가 정한다.
-  if (ddayOf(bond.last_reset_at) <= 0) return res.status(410).json({ error: "이 대화는 끝났어요" });
+  const isSelf = String(bond.a_id) === String(bond.b_id);
+  // R-11: Zero 처리가 먼저면 메시지는 거부된다. 나와의 방은 Zero가 없다.
+  if (!isSelf && ddayOf(bond.last_reset_at) <= 0)
+    return res.status(410).json({ error: "이 대화는 끝났어요" });
 
   const { rows } = await pool.query(
     "insert into messages (bond_id, sender_id, body) values ($1, $2, $3) returning id, created_at",
     [bond.id, req.user.id, body]
   );
 
-  // R-4.2 / R-4.3: 양쪽이 각각 한 번 이상 보냈을 때만 Reset한다.
+  // R-4.2 / R-4.3: 양쪽이 각각 한 번 이상 보냈을 때만 Reset한다. 나와의 방은 셈하지 않는다.
+  if (isSelf) {
+    const m = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id };
+    notify([req.user.id], { type: "message", ...m }, req.user.id);
+    return res.json({ ...m, reset: false });
+  }
   const iAmA = bond.a_id === req.user.id;
   const aSent = bond.a_sent || iAmA;
   const bSent = bond.b_sent || !iAmA;

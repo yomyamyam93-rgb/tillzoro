@@ -381,7 +381,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1613</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1617</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -481,7 +481,7 @@ async function syncTill(){
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null};
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
-    id:b.id, name:b.name, keep:b.keep, photo:b.photo||null,
+    id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null,
     bondAt:NOW()-b.days*DAY,
     lastResetAt:NOW()-(30-b.dday)*DAY,
     mySent:b.waiting, unread:b.unread,
@@ -625,7 +625,7 @@ async function enter(d){
 /* ---------- Till ---------- */
 function renderTill(){
   const rows=$("#rows"); rows.innerHTML="";
-  const live=people.filter(p=>dday(p)>0 && !prefs.blocked.includes(p.id));
+  const live=people.filter(p=>!p.self && dday(p)>0 && !prefs.blocked.includes(p.id));
   $("#total").textContent=live.length;
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
@@ -634,7 +634,9 @@ function renderTill(){
   meRow.innerHTML=`<div class="count"><span class="n">0</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
     <div class="card ${me.photo?"":"text"}"><div class="photo" style="${me.photo?`background-image:url(${me.photo})`:""}"><span class="name">${esc(me.name)}</span></div>
     <div class="last"><span class="txt dim">설정 · 초대 · 프로필</span><span class="t">ME</span></div></div>`;
-  meRow.addEventListener("click",()=>{renderSettings();go("settings")}); rows.appendChild(meRow);
+  const selfBond=people.find(p=>p.self);
+  meRow.addEventListener("click",()=>{ selfBond ? openChat(selfBond.id) : (renderSettings(),go("settings")) });
+  rows.appendChild(meRow);
   if(!live.length){
     const inv=document.createElement("div"); inv.className="row";
     inv.innerHTML=`<div class="count"></div>
@@ -663,26 +665,30 @@ let cur=null;
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
   cur.unread=false; cur.msgs=[];
-  $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
+  $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
+    :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
   $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
-  const cc=$("#ccount"); cc.textContent=dday(cur); cc.className="ccount"+(dday(cur)<=3?" zero":"");
+  const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
   renderMsgs(); go("chat");
   try{
     const d=await api("/api/messages/"+id);
     if(!cur||cur.id!==id) return;
     cur.keep=d.bond.keep;
     cur.msgs=d.messages.map(m=>({id:m.id,who:m.mine?"me":"you",type:"text",text:m.body,ts:new Date(m.at).getTime(),ok:true}));
-    $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${d.bond.keep} · DAYS ${d.bond.days}</small>`;
-    cc.textContent=d.bond.dday; cc.className="ccount"+(d.bond.dday<=3?" zero":"");
+    if(!cur.self){
+      $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${d.bond.keep} · DAYS ${d.bond.days}</small>`;
+      cc.textContent=d.bond.dday; cc.className="ccount"+(d.bond.dday<=3?" zero":"");
+    }
     renderMsgs();
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
-  $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
+  $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
+    :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
   $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
-  const cc=$("#ccount"); cc.textContent=dday(cur); cc.className="ccount"+(dday(cur)<=3?" zero":"");
+  const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
 function renderMsgs(){

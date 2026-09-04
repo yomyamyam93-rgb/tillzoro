@@ -32,7 +32,8 @@ create table if not exists bonds (
   -- 각자 이 Bond를 마지막으로 읽은 시각. 안 읽은 표시(동그라미)에 쓴다.
   a_read_at     timestamptz not null default now(),
   b_read_at     timestamptz not null default now(),
-  check (a_id < b_id),
+  -- a_id = b_id 이면 "나와의 대화방". 그 밖에는 순서를 고정해 중복을 막는다.
+  check (a_id <= b_id),
   unique (a_id, b_id)
 );
 
