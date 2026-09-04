@@ -373,7 +373,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1537</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1540</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -776,8 +776,7 @@ function exportChat(){
     out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":cur.name}  ${m.type==="text"?m.text:"(사진)"}`);
   });
   const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([out.join("
-")],{type:"text/plain;charset=utf-8"}));
+  a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/plain;charset=utf-8"}));
   a.download=`tillzero-${cur.name}.txt`; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   toast("내려받기 시작");
