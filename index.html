@@ -456,7 +456,7 @@ function connectWS(){
     if(d.type==="message"&&cur&&cur.id===d.bondId){
       appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
     }
-    syncTill().catch(()=>{});
+    syncTill().then(refreshChat).catch(()=>{});
   };
   ws.onclose=()=>{ ws=null; setTimeout(connectWS,4000) };
 }
@@ -590,6 +590,11 @@ async function openChat(id){
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ toast(e.message) }
 }
+function refreshChat(){
+  if(!cur||!$("#chat").classList.contains("on")) return;
+  $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
+  const cc=$("#ccount"); cc.textContent=dday(cur); cc.className="ccount"+(dday(cur)<=3?" zero":"");
+}
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
 function renderMsgs(){
   const days=$("#days"); days.innerHTML="";
@@ -624,13 +629,8 @@ async function push(m){
   try{
     const r=await api("/api/messages",{method:"POST",body:{bondId:cur.id,body:m.text}});
     cur.mySent=true;
-    if(r.reset){
-      cur.keep++; cur.lastResetAt=NOW(); cur.mySent=false;
-      $("#ccount").textContent=30;
-      $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
-      toast("30으로 돌아왔어요");
-    }
-    syncTill().catch(()=>{});
+    if(r.reset) toast("30으로 돌아왔어요");
+    syncTill().then(refreshChat).catch(()=>{});
   }catch(e){ el.ok=false; renderMsgs(); toast(e.message) }
 }
 const msgIn=$("#msgIn");
