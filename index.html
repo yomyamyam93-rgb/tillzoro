@@ -109,7 +109,8 @@
   .tabs.show{display:flex}
   /* 탭바에 가리지 않도록 아래를 비워둔다 */
   #till .rows,#s-tools .pad,#settings .pad,
-  #s-profile .pad,#s-invite .pad,#s-blocked .pad,#s-rule .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  #s-profile .pad,#s-invite .pad,#s-blocked .pad,#s-rule .pad,
+  #s-tool .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .tabs button{width:80px;height:44px;display:grid;place-items:center;color:var(--ink-3)}
   .tabs button.on{color:var(--ink)}
   .tabs svg{width:22px;height:22px;fill:currentColor;stroke:none}
@@ -371,6 +372,16 @@
     </div>
   </section>
 
+  <section class="screen" id="s-tool">
+    <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="toolTitle">Tool</h2></div>
+    <div class="pad">
+      <div class="tool" id="toolPreview"></div>
+      <div class="lbl" style="margin-top:16px">어느 대화방에서 쓸까요</div>
+      <div class="list" id="toolRooms"></div>
+      <p id="toolNoRoom" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:24px 0">아직 대화방이 없어요</p>
+    </div>
+  </section>
+
   <section class="screen" id="s-chat">
     <div class="bar big"><button class="icon" data-back="chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="sChatTitle">Room</h2></div>
     <div class="pad">
@@ -420,7 +431,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1756</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1803</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -766,7 +777,7 @@ async function openChat(id){
    퀘스트는 한 번에 하나. 낸 사람은 고치거나 지우고, 상대는 완료해서 점수를 가져간다. */
 let quest=null, questEdit=false;
 const myId=()=>String(auth?.me?.id||"");
-const emptyQuest=()=>({quest:null,score:{}});
+const emptyQuest=()=>({on:false,quest:null,score:{}});
 
 async function loadQuest(){
   if(!cur||cur.self){ quest=null; return }
@@ -781,7 +792,7 @@ function pts(id){ return Number(quest?.score?.[id]||0) }
 
 function renderQuest(){
   const box=$("#roomTool");
-  if(!quest||!cur||cur.self){ box.classList.remove("on"); box.innerHTML=""; return }
+  if(!quest||!quest.on||!cur||cur.self){ box.classList.remove("on"); box.innerHTML=""; return }
   box.classList.add("on");
   const q=quest.quest;
   const other=Object.keys(quest.score||{}).find(k=>k!==myId());
@@ -902,7 +913,7 @@ const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,san
 function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-code","ob-profile","ob-rule"];
-const TAB_OF={till:"till","s-tools":"s-tools",settings:"settings",
+const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
   "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings"};
 function syncTabs(){
   const top=stack[stack.length-1];
@@ -955,8 +966,14 @@ $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab
      top    = 대화방 맨 위의 가로 칸 (계속 보이는 상태 표시)
      bubble = 말풍선 안 (한 번 쓰고 지나가는 상호작용)
    자리를 이렇게 묶어두면 어떤 도구가 들어와도 화면이 흐트러지지 않는다. */
-const TOOLS=[];   // 아직 없다. 만들어지면 여기에 들어온다.
+const TOOLS=[
+  {id:"quest", name:"퀘스트", slot:"top",
+   desc:"할 일을 걸어두고, 해낸 사람이 점수를 가져가요",
+   pv:`<div class="rt-row"><span class="rt-title">음식물 쓰레기 버려주기</span><span class="rt-pt">2P</span><span class="rt-btn">완료</span></div>
+       <div class="rt-row rt-score"><span>나<b>0</b></span><span>상대<b>2</b></span></div>`},
+];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
+
 function renderTools(q=""){
   const list=$("#toolList"); list.innerHTML="";
   const key=q.trim().toLowerCase();
@@ -968,12 +985,46 @@ function renderTools(q=""){
   found.forEach(t=>{
     const el=document.createElement("div"); el.className="tool";
     el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
-      <div class="pv">${t.pv}</div>`;
-    el.addEventListener("click",()=>toast("아직 준비 중이에요"));
+      <div class="roomtool on" style="margin:0">${t.pv}</div>
+      <div style="margin:7px 0 0 2px;color:var(--ink-3);font-size:12px">${esc(t.desc)}</div>`;
+    el.addEventListener("click",()=>openTool(t));
     list.appendChild(el);
   });
 }
 
+/* 도구 하나를 어느 방에서 쓸지 고르는 화면 */
+let toolCur=null, toolRooms={};
+async function openTool(t){
+  toolCur=t;
+  $("#toolTitle").textContent=t.name;
+  $("#toolPreview").innerHTML=`<div class="roomtool on" style="margin:0">${t.pv}</div>`;
+  $("#toolRooms").innerHTML=""; $("#toolNoRoom").style.display="none";
+  go("s-tool");
+  try{ toolRooms=(await api(`/api/rooms/${t.id}`)).rooms||{} }catch(e){ toolRooms={} }
+  renderToolRooms();
+}
+function renderToolRooms(){
+  const list=$("#toolRooms"); list.innerHTML="";
+  const rooms=people.filter(p=>!p.self&&dday(p)>0);
+  $("#toolNoRoom").style.display=rooms.length?"none":"block";
+  rooms.forEach((p,i)=>{
+    const on=!!toolRooms[p.id]?.on;
+    const el=document.createElement("div"); el.className="item";
+    if(i===rooms.length-1) el.style.borderBottom="0";
+    el.innerHTML=`<div class="t">${esc(p.name)}</div><div class="toggle${on?" on":""}"></div>`;
+    el.addEventListener("click",()=>toggleTool(p.id,el));
+    list.appendChild(el);
+  });
+}
+async function toggleTool(bondId,el){
+  const was=toolRooms[bondId]||{on:false,quest:null,score:{}};
+  const next={...was,on:!was.on};
+  toolRooms[bondId]=next;
+  el.querySelector(".toggle").classList.toggle("on",next.on);
+  try{ await api(`/api/room/${bondId}/${toolCur.id}`,{method:"POST",body:{data:next}}) }
+  catch(e){ toast(e.message); return }
+  if(cur&&String(cur.id)===String(bondId)){ quest=next; renderQuest() }
+}
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;

@@ -294,6 +294,19 @@ async function myBond(bondId, meId) {
    도구 하나가 방 하나에 데이터 한 덩어리를 갖는다. 둘이 같이 본다.
    Bond가 지워지면(Zero) 함께 지워진다 — 테이블의 on delete cascade가 보장한다. */
 
+// 내 방들에서 이 도구가 어떤 상태인지 한 번에
+app.get("/api/rooms/:tool", auth, async (req, res) => {
+  const { rows } = await pool.query(
+    `select r.bond_id, r.data from room_state r
+       join bonds b on b.id = r.bond_id
+      where r.tool = $2 and (b.a_id = $1 or b.b_id = $1)`,
+    [req.user.id, req.params.tool]
+  );
+  const rooms = {};
+  rows.forEach((r) => (rooms[r.bond_id] = r.data));
+  res.json({ rooms });
+});
+
 app.get("/api/room/:bondId/:tool", auth, async (req, res) => {
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
