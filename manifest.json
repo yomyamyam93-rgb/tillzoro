@@ -3,8 +3,8 @@
   "short_name": "Till Zero",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#050506",
-  "theme_color": "#050506",
+  "background_color": "#F2F2F4",
+  "theme_color": "#F2F2F4",
   "icons": [
     {
       "src": "icon-192.png",

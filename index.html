@@ -723,6 +723,9 @@ $("#deleteBtn").addEventListener("click",()=>confirmBox("계정을 삭제하면 
 let avT; $("#cavatar").addEventListener("pointerdown",()=>{avT=setTimeout(()=>blockCur(),700)}); ["pointerup","pointerleave","pointercancel"].forEach(e=>$("#cavatar").addEventListener(e,()=>clearTimeout(avT)));
 function blockCur(){confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")})}
 $("#moreBtn")?.addEventListener("click",()=>confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")}));
+/* 앱이 꺼져 있을 때 알림을 받을 준비 */
+if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+
 /* iOS: 키보드가 올라오면 보이는 영역만큼만 쓰게 한다 */
 (function(){
   const vv=window.visualViewport; if(!vv)return;
