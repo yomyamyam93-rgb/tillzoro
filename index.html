@@ -100,7 +100,6 @@
   .count .n{font:500 var(--num-row)/1 var(--font-num);color:var(--ink)}
   .count .k{font:400 var(--text-label) var(--font-body);letter-spacing:var(--track-label);color:var(--ink-3);text-transform:uppercase}
   .count .k2{font:500 var(--num-keep)/1 var(--font-num);color:var(--ink-2);margin-top:10px}
-  .count .n.inf{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;font-size:34px;line-height:30px}
   
   
   .card{background:var(--card);border-radius:var(--r-card);overflow:hidden;display:flex;flex-direction:column;position:relative}
@@ -520,7 +519,7 @@ function renderTill(){
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
   const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/(30*DAY)):0;
   const meRow=document.createElement("div"); meRow.className="row me";
-  meRow.innerHTML=`<div class="count"><span class="n inf">∞</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
+  meRow.innerHTML=`<div class="count"><span class="n">0</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
     <div class="card ${me.photo?"":"text"}"><div class="photo" style="${me.photo?`background-image:url(${me.photo})`:""}"><span class="name">${esc(me.name)}</span></div>
     <div class="last"><span class="txt dim">설정 · 초대 · 프로필</span><span class="t">ME</span></div></div>`;
   meRow.addEventListener("click",()=>{renderSettings();go("settings")}); rows.appendChild(meRow);
