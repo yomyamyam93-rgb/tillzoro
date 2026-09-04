@@ -226,6 +226,20 @@
   .item .ic svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .item .val{font-size:13px;color:var(--ink-3);margin-right:2px}
   .slot{font:500 10px var(--font-body);letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-2);color:var(--ink-2);flex:none;white-space:nowrap}
+  /* 도구 미리보기 — 실제로 놓일 자리의 모양 그대로 보여준다 */
+  .tool{margin-top:16px}
+  .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
+  .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.5;color:var(--ink)}
+  .tool .pv.bubble{max-width:82%;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail)}
+  .tool .pvrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .tool .bar{height:6px;border-radius:3px;background:var(--paper-2);overflow:hidden;margin-top:9px}
+  .tool .bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+  .tool .dim{color:var(--ink-3)}
+  .tool .num{font:500 15px/1 var(--font-num);letter-spacing:.02em}
+  .tool .go{display:inline-block;margin-top:10px;padding:7px 15px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:12px;font-weight:500}
+  .tool .dots{display:flex;gap:5px;margin-top:9px}
+  .tool .dots i{width:22px;height:6px;border-radius:3px;background:var(--paper-2)}
+  .tool .dots i.on{background:var(--ink)}
   .item .t{font-size:15px;font-weight:500;letter-spacing:.01em}
   .item:last-child{border-bottom:0}
   .item .t{flex:1}
@@ -339,7 +353,7 @@
     <div class="pad">
       <p class="note" style="margin:0;text-align:left">도구는 두 자리에만 나타나요. <b>대화방 맨 위</b>의 가로 칸, 또는 <b>말풍선 안</b>. 그래서 무엇을 넣어도 화면이 흐트러지지 않아요.</p>
       <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
-      <div class="list" id="toolList"></div>
+      <div id="toolList"></div>
       <p id="toolEmpty" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0">찾는 도구가 없어요</p>
     </div>
   </section>
@@ -393,7 +407,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1701</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">0904-1710</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -805,25 +819,42 @@ $("#tillSettings").addEventListener("click",()=>{renderSettings();go("settings")
      bubble = 말풍선 안 (한 번 쓰고 지나가는 상호작용)
    자리를 이렇게 묶어두면 어떤 도구가 들어와도 화면이 흐트러지지 않는다. */
 const TOOLS=[
-  {name:"장바구니",   slot:"top",    desc:"둘이 같이 채우는 목록. 하나가 담으면 상대 화면에도 바로 뜬다"},
-  {name:"저금통",     slot:"top",    desc:"목표 금액까지 얼마나 모았는지 막대로 보여준다"},
-  {name:"이달 예산",  slot:"top",    desc:"이번 달 남은 돈이 줄어드는 걸 같이 본다"},
-  {name:"감정 온도계", slot:"top",   desc:"오늘 기분을 한 칸으로 올리고 내린다"},
-  {name:"룰렛",       slot:"bubble", desc:"뭘 먹을지, 누가 낼지 돌려서 정한다"},
-  {name:"타임캡슐",   slot:"bubble", desc:"정한 날이 와야 열리는 메시지"},
-  {name:"귀가 핑",    slot:"bubble", desc:"지금 출발했고 몇 분 뒤 도착하는지 한 번에 보낸다"},
-  {name:"더치페이",   slot:"bubble", desc:"쓴 돈을 나눠 적는다. 실제 송금은 하지 않는다"},
+  {name:"장바구니", slot:"top", pv:`
+    <div class="pvrow"><span>우유 · 계란 · 휴지</span><span class="num">3/7</span></div>
+    <div class="bar"><i style="width:43%"></i></div>`},
+  {name:"저금통", slot:"top", pv:`
+    <div class="pvrow"><span>제주도 여행</span><span class="num">62%</span></div>
+    <div class="bar"><i style="width:62%"></i></div>`},
+  {name:"이달 예산", slot:"top", pv:`
+    <div class="pvrow"><span class="dim">이번 달 남은 돈</span><span class="num">38만</span></div>
+    <div class="bar"><i style="width:31%"></i></div>`},
+  {name:"감정 온도계", slot:"top", pv:`
+    <div class="pvrow"><span>오늘 기분</span><span class="dim">보통보다 조금 좋음</span></div>
+    <div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>`},
+  {name:"룰렛", slot:"bubble", pv:`
+    <div>오늘 뭐 먹지?</div>
+    <div class="dim" style="margin-top:3px">삼겹살 · 국밥 · 파스타 · 초밥</div>
+    <span class="go">돌리기</span>`},
+  {name:"타임캡슐", slot:"bubble", pv:`
+    <div class="dim">2027년 1월 1일에 열려요</div>
+    <div style="margin-top:4px">🔒 아직 잠겨 있어요</div>`},
+  {name:"귀가 핑", slot:"bubble", pv:`
+    <div>지금 출발했어</div>
+    <div class="pvrow" style="margin-top:6px"><span class="dim">도착까지</span><span class="num">8분</span></div>`},
+  {name:"더치페이", slot:"bubble", pv:`
+    <div class="pvrow"><span>삼겹살</span><span class="num">48,000</span></div>
+    <div class="pvrow" style="margin-top:4px"><span class="dim">둘이 나눠서</span><span class="num">24,000</span></div>`},
 ];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
 function renderTools(q=""){
   const list=$("#toolList"); list.innerHTML="";
   const key=q.trim().toLowerCase();
-  const found=TOOLS.filter(t=>!key||(t.name+t.desc).toLowerCase().includes(key));
+  const found=TOOLS.filter(t=>!key||t.name.toLowerCase().includes(key));
   $("#toolEmpty").style.display=found.length?"none":"block";
-  found.forEach((t,i)=>{
-    const el=document.createElement("div"); el.className="item";
-    if(i===found.length-1) el.style.borderBottom="0";
-    el.innerHTML=`<div class="t">${esc(t.name)}<div class="sub">${esc(t.desc)}</div></div><span class="slot">${SLOT[t.slot]}</span>`;
+  found.forEach(t=>{
+    const el=document.createElement("div"); el.className="tool";
+    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
+      <div class="pv ${t.slot==="bubble"?"bubble":""}">${t.pv}</div>`;
     el.addEventListener("click",()=>toast("아직 준비 중이에요"));
     list.appendChild(el);
   });
