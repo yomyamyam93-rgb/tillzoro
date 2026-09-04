@@ -447,15 +447,17 @@ function savePeople(){return true}   // 기록은 서버가 갖는다
 async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob};
-  const prev=cur;
+  const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
     id:b.id, name:b.name, keep:b.keep, photo:null,
     bondAt:NOW()-b.days*DAY,
     lastResetAt:NOW()-(30-b.dday)*DAY,
-    mySent:b.waiting, unread:false,
+    mySent:b.waiting, unread:b.unread,
     msgs:b.lastMessage?[{id:"last",who:"you",type:"text",text:b.lastMessage,ts:new Date(b.lastAt).getTime(),ok:true}]:[]
   }));
-  if(prev){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } }
+  // 대화방이 열려 있을 때만 읽어둔 대화를 이어 쓴다. 닫혀 있으면 목록은 서버 것을 그대로 보여준다.
+  if(prev&&chatOpen){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } }
+  else if(!chatOpen) cur=null;
   renderTill();
 }
 
@@ -475,7 +477,7 @@ function connectWS(){
   try{ ws=new WebSocket(API.replace("https://","wss://")+"/ws?token="+encodeURIComponent(auth.token)) }catch(e){ return }
   ws.onmessage=e=>{
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
-    if(d.type==="message"&&cur&&cur.id===d.bondId){
+    if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
       appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
     }
     syncTill().then(refreshChat).catch(requireLogin);

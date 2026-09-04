@@ -69,6 +69,11 @@ function shape(row, meId) {
     waiting: iAmA ? row.a_sent && !row.b_sent : row.b_sent && !row.a_sent,
     lastMessage: row.last_body,
     lastAt: row.last_at,
+    // 마지막 말이 상대 것이고 내가 읽은 시각보다 나중이면 안 읽은 것이다
+    unread:
+      !!row.last_at &&
+      String(row.last_sender) !== String(meId) &&
+      new Date(row.last_at) > new Date(iAmA ? row.a_read_at : row.b_read_at),
   };
 }
 
@@ -77,12 +82,13 @@ const BOND_SELECT = `
          ua.nickname as a_nickname,
          ub.nickname as b_nickname,
          m.body      as last_body,
-         m.created_at as last_at
+         m.created_at as last_at,
+         m.sender_id  as last_sender
     from bonds b
     join users ua on ua.id = b.a_id
     join users ub on ub.id = b.b_id
     left join lateral (
-      select body, created_at from messages
+      select body, created_at, sender_id from messages
        where bond_id = b.id order by id desc limit 1
     ) m on true`;
 
@@ -175,6 +181,12 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
   const { rows } = await pool.query(
     "select id, sender_id, body, created_at from messages where bond_id = $1 order by id",
+    [bond.id]
+  );
+  // 여는 순간 읽은 것으로 친다 (R-7.4에 따라 상대에게는 알리지 않는다)
+  const iAmA = String(bond.a_id) === String(req.user.id);
+  await pool.query(
+    `update bonds set ${iAmA ? "a_read_at" : "b_read_at"} = now() where id = $1`,
     [bond.id]
   );
   res.json({

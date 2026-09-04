@@ -27,6 +27,9 @@ create table if not exists bonds (
   -- R-4.2: 마지막 Reset 이후 각자 한 번이라도 보냈는지
   a_sent        boolean not null default false,
   b_sent        boolean not null default false,
+  -- 각자 이 Bond를 마지막으로 읽은 시각. 안 읽은 표시(동그라미)에 쓴다.
+  a_read_at     timestamptz not null default now(),
+  b_read_at     timestamptz not null default now(),
   check (a_id < b_id),
   unique (a_id, b_id)
 );
