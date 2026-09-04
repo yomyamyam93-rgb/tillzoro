@@ -7,6 +7,7 @@ create table if not exists users (
   dob        date,
   pass_hash  text not null,
   photo      text,          -- 프로필 사진 (data URL). 상대 Till에도 보이므로 서버가 갖는다.
+  tools      jsonb  not null default '[]'::jsonb,   -- 설치한 도구 id 목록 (계정 단위)
 
   created_at timestamptz not null default now()
 );

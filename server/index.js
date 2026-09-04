@@ -290,6 +290,25 @@ async function myBond(bondId, meId) {
   return rows[0];
 }
 
+/* ---------- 내가 설치한 도구 ----------
+   설치는 계정 단위다. 어느 방에서 실제로 쓸지는 방 안에서 따로 정한다. */
+
+app.get("/api/me/tools", auth, async (req, res) => {
+  const { rows } = await pool.query("select tools from users where id = $1", [req.user.id]);
+  res.json({ tools: rows[0]?.tools || [] });
+});
+
+app.post("/api/me/tools", auth, async (req, res) => {
+  const id = String(req.body?.id || "").trim();
+  if (!id) return res.status(400).json({ error: "도구를 지정해주세요" });
+  const { rows } = await pool.query("select tools from users where id = $1", [req.user.id]);
+  const set = new Set(rows[0]?.tools || []);
+  req.body?.on ? set.add(id) : set.delete(id);
+  const tools = [...set];
+  await pool.query("update users set tools = $2 where id = $1", [req.user.id, JSON.stringify(tools)]);
+  res.json({ tools });
+});
+
 /* ---------- 도구가 쓰는 방 저장소 ----------
    도구 하나가 방 하나에 데이터 한 덩어리를 갖는다. 둘이 같이 본다.
    Bond가 지워지면(Zero) 함께 지워진다 — 테이블의 on delete cascade가 보장한다. */
