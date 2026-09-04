@@ -117,9 +117,8 @@
   .photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.38),transparent 55%);pointer-events:none}
   .photo .name{position:relative;z-index:1;font-weight:700;font-size:var(--text-name);color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.35)}
   .card.text .photo{background:#D9D9DC}
-  .card .photo.add{display:grid;place-items:center;padding:0}
-  .card .photo.add svg{width:28px;height:28px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round}
-  .card .photo.add::after{display:none}
+  .card.add{background:transparent;border:1.5px dashed var(--line);min-height:calc(var(--photo-h) + 42px);display:grid;place-items:center}
+  .card.add svg{width:26px;height:26px;stroke:var(--ink-3);fill:none;stroke-width:1.8;stroke-linecap:round}
   :root[data-theme="dark"] .card.text .photo{background:#2A2A2F}
   .card.text .photo::after{display:none}
   .card.text .name{color:var(--ink);text-shadow:none}
@@ -154,7 +153,6 @@
   .reqitem .ok{background:var(--ink);color:var(--paper)}
   .reqitem .no{background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
   .sheet h3{margin:4px 6px 12px;font:600 16px var(--font-body)}
-  .empty-till{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink-3);font-size:14px;padding-bottom:80px}
 
   /* chat */
   #chat{z-index:3;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
@@ -599,11 +597,9 @@ function renderTill(){
     <div class="last"><span class="txt dim">설정 · 초대 · 프로필</span><span class="t">ME</span></div></div>`;
   meRow.addEventListener("click",()=>{renderSettings();go("settings")}); rows.appendChild(meRow);
   if(!live.length){
-    rows.insertAdjacentHTML("beforeend",`<div class="empty-till" style="flex:none;padding:26px 0 12px">아직 아무도 없어요</div>`);
     const inv=document.createElement("div"); inv.className="row";
     inv.innerHTML=`<div class="count"></div>
-      <div class="card text"><div class="photo add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
-      <div class="last"><span class="txt">눌러서 친구를 초대해요</span></div></div>`;
+      <div class="card add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>`;
     inv.addEventListener("click",()=>{renderSettings();go("settings");renderInvite();go("s-invite")});
     rows.appendChild(inv);
   }
