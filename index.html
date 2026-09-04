@@ -456,6 +456,7 @@ async function tryUrlCode(){
 let ws=null;
 function connectWS(){
   if(!auth) return;
+  if(ws&&ws.readyState<=1) return;
   try{ ws=new WebSocket(API.replace("https://","wss://")+"/ws?token="+encodeURIComponent(auth.token)) }catch(e){ return }
   ws.onmessage=e=>{
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
@@ -467,6 +468,17 @@ function connectWS(){
   ws.onclose=()=>{ ws=null; setTimeout(connectWS,4000) };
 }
 
+/* 폰은 수시로 앱을 뒤로 보낸다. 돌아왔을 때, 그리고 인터넷이 다시 붙었을 때 새로 받아온다. */
+function catchUp(){
+  if(!auth||document.visibilityState!=="visible") return;
+  connectWS();
+  syncTill().then(refreshChat).catch(()=>{ requireLogin() });
+}
+document.addEventListener("visibilitychange",catchUp);
+window.addEventListener("online",catchUp);
+window.addEventListener("focus",catchUp);
+setInterval(catchUp,60000);   // 연결이 조용히 죽어도 1분 안에 따라잡는다
+
 /* ---------- nav ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let stack=[];
@@ -477,8 +489,13 @@ function go(id,{replace=false}={}){
   const el=$("#"+id); el.classList.remove("under"); el.classList.add("on"); stack.push(id);
 }
 function back(to){
-  const cur=stack.pop(); if(cur) $("#"+cur).classList.remove("on","under");
-  if(to && stack[stack.length-1]!==to){ stack=[to]; $("#"+to).classList.add("on"); }
+  if(to){
+    // 목표 화면 위에 쌓인 것을 하나도 남기지 않고 걷어낸다
+    while(stack.length && stack[stack.length-1]!==to){ $("#"+stack.pop()).classList.remove("on","under") }
+    if(!stack.length){ stack=[to]; $("#"+to).classList.add("on") }
+  }else{
+    const cur=stack.pop(); if(cur) $("#"+cur).classList.remove("on","under");
+  }
   const top=stack[stack.length-1]; if(top){$("#"+top).classList.remove("under")}
   if(top==="till") renderTill(); if(top==="settings") renderSettings();
 }
