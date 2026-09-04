@@ -171,8 +171,8 @@
   .compose .bar2{display:flex;gap:8px;align-items:flex-end;padding:7px;background:var(--card);border-radius:34px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06)}
   .compose .icon{width:44px;height:44px;border:0;background:var(--paper-2);color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
-  .compose .field2{flex:1;position:relative;display:flex;align-items:flex-end}
-  .compose textarea{flex:1;min-height:44px;max-height:120px;border-radius:22px;border:0;background:var(--paper-2);padding:12px 18px;resize:none;outline:none;font-size:14px;line-height:1.45;color:var(--ink)}
+  .compose .field2{flex:1;min-width:0;position:relative;display:flex;align-items:flex-end}
+  .compose textarea{flex:1;min-width:0;min-height:44px;max-height:120px;border-radius:22px;border:0;background:var(--paper-2);padding:12px 18px;resize:none;outline:none;font-size:14px;line-height:1.45;color:var(--ink)}
   .compose textarea::placeholder{color:var(--ink-3)}
   .compose .send{background:var(--ink);color:var(--paper)}
   .compose .send svg{fill:currentColor;stroke:none;width:18px;height:18px}
@@ -449,7 +449,7 @@ let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.ad
 function confirmBox(text,cb){$("#confirmText").textContent=text;$("#confirm").classList.add("on");$("#confirmYes").onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
 /* ---------- theme ---------- */
-function applyTheme(){const t=prefs.theme; document.documentElement.dataset.theme = t==="system" ? (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light") : t; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
+function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = dark?"#111114":"#F2F2F4"; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
 $$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.dataset.th;store.set("prefs",prefs);applyTheme()}));
 
 /* ---------- splash → route ---------- */
