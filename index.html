@@ -444,7 +444,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1733</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1740</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1360,6 +1360,15 @@ let kbLog=[];
     log("resize"); flip(vv.height); unshift();
   });
   vv.addEventListener("scroll",()=>{ if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
+  // 아이폰은 초점이 갈 때 "입력칸이 키보드에 가려질까" 보고, 그렇다고 판단하면 화면 전체를 밀어 올린다(기록상 반반 확률).
+  // 손가락이 닿는 순간 입력칸을 화면 위 한참 바깥에 둔 채로 직접 초점을 주면, 아이폰은 밀어 올릴 대상을 못 찾는다.
+  // 다음 틱에 제자리로 돌려놓는다. 이러면 매번 "화면은 그대로, 키보드만" 경우가 되고, 움직임은 flip 이 맡는다.
+  // (searls/ios-keyboard-focus-scroll-hack)
+  inp.addEventListener("touchstart",()=>{
+    if(document.activeElement===inp) return;
+    inp.style.transform="translateY(-8000px)"; inp.focus();
+    setTimeout(()=>{ inp.style.transform="" },0);
+  },{passive:true});
   inp.addEventListener("focus",()=>log(`focus nav=${((performance.now()-navAt)/1000).toFixed(1)}s`));
   window.addEventListener("scroll",()=>{ if(window.scrollY) log("winscroll") },{passive:true});
   inp.addEventListener("blur",()=>log("blur"));
