@@ -427,7 +427,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1452</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1458</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -1194,7 +1194,14 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
   const ph=$("#phone");
   // 앱을 전환하거나 회전하는 순간 0 같은 엉뚱한 값이 오기도 한다.
   // 그대로 쓰면 앱이 통째로 찌그러지므로, 말이 되는 값일 때만 쓴다.
-  const fit=()=>{ const h=vv.height; ph.style.height = h>200 ? h+"px" : "" };
+  // 키보드가 올라오면 아이폰은 보이는 영역을 위로 밀기도 한다.
+  // 높이만 맞추면 입력칸이 키보드와 어긋나므로, 밀린 만큼 따라 내려준다.
+  const fit=()=>{
+    const h=vv.height;
+    if(h<=200){ ph.style.height=""; ph.style.transform=""; return }
+    ph.style.height=h+"px";
+    ph.style.transform=`translateY(${Math.round(vv.offsetTop)}px)`;
+  };
   vv.addEventListener("resize",fit); vv.addEventListener("scroll",fit); fit();
 })();
 </script>
