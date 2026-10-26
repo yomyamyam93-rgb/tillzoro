@@ -176,7 +176,7 @@
   #chat{z-index:6;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
   #s-chat,#s-media{z-index:7;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
   #chat{background:var(--paper-2)}
-  .chead{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px 10px;background:var(--paper-2)}
+  .chead{flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px 7px;background:var(--paper-2)}
   .chead .sq{width:40px;height:40px;background:transparent;display:grid;place-items:center;color:var(--ink);flex:none}
   .chead .sq svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .chead .av{width:44px;height:44px;border-radius:50%;background:var(--line) center/cover;flex:none}
@@ -199,11 +199,11 @@
   .rt-score{font-size:12px;color:var(--ink-3);justify-content:space-between}
   .rt-score b{font:500 14px/1 var(--font-num);color:var(--ink);margin-left:4px}
   .rt-in{flex:1;min-width:0;height:30px;border:0;background:var(--paper-2);border-radius:9px;padding:0 10px;font-size:16px;outline:none;color:var(--ink)}
-  .days{flex:1;overflow:auto;padding:10px 16px 16px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+  .days{flex:1;overflow:auto;padding:6px 12px 8px;display:flex;flex-direction:column;gap:3px;scrollbar-width:none}
   .days::-webkit-scrollbar{display:none}
-  .sep{flex:none;align-self:center;margin:12px 0 6px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
+  .sep{flex:none;align-self:center;margin:8px 0 5px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
   .empty{margin:auto;font-size:13px;color:var(--ink-3)}
-  .msg{flex:none;max-width:78%;padding:10px 14px 8px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0;align-self:flex-start;display:flex;align-items:flex-end;gap:8px}
+  .msg{flex:none;max-width:80%;padding:7px 11px 6px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0;align-self:flex-start;display:flex;align-items:flex-end;gap:8px}
   .msg.me{align-self:flex-end;flex-direction:row-reverse;background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-left-radius:var(--r-bubble);border-bottom-right-radius:var(--r-bubble-tail)}
   .msg.media{display:block;padding:4px;overflow:hidden;width:68%;border-radius:var(--r-bubble);background:var(--card)}
   .msg.media.me{background:var(--bubble-me)}
@@ -213,12 +213,14 @@
   .msg .txts{min-width:0}
   .msg .txts>div+div{margin-top:3px}
   .msg.failed{outline:1px solid var(--zero)}
-  .compose{flex:none;padding:8px 12px 30px;background:var(--paper-2)}
-  .compose .bar2{display:flex;gap:8px;align-items:flex-end;padding:7px;background:var(--card);border-radius:34px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06)}
-  .compose .icon{width:44px;height:44px;border:0;background:var(--paper-2);color:var(--ink);flex:none}
+  .compose{flex:none;padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
+  /* 키보드가 올라오면 아래 여백이 필요 없다 */
+  .phone.kb .compose{padding-bottom:5px}
+  .compose .bar2{display:flex;gap:6px;align-items:flex-end;padding:4px;background:var(--card);border-radius:22px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .compose .icon{width:34px;height:34px;border:0;background:var(--paper-2);color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
   .compose .field2{flex:1;min-width:0;position:relative;display:flex;align-items:flex-end}
-  .compose textarea{flex:1;min-width:0;min-height:44px;max-height:120px;border-radius:22px;border:0;background:var(--paper-2);padding:12px 18px;resize:none;outline:none;font-size:16px;line-height:1.45;color:var(--ink)}
+  .compose textarea{flex:1;min-width:0;min-height:34px;max-height:110px;border-radius:17px;border:0;background:var(--paper-2);padding:7px 13px;resize:none;outline:none;font-size:16px;line-height:1.45;color:var(--ink)}
   .compose textarea::placeholder{color:var(--ink-3)}
   .compose .send{background:var(--ink);color:var(--paper)}
   .compose .send svg{fill:currentColor;stroke:none;width:18px;height:18px}
@@ -427,7 +429,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1458</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1511</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -1201,6 +1203,7 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
     if(h<=200){ ph.style.height=""; ph.style.transform=""; return }
     ph.style.height=h+"px";
     ph.style.transform=`translateY(${Math.round(vv.offsetTop)}px)`;
+    ph.classList.toggle("kb", window.innerHeight-h>100);
   };
   vv.addEventListener("resize",fit); vv.addEventListener("scroll",fit); fit();
 })();
