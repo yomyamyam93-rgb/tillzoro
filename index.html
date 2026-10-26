@@ -221,7 +221,7 @@
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
-  #chat.kbmove .days,#chat.kbmove .compose{transition:transform .3s cubic-bezier(.36,.66,.04,1)}
+  #chat.kbmove .days,#chat.kbmove .compose{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
@@ -444,7 +444,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1703</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1714</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1299,27 +1299,24 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
   ph.addEventListener("touchend",end); ph.addEventListener("touchcancel",end);
 })();
 
-/* 키보드 (P-1 P-3 C-6)
-   아이폰은 키보드가 다 올라온 뒤에야 알려준다. 그래서
-   - 누르는 순간: 기억해둔 키보드 높이만큼 입력줄(끝을 보고 있었다면 목록도)을 transform 으로 미끄러뜨린다. 높이는 안 건드린다.
-   - 알려주는 순간: 높이·여백·transform·스크롤을 같은 프레임에 바꿔서 눈에는 아무 변화가 없게 맞춘다(snap).
-   - 놓는 순간: 높이는 바로 되돌리되 transform 으로 제자리에 붙잡았다가 다음 프레임에 미끄러져 내려온다.
-   transform 만 움직이므로 iOS 가 키보드를 띄우느라 바빠도 끊기지 않는다. */
+/* 키보드 (C-6) — 2026-10-26 폰 기록으로 확인한 사실 위에 다시 만들었다.
+   이 폰(iOS 18.7, 홈 화면 앱)은 입력칸을 누르고 80ms 뒤, 키보드가 아직 올라오는 중에 visualViewport
+   resize 로 최종 높이를 알려준다. 내릴 때는 40ms 뒤다. 그러니 높이를 미리 짐작해 움직일 이유가 없다.
+   - 누르거나 놓는 순간에는 아무것도 안 한다(짐작으로 움직이면 아이폰이 하는 일과 부딪혀 튄다).
+   - resize 가 오면: 높이를 새 값으로 바꾸되, 입력줄과 목록을 transform 으로 "방금 보이던 자리"에 붙잡았다가
+     다음 프레임에 제자리로 미끄러뜨린다(FLIP). 움직이는 건 transform 뿐이라 끊기지 않는다.
+   - 자리는 공식이 아니라 실제로 재서(getBoundingClientRect) 쓴다. 여백·홈바가 바뀌어도 맞는다. */
 let kbLog=[];
 (function(){
   const vv=window.visualViewport; if(!vv) return;
   const ph=$("#phone"), inp=$("#msgIn"), chat=$("#chat"), days=$("#days"), comp=$("#compose");
-  const TOUCHY=matchMedia("(pointer: coarse)").matches;
-  let kbH=Number(localStorage.getItem("tz:kb"))||0, settle=null, lastOff=-1, sent=0, flushT=null;
-  // 홈 화면 앱에서는 키보드가 뜨면 창 높이(innerHeight)도 같이 줄어들어 기준이 못 된다.
-  // "키보드 없을 때의 높이"는 지금까지 본 가장 큰 값으로 잡고, 화면이 돌아가면 다시 잰다.
-  let fullH=vv.height, fullW=window.innerWidth;
+  let fullH=vv.height, fullW=window.innerWidth, lastOff=-1, sent=0, flushT=null;
   const noKb=()=>{ if(window.innerWidth!==fullW){ fullW=window.innerWidth; fullH=vv.height } return fullH };
-  const safe=()=>parseFloat(getComputedStyle(ph).paddingBottom)||0;   // 홈바 여백. 키보드가 뜨면 입력줄이 이만큼 내려앉는다
   const nearBottom=()=>days.scrollHeight-days.clientHeight-days.scrollTop<120;
+  const lastRow=()=>{ const r=days.querySelector(".msg:last-child"); return r?r.getBoundingClientRect().top:0 };
   const log=w=>{
-    const d=$("#days"), c=$("#compose").getBoundingClientRect();
-    kbLog.push(`${(performance.now()/1000).toFixed(2)} ${w} vv=${Math.round(vv.height)} off=${Math.round(vv.offsetTop)} in=${window.innerHeight} sy=${Math.round(window.scrollY)} ph=${ph.style.height||"-"} kb=${kbH} comp=${Math.round(c.bottom)} days=${Math.round(d.scrollTop)}/${d.scrollHeight-d.clientHeight} tf=${getComputedStyle(d).transform.slice(-12)}`);
+    const c=comp.getBoundingClientRect();
+    kbLog.push(`${(performance.now()/1000).toFixed(2)} ${w} vv=${Math.round(vv.height)} off=${Math.round(vv.offsetTop)} in=${window.innerHeight} sy=${Math.round(window.scrollY)} ph=${ph.style.height||"-"} comp=${Math.round(c.bottom)} days=${Math.round(days.scrollTop)}/${days.scrollHeight-days.clientHeight} tf=${getComputedStyle(days).transform.slice(-12)}`);
     if(kbLog.length>60){ kbLog.shift(); sent=Math.max(0,sent-1) }
     clearTimeout(flushT); flushT=setTimeout(flush,2000);
   };
@@ -1327,64 +1324,36 @@ let kbLog=[];
   const flush=()=>{ if(!auth||sent>=kbLog.length) return; const lines=kbLog.slice(sent); sent=kbLog.length;
     api("/api/kblog",{method:"POST",body:{lines,ua:navigator.userAgent,standalone:!!navigator.standalone}}).catch(()=>{}) };
 
-  const snap=h=>{
+  // 높이를 h 로 바꾸되, 눈에는 방금 자리에서 새 자리로 미끄러져 가게 한다
+  const flip=h=>{
     if(h<=200) return;   // 전환 중 오는 엉뚱한 값은 무시
-    const stick=nearBottom();
-    chat.classList.remove("kbmove");
-    days.style.transform=""; comp.style.transform="";
+    const inChat=chat.classList.contains("on");
+    const c0=comp.getBoundingClientRect().top, r0=lastRow(), stick=nearBottom();
+    chat.classList.remove("kbmove"); comp.style.transform=""; days.style.transform="";
     ph.style.height=h+"px";
     ph.classList.toggle("kb", noKb()-h>100);
     if(stick) days.scrollTop=days.scrollHeight;
-    void ph.offsetWidth;
-  };
-  // 초점이 가는 순간: 높이를 바로 줄여 입력칸을 키보드 위 자리에 놓는다(움직임 없이).
-  // iOS 는 이 직후 입력칸 위치를 보고 가려졌으면 화면을 밀어 올리는데, 이미 위에 있으면 안 민다.
-  // 대화 목록만 transform 으로 제자리에 붙잡았다가 다음 프레임에 미끄러져 올라간다.
-  // (손가락이 닿는 순간에 하면 입력칸이 손가락 밑에서 달아나 탭이 안 먹는다 — 그래서 touchstart 가 아니라 focus 다)
-  const slideUp=()=>{
-    if(ph.classList.contains("kb")) return;
-    if(!kbH) return;   // 아직 키보드 높이를 모르면 미리 움직이지 않는다. 한 번 뜨고 나면 안다
-    const full=noKb(), k=kbH-safe(); if(k<=0||full-kbH<=200) return;
-    const stick=nearBottom();
-    chat.classList.remove("kbmove"); comp.style.transform="";
-    ph.style.height=(full-kbH)+"px"; ph.classList.add("kb");
-    if(stick){
-      days.scrollTop=days.scrollHeight; days.style.transform=`translateY(${k}px)`;
-      void ph.offsetWidth; chat.classList.add("kbmove"); days.style.transform="";
-    }
-  };
-  const slideDown=()=>{
-    const h=parseFloat(ph.style.height)||0, full=noKb(), k=full-h-safe();
-    if(full-h<=100) return;
-    const stick=nearBottom();
-    chat.classList.remove("kbmove");
-    ph.style.height=full+"px"; ph.classList.remove("kb");
-    comp.style.transform=`translateY(${-k}px)`;
-    days.style.transform=stick?`translateY(${-k}px)`:"";
+    if(!inChat) return;
+    const dc=c0-comp.getBoundingClientRect().top, dr=stick&&r0?r0-lastRow():0;
+    log(`flip dc=${Math.round(dc)} dr=${Math.round(dr)}`);
+    if(Math.abs(dc)<2&&Math.abs(dr)<2) return;
+    comp.style.transform=`translateY(${dc}px)`; days.style.transform=Math.abs(dr)>=2?`translateY(${dr}px)`:"";
     void ph.offsetWidth;
     chat.classList.add("kbmove");
     comp.style.transform=""; days.style.transform="";
   };
   const unshift=()=>{ if(window.scrollY) window.scrollTo(0,0) };
-  const truth=()=>{ clearTimeout(settle); settle=setTimeout(()=>{ log("settle"); snap(vv.height); unshift() },700) };
 
   vv.addEventListener("resize",()=>{
     if(vv.height>noKb()) fullH=vv.height;
-    const gap=fullH-vv.height;
-    if(gap>100 && gap!==kbH){ kbH=gap; try{ localStorage.setItem("tz:kb",gap) }catch(e){} }
-    log("resize"); clearTimeout(settle);
-    snap(vv.height); unshift();
+    log("resize"); flip(vv.height); unshift();
   });
   vv.addEventListener("scroll",()=>{ if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
-
-  inp.addEventListener("focus",()=>{ log("focus"); if(TOUCHY) slideUp(); truth() });
-  inp.addEventListener("blur",()=>setTimeout(()=>{
-    const a=document.activeElement; if(a&&a!==inp&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;  // 다른 칸으로 옮겨가면 키보드가 남는다
-    log("blur"); if(TOUCHY&&ph.classList.contains("kb")) slideDown(); truth();
-  },0));
+  inp.addEventListener("focus",()=>log("focus"));
+  inp.addEventListener("blur",()=>log("blur"));
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
-  snap(vv.height); log("start");
+  flip(vv.height); log("start");
 })();
 </script>
 
