@@ -8,7 +8,7 @@
  * 화면(HTML)은 언제나 새것을 먼저 받아온다. 캐시를 우선하면
  * 고친 것이 폰에 안 보이는 일이 생긴다.
  */
-const VERSION = "tz-1026-1511";
+const VERSION = "tz-1026-1518";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -42,7 +42,9 @@ self.addEventListener("fetch", (e) => {
   // 화면은 새것 먼저, 인터넷이 없을 때만 캐시
   if (req.mode === "navigate" || req.destination === "document") {
     e.respondWith(
-      fetch(req)
+      // 브라우저의 10분 캐시를 건너뛰고 서버에 "바뀌었나" 직접 묻는다.
+      // 그래야 고친 것이 다음에 열 때 바로 보인다.
+      fetch(req.url, { cache: "no-cache" })
         .then((res) => {
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put("./index.html", copy));
