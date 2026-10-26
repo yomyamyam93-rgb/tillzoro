@@ -44,7 +44,7 @@
   .stage{min-height:100dvh;display:flex;flex-direction:column;align-items:center;background:var(--ground)}
   .note{font:12px/1.6 var(--font-body);color:var(--ink-3);text-align:center;max-width:440px}
   .note b{color:var(--ink-2);font-weight:500}
-  .phone{transition:height .25s var(--ease);width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
@@ -213,9 +213,11 @@
   .msg .txts{min-width:0}
   .msg .txts>div+div{margin-top:3px}
   .msg.failed{outline:1px solid var(--zero)}
-  .compose{flex:none;padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px));background:var(--paper-2);transition:padding .25s var(--ease)}
+  .compose{flex:none;padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
   /* 키보드가 올라오면 아래 여백이 필요 없다 */
   .phone.kb .compose{padding-bottom:5px}
+  .phone.anim{transition:height .25s var(--ease)}
+  .phone.anim .compose{transition:padding .25s var(--ease)}
   .compose .bar2{display:flex;gap:6px;align-items:flex-end;padding:4px;background:var(--card);border-radius:22px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
   .compose .icon{width:34px;height:34px;border:0;background:var(--paper-2);color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
@@ -429,7 +431,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1537</b><br><span id="storeInfo"></span></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1540</b><br><span id="storeInfo"></span></p>
     </div>
   </section>
 
@@ -1191,38 +1193,40 @@ $("#moreBtn")?.addEventListener("click",()=>confirmBox(`${cur.name}을(를) 차�
 if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
 /* iOS: 키보드가 올라오면 보이는 영역만큼만 쓰게 한다.
-   아이폰은 키보드가 "다 올라온 뒤에야" 크기를 알려준다. 그래서
-   - 처음 한 번은 알려준 뒤에 맞추고(반 박자 늦음),
-   - 그때 키보드 높이를 기억해두었다가, 다음부터는 입력칸을 누르는 순간 같이 움직인다.
-   아이폰이 입력칸을 보이려고 화면을 밀어 올린 것은 따라가지 않고 되돌린다.
-   (프레임을 맞추고 나면 밀 이유가 없는데, 따라가면 서로 쫓아다니며 튄다.) */
+   아이폰은 키보드가 "다 올라온 뒤에야" 크기를 알려준다. 알려준 뒤에 움직이면 늦고 딱딱하다.
+   그래서 누르는 순간 먼저 움직이고(키보드 높이는 기억해둔 값, 처음엔 한국어 키보드 기본값),
+   아이폰이 알려주면 그 값으로 즉시 맞춘다. 잰 높이는 폰에 저장해 다음 실행부터 정확히 시작한다.
+   아이폰이 입력칸을 보이려고 화면을 밀어 올린 것은 따라가지 않고 되돌린다 — 따라가면 서로 쫓아다니며 튄다. */
 (function(){
   const vv=window.visualViewport; if(!vv) return;
   const ph=$("#phone"), inp=$("#msgIn");
-  let kbH=0, settle=null;
+  let kbH=Number(localStorage.getItem("tz:kb"))||336, settle=null, animT=null;
 
-  const apply=h=>{
-    if(h<=200){ ph.style.height=""; ph.classList.remove("kb"); return }  // 전환 중 오는 엉뚱한 값은 무시
+  // anim=true 면 0.25초 미끄러지고, 아니면 즉시. 이미 미끄러지는 중이면 목표만 바꾼다.
+  const apply=(h,anim)=>{
+    if(h<=200){ ph.style.height=""; ph.classList.remove("kb","anim"); return }  // 전환 중 오는 엉뚱한 값은 무시
+    const moving=ph.classList.contains("anim");
+    ph.classList.toggle("anim", !!anim||moving);
     ph.style.height=h+"px";
     ph.classList.toggle("kb", window.innerHeight-h>100);
     stickBottom();
+    if(anim){ clearTimeout(animT); animT=setTimeout(()=>ph.classList.remove("anim"),300) }
   };
   const unshift=()=>{ if(window.scrollY) window.scrollTo(0,0) };
-  const truth=()=>{ clearTimeout(settle); settle=setTimeout(()=>{ apply(vv.height); unshift() },700) };
+  const truth=()=>{ clearTimeout(settle); settle=setTimeout(()=>{ apply(vv.height,false); unshift() },700) };
 
   vv.addEventListener("resize",()=>{
     const gap=window.innerHeight-vv.height;
-    if(gap>100) kbH=gap;                 // 키보드 높이를 기억
-    apply(vv.height); unshift();
+    if(gap>100 && gap!==kbH){ kbH=gap; try{ localStorage.setItem("tz:kb",gap) }catch(e){} }
+    apply(vv.height,false); unshift();
   });
   vv.addEventListener("scroll",unshift);
 
-  // 두 번째부터는 키보드와 같이 올라간다
-  inp.addEventListener("focus",()=>{ if(kbH>100){ apply(window.innerHeight-kbH); truth() } });
-  // 내려갈 때도 같이. 단, 초점이 다른 입력칸으로 옮겨가면 키보드가 남으니 그대로 둔다.
+  // 누르는 순간 키보드와 같이 올라가고, 놓으면 같이 내려간다
+  inp.addEventListener("focus",()=>{ apply(window.innerHeight-kbH,true); truth() });
   inp.addEventListener("blur",()=>setTimeout(()=>{
-    const a=document.activeElement; if(a&&a!==inp&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
-    apply(window.innerHeight); truth();
+    const a=document.activeElement; if(a&&a!==inp&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;  // 다른 칸으로 옮겨가면 키보드가 남는다
+    apply(window.innerHeight,true); truth();
   },0));
 
   // 대화방이 열려 있고 끝 근처를 보고 있었다면, 크기가 바뀌는 동안 끝에 붙여둔다
@@ -1232,7 +1236,7 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
     const t0=performance.now();
     (function step(){ d.scrollTop=d.scrollHeight; if(performance.now()-t0<ms) requestAnimationFrame(step) })();
   }
-  apply(vv.height);
+  apply(vv.height,false);
 })();
 </script>
 
