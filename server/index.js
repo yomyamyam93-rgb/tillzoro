@@ -384,6 +384,14 @@ wss.on("connection", async (ws, req) => {
 
 /* ---------- 시작 ---------- */
 
+// 키보드 기록. 아이폰에서만 보이는 움직임을 PC에서 읽기 위한 임시 창구 — kb.log 에 덧붙인다.
+app.post("/api/kblog", auth, (req, res) => {
+  const lines = Array.isArray(req.body?.lines) ? req.body.lines.slice(0, 80) : [];
+  const head = `--- ${new Date().toISOString()} ${req.user.nickname} ${String(req.body?.ua || "").slice(0, 160)} standalone=${req.body?.standalone}`;
+  require("fs").appendFile("/opt/tillzero/kb.log", [head, ...lines.map((l) => String(l).slice(0, 200)), ""].join("\n"), () => {});
+  res.json({ ok: true });
+});
+
 app.get("/health", (_, res) => res.json({ ok: true, now: new Date().toISOString() }));
 
 server.listen(PORT, "127.0.0.1", () =>
