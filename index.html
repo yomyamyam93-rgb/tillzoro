@@ -221,7 +221,7 @@
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
-  #chat.kbmove .days,#chat.kbmove .compose{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
@@ -444,7 +444,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1714</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1733</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -985,7 +985,9 @@ function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.
 const NO_TABS=["splash","ob-phone","ob-code","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
   "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings"};
+let navAt=0;
 function syncTabs(){
+  navAt=performance.now();
   const top=stack[stack.length-1];
   $("#tabs").classList.toggle("show", !!auth && !NO_TABS.includes(top));
   const cur=TAB_OF[top];
@@ -1324,23 +1326,32 @@ let kbLog=[];
   const flush=()=>{ if(!auth||sent>=kbLog.length) return; const lines=kbLog.slice(sent); sent=kbLog.length;
     api("/api/kblog",{method:"POST",body:{lines,ua:navigator.userAgent,standalone:!!navigator.standalone}}).catch(()=>{}) };
 
-  // 높이를 h 로 바꾸되, 눈에는 방금 자리에서 새 자리로 미끄러져 가게 한다
+  // 높이를 h 로 바꾸되, 눈에는 방금 보이던 자리에서 새 자리로 미끄러져 가게 한다(FLIP).
+  // 2026-10-26 기록: 다른 화면에 다녀온 직후에는 아이폰이 키보드를 띄우며 화면 전체를 376px 밀어 올린다(sy=376).
+  // 그때 "방금 보이던 자리"는 밀려 올라간 자리다. 그래서 자리는 밀림을 되돌리기 전에, 진행 중인 미끄러짐까지 포함해 잰다.
+  // 그러면 입력줄은 이미 키보드 위라 안 움직이고, 밀려 올라갔던 머리말과 대화만 제자리로 내려온다.
   const flip=h=>{
     if(h<=200) return;   // 전환 중 오는 엉뚱한 값은 무시
     const inChat=chat.classList.contains("on");
-    const c0=comp.getBoundingClientRect().top, r0=lastRow(), stick=nearBottom();
-    chat.classList.remove("kbmove"); comp.style.transform=""; days.style.transform="";
+    const els=[comp,$("#chead"),$("#roomTool")];
+    const stick=nearBottom();
+    const y0=els.map(e=>e.getBoundingClientRect().top), d0=days.getBoundingClientRect().top-days.scrollTop;
+    const sy=Math.round(window.scrollY);
+    chat.classList.remove("kbmove"); els.forEach(e=>e.style.transform=""); days.style.transform="";
+    if(sy) window.scrollTo(0,0);
     ph.style.height=h+"px";
     ph.classList.toggle("kb", noKb()-h>100);
     if(stick) days.scrollTop=days.scrollHeight;
     if(!inChat) return;
-    const dc=c0-comp.getBoundingClientRect().top, dr=stick&&r0?r0-lastRow():0;
-    log(`flip dc=${Math.round(dc)} dr=${Math.round(dr)}`);
-    if(Math.abs(dc)<2&&Math.abs(dr)<2) return;
-    comp.style.transform=`translateY(${dc}px)`; days.style.transform=Math.abs(dr)>=2?`translateY(${dr}px)`:"";
+    const dy=els.map((e,i)=>y0[i]-e.getBoundingClientRect().top), dd=d0-(days.getBoundingClientRect().top-days.scrollTop);
+    log(`flip sy=${sy} dc=${Math.round(dy[0])} dh=${Math.round(dy[1])} dd=${Math.round(dd)}`);
+    let any=false;
+    els.forEach((e,i)=>{ if(Math.abs(dy[i])>=2){ e.style.transform=`translateY(${dy[i]}px)`; any=true } });
+    if(Math.abs(dd)>=2){ days.style.transform=`translateY(${dd}px)`; any=true }
+    if(!any) return;
     void ph.offsetWidth;
     chat.classList.add("kbmove");
-    comp.style.transform=""; days.style.transform="";
+    els.forEach(e=>e.style.transform=""); days.style.transform="";
   };
   const unshift=()=>{ if(window.scrollY) window.scrollTo(0,0) };
 
@@ -1349,7 +1360,8 @@ let kbLog=[];
     log("resize"); flip(vv.height); unshift();
   });
   vv.addEventListener("scroll",()=>{ if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
-  inp.addEventListener("focus",()=>log("focus"));
+  inp.addEventListener("focus",()=>log(`focus nav=${((performance.now()-navAt)/1000).toFixed(1)}s`));
+  window.addEventListener("scroll",()=>{ if(window.scrollY) log("winscroll") },{passive:true});
   inp.addEventListener("blur",()=>log("blur"));
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
