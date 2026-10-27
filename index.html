@@ -527,7 +527,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1556</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1611</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1238,7 +1238,8 @@ function bubble(ms){
   }
   else if(m.type==="image"||m.type==="video"){
     el.classList.add("media"); if(m.pending) el.classList.add("pending");
-    el.innerHTML=(m.type==="image"?`<img src="${srcOf(m)}" alt=""${m.w&&m.h?` style="aspect-ratio:${m.w}/${m.h}"`:""}>`:`<video src="${srcOf(m)}" controls playsinline preload="metadata"></video>`)
+    const ar=m.w&&m.h?` style="aspect-ratio:${m.w}/${m.h}"`:"";
+    el.innerHTML=(m.type==="image"?`<img src="${srcOf(m)}" alt=""${ar}>`:`<video src="${srcOf(m)}" controls playsinline preload="metadata"${ar}></video>`)
       +(m.type==="image"||failed?`<span class="stamp">${failed?"다시 보내기":fmtT(m.ts)}</span>`:"");
     if(m.type==="image") el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
     const md=el.firstElementChild;
@@ -1281,7 +1282,7 @@ const mediaURL=id=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||""
 const srcOf=m=>m.src||mediaURL(m.media);
 function fromServer(m,mine){
   const type=m.kind==="image"||m.kind==="video"?m.kind:"text";
-  return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,ts:new Date(m.at).getTime(),ok:true};
+  return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,w:m.w||null,h:m.h||null,ts:new Date(m.at).getTime(),ok:true};
 }
 // 내가 보낸 것이거나 바닥 근처를 보고 있으면 따라 내려가고, 위를 보고 있으면 자리를 지키고 알약만 띄운다 (S-2 S-3)
 function appendBubble(m){
@@ -1317,18 +1318,28 @@ function shrinkImage(f){
     im.src=u;
   });
 }
+function videoSize(f){
+  return new Promise(ok=>{ const v=document.createElement("video"), u=URL.createObjectURL(f), done=d=>{ URL.revokeObjectURL(u); ok(d) };
+    const t=setTimeout(()=>done({}),3000);
+    v.preload="metadata"; v.muted=true;
+    v.onloadedmetadata=()=>{ clearTimeout(t); done({w:v.videoWidth,h:v.videoHeight}) };
+    v.onerror=()=>{ clearTimeout(t); done({}) };
+    v.src=u; });
+}
 async function sendFile(f){
   if(!cur) return;
   const video=f.type.startsWith("video/");
   if(video&&f.size>VIDEO_MAX){ toast("동영상은 60MB까지 보낼 수 있어요"); return }
   let blob; try{ blob=video?f:await shrinkImage(f) }catch(e){ toast(e.message); return }
+  if(video){ const d=await videoSize(f); blob.w=d.w; blob.h=d.h }
   const el={id:uid(),who:"me",type:video?"video":"image",blob,src:URL.createObjectURL(blob),w:blob.w,h:blob.h,ts:NOW(),ok:true,pending:true};
   appendBubble(el); upload(el,cur.id);
 }
 async function upload(el,bondId){
   el.pending=true; renderMsgs();
   try{
-    const r=await fetch(API+"/api/messages/media?bondId="+encodeURIComponent(bondId),{method:"POST",
+    const q=el.w&&el.h?`&w=${el.w}&h=${el.h}`:"";
+    const r=await fetch(API+"/api/messages/media?bondId="+encodeURIComponent(bondId)+q,{method:"POST",
       headers:{authorization:"Bearer "+auth.token,"content-type":el.blob.type||(el.type==="video"?"video/mp4":"image/jpeg")},body:el.blob});
     const d=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error||"보내지 못했어요");
@@ -1349,7 +1360,12 @@ const msgIn=$("#msgIn");
 const TOUCH=matchMedia("(pointer: coarse)").matches;
 const sendBtn=$("#sendBtn");
 // 글이 늘면 4줄까지 커지고, 비어 있으면 보내기가 흐려진다 (C-2 C-3)
-function fitIn(){ msgIn.style.height="auto"; msgIn.style.height=Math.min(100,msgIn.scrollHeight)+"px"; sendBtn.classList.toggle("off",!msgIn.value.trim()) }
+// 입력칸이 커지거나 줄면 목록 높이도 바뀐다. 바닥을 보고 있었으면 같은 순간에 바닥을 다시 맞춘다
+function fitIn(){
+  const d=$("#days"), stick=d.scrollHeight-d.scrollTop-d.clientHeight<30;   // 지금 실제 위치로 판단
+  msgIn.style.height="auto"; msgIn.style.height=Math.min(100,msgIn.scrollHeight)+"px"; sendBtn.classList.toggle("off",!msgIn.value.trim());
+  if(stick) d.scrollTop=d.scrollHeight;
+}
 msgIn.addEventListener("input",fitIn);
 msgIn.addEventListener("keydown",e=>{ if(TOUCH) return; if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); sendText() } });
 function sendText(){ const t=msgIn.value.trim(); if(!t) return; push({type:"text",text:t}); msgIn.value=""; fitIn() }
@@ -1358,6 +1374,9 @@ sendBtn.addEventListener("click",sendText);
 $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDefault() });
 // 메시지 영역을 탭하면 키보드가 내려간다 (S-5)
 $("#days").addEventListener("click",()=>{ if(document.activeElement===msgIn) msgIn.blur() });
+let pinned=true;   // 사용자가 바닥을 보고 있는가. 직접 위로 올리면 풀린다
+$("#days").addEventListener("scroll",()=>{ const d=$("#days"); pinned=d.scrollHeight-d.scrollTop-d.clientHeight<30 },{passive:true});
+new ResizeObserver(()=>{ const d=$("#days"); if(pinned) d.scrollTop=d.scrollHeight }).observe($("#days"));
 // 바닥까지 내려오면 알약은 할 일이 없다
 $("#days").addEventListener("scroll",()=>{ const d=$("#days"); if(d.scrollHeight-d.scrollTop-d.clientHeight<40) $("#newPill").classList.remove("on") },{passive:true});
 $("#newPill").addEventListener("click",()=>{ const d=$("#days"); d.scrollTo({top:d.scrollHeight,behavior:"smooth"}); $("#newPill").classList.remove("on") });

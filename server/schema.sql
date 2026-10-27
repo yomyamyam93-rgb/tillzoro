@@ -59,6 +59,8 @@ create table if not exists messages (
   media      text,          -- 사진·동영상 파일 이름(MEDIA_DIR 안). 방이 사라지면 파일도 정리된다
   mime       text,
   size       int,
+  w          int,           -- 사진·동영상 가로·세로. 화면에 자리를 미리 잡는 데 쓴다
+  h          int,
   created_at timestamptz not null default now()
 );
 create index if not exists messages_bond_idx on messages(bond_id, id);

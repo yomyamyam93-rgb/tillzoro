@@ -612,7 +612,7 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
   const mine = bond.kind === "group" && (bond.members || []).find((m) => String(m.id) === String(req.user.id));
   const since = mine && !bond.show_history ? mine.joined_at : new Date(0);
   const { rows } = await pool.query(
-    "select id, sender_id, body, kind, media, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
+    "select id, sender_id, body, kind, media, w, h, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
     [bond.id, since]
   );
   // 여는 순간 읽은 것으로 친다 (R-7.4에 따라 상대에게는 알리지 않는다)
@@ -631,6 +631,7 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
       body: m.body,
       kind: m.kind || "text",
       media: m.media,
+      w: m.w, h: m.h,
       at: m.created_at,
     })),
   });
@@ -672,7 +673,8 @@ app.post("/api/messages/media", auth, express.raw({ type: () => true, limit: "60
   const id = crypto.randomBytes(16).toString("hex") + "." + ext;
   fs.writeFileSync(path.join(MEDIA_DIR, id), buf);
   mediaBytes += buf.length;
-  sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size: buf.length });
+  const dim = (v) => Math.max(0, Math.min(20000, Number(v) || 0)) || null;
+  sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size: buf.length, w: dim(req.query.w), h: dim(req.query.h) });
 });
 
 app.get("/api/media/:id", async (req, res) => {
@@ -698,13 +700,13 @@ async function sendMessage(req, res, bond, m) {
     return res.status(410).json({ error: "이 대화는 끝났어요" });
 
   const { rows } = await pool.query(
-    "insert into messages (bond_id, sender_id, body, kind, media, mime, size) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at",
-    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null]
+    "insert into messages (bond_id, sender_id, body, kind, media, mime, size, w, h) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, created_at",
+    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null, m.w || null, m.h || null]
   );
 
   // R-4.2 / R-4.3: 양쪽이 각각 한 번 이상 보냈을 때만 Reset한다. 나와의 방은 셈하지 않는다.
   if (isSelf) {
-    const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, kind: m.kind || "text", media: m.media || null };
+    const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null };
     notify([req.user.id], { type: "message", ...msg }, req.user.id);
     return res.json({ ...msg, reset: false });
   }
@@ -720,7 +722,7 @@ async function sendMessage(req, res, bond, m) {
     reset ? [bond.id] : [bond.id, aSent, bSent]
   );
 
-  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null };
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null };
   notify([bond.a_id, bond.b_id], { type: "message", ...msg }, req.user.id);
   push(iAmA ? bond.b_id : bond.a_id, "msg", { title: req.user.nickname, body: body.slice(0, 120), tag: "bond-" + bond.id });
   res.json({ ...msg, reset });
@@ -732,8 +734,8 @@ async function groupMessage(req, res, bond, m) {
   const body = m.body;
   if (ddayOf(bond.last_reset_at) <= 0) return res.status(410).json({ error: "이 대화는 끝났어요" });
   const { rows } = await pool.query(
-    "insert into messages (bond_id, sender_id, body, kind, media, mime, size) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at",
-    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null]);
+    "insert into messages (bond_id, sender_id, body, kind, media, mime, size, w, h) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, created_at",
+    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null, m.w || null, m.h || null]);
   const sp = new Set((bond.speakers || []).map(String)); sp.add(String(req.user.id));
   const reset = sp.size >= 2;
   await pool.query(
@@ -741,7 +743,7 @@ async function groupMessage(req, res, bond, m) {
           : "update bonds set speakers = $2::jsonb where id = $1",
     reset ? [bond.id] : [bond.id, JSON.stringify([...sp])]);
   await pool.query("update bond_members set read_at = now() where bond_id = $1 and user_id = $2", [bond.id, req.user.id]);
-  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null };
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null };
   const ids = memberIds(bond);
   notify(ids, { type: "message", ...msg }, req.user.id);
   for (const id of ids) if (id !== String(req.user.id))
