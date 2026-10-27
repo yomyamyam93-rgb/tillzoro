@@ -534,7 +534,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1623</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1632</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1591,27 +1591,33 @@ async function setToolOn(t,on,redraw=true){
 function slideToggle(tr,on,cb){
   const k=tr.querySelector(".knob");
   tr.classList.toggle("on",on);
-  let x0=null,y0=0,drag=false,base=0,R=40;
-  tr.addEventListener("pointerdown",e=>{ x0=e.clientX; y0=e.clientY; drag=false; R=parseFloat(getComputedStyle(tr).getPropertyValue("--r"))||40; base=tr.classList.contains("on")?R:0 });
-  tr.addEventListener("pointermove",e=>{
+  let x0=null,y0=0,t0=0,axis=null,base=0,R=40,dxNow=0;
+  const begin=(x,y)=>{ x0=x; y0=y; t0=Date.now(); axis=null; dxNow=0; R=parseFloat(getComputedStyle(tr).getPropertyValue("--r"))||40; base=tr.classList.contains("on")?R:0 };
+  // 처음 6px 를 움직인 방향으로 정한다. 옆이면 카드가 손가락을 따라오고 세로 스크롤은 막는다. 세로면 손을 뗀다(스크롤)
+  const move=(x,y,e)=>{
     if(x0===null) return;
-    const dx=e.clientX-x0, dy=e.clientY-y0;
-    if(!drag){
-      if(Math.abs(dx)<8&&Math.abs(dy)<8) return;
-      if(Math.abs(dy)>Math.abs(dx)){ x0=null; return }
-      drag=true; k.style.transition="none"; try{ tr.setPointerCapture(e.pointerId) }catch(err){}
-    }
-    k.style.transform=`translateX(${Math.max(0,Math.min(R,base+dx))}px)`;
-  });
-  const end=e=>{
+    const dx=x-x0, dy=y-y0;
+    if(!axis){ if(Math.abs(dx)<6&&Math.abs(dy)<6) return; axis=Math.abs(dx)>=Math.abs(dy)?"x":"y"; if(axis==="y"){ x0=null; return } k.style.transition="none" }
+    if(e&&e.cancelable) e.preventDefault();
+    dxNow=dx; k.style.transform=`translateX(${Math.max(0,Math.min(R,base+dx))}px)`;
+  };
+  const end=()=>{
     if(x0===null) return;
-    const dx=e.clientX-x0; x0=null;
-    k.style.transition=""; k.style.transform="";
-    const was=tr.classList.contains("on"), next=drag?base+dx>R/2:!was;
+    const was=tr.classList.contains("on"), fast=Math.abs(dxNow)/Math.max(1,Date.now()-t0)>.4;
+    // 옆으로 밀었으면 절반을 넘겼거나 빠르게 튕긴 쪽으로, 거의 안 움직였으면 탭으로 보고 바꾼다
+    const next=axis==="x"?(fast?dxNow>0:base+dxNow>R/2):!was;
+    x0=null; k.style.transition=""; k.style.transform="";
     if(next!==was){ tr.classList.toggle("on",next); cb(next) }
   };
-  tr.addEventListener("pointerup",end);
-  tr.addEventListener("pointercancel",()=>{ x0=null; k.style.transition=""; k.style.transform="" });
+  const cancel=()=>{ x0=null; k.style.transition=""; k.style.transform="" };
+  tr.addEventListener("touchstart",e=>{ const t=e.touches[0]; begin(t.clientX,t.clientY) },{passive:true});
+  tr.addEventListener("touchmove",e=>{ const t=e.touches[0]; move(t.clientX,t.clientY,e) },{passive:false});
+  tr.addEventListener("touchend",e=>{ if(x0!==null&&e.cancelable) e.preventDefault(); end() },{passive:false});
+  tr.addEventListener("touchcancel",cancel);
+  // 마우스(PC)
+  tr.addEventListener("mousedown",e=>{ begin(e.clientX,e.clientY);
+    const mm=ev=>move(ev.clientX,ev.clientY,ev), mu=()=>{ document.removeEventListener("mousemove",mm); document.removeEventListener("mouseup",mu); end() };
+    document.addEventListener("mousemove",mm); document.addEventListener("mouseup",mu); });
 }
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
@@ -1867,7 +1873,8 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").cat
   ph.addEventListener("touchstart",e=>{
     on=false; dead=true;
     if(stack.length<2||tabBusy) return;
-    const t=e.touches[0]; if(!t||t.clientX-ph.getBoundingClientRect().left>28) return;
+    if(e.target.closest(".slide,.sheet,.menu,.addpick,.crop,.confirm,input,textarea,video,.full.on")) return;
+    const t=e.touches[0]; if(!t||t.clientX-ph.getBoundingClientRect().left>24) return;
     el=$("#"+stack[stack.length-1]); prev=$("#"+stack[stack.length-2]);
     x0=t.clientX; y0=t.clientY; t0=Date.now(); W=ph.clientWidth; dead=false;
   },{passive:true});
@@ -1947,13 +1954,17 @@ let kbLog=[];
     chat.classList.add("kbmove");
     els.forEach(e=>e.style.transform=""); days.style.transform="";
   };
-  const unshift=()=>{ if(window.scrollY) window.scrollTo(0,0) };
+  let kbUntil=0;   // 키보드가 움직이는 동안(열림·닫힘 전후 1.2초)
+  const kbBusy=()=>ph.classList.contains("kb")||performance.now()<kbUntil;
+  const kbMark=()=>{ kbUntil=performance.now()+1200 };
+  const unshift=()=>{ if(window.scrollY&&kbBusy()) window.scrollTo(0,0) };
 
   vv.addEventListener("resize",()=>{
     if(vv.height>noKb()) fullH=vv.height;
-    log("resize"); flip(vv.height); unshift();
+    kbMark(); log("resize"); flip(vv.height); unshift();
   });
-  vv.addEventListener("scroll",()=>{ if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
+  // 기록도 키보드가 움직일 때만 남긴다(끄는 동안 매번 화면을 다시 재면 버벅인다)
+  vv.addEventListener("scroll",()=>{ if(!kbBusy()) return; if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
   // 아이폰은 초점이 갈 때 "입력칸이 키보드에 가려질까" 보고, 그렇다고 판단하면 화면 전체를 밀어 올린다(기록상 반반 확률).
   // 손가락이 닿는 순간 입력칸을 화면 위 한참 바깥에 둔 채로 직접 초점을 주면, 아이폰은 밀어 올릴 대상을 못 찾는다.
   // 다음 틱에 제자리로 돌려놓는다. 이러면 매번 "화면은 그대로, 키보드만" 경우가 되고, 움직임은 flip 이 맡는다.
@@ -1963,9 +1974,8 @@ let kbLog=[];
     inp.style.transform="translateY(-8000px)"; inp.focus();
     setTimeout(()=>{ inp.style.transform="" },0);
   },{passive:true});
-  inp.addEventListener("focus",()=>log(`focus nav=${((performance.now()-navAt)/1000).toFixed(1)}s`));
-  window.addEventListener("scroll",()=>{ if(window.scrollY) log("winscroll") },{passive:true});
-  inp.addEventListener("blur",()=>{ log("blur"); setTimeout(()=>{
+  inp.addEventListener("focus",()=>{ kbMark(); log(`focus nav=${((performance.now()-navAt)/1000).toFixed(1)}s`) });
+  inp.addEventListener("blur",()=>{ kbMark(); log("blur"); setTimeout(()=>{
     const a=document.activeElement; if(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
     if(ph.classList.contains("kb")) flip(noKb());
   },0) });
