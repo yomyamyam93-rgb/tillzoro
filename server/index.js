@@ -651,11 +651,11 @@ app.post("/api/messages", auth, async (req, res) => {
    사진은 앱이 1600px 로 줄여서 보내고(약 0.3MB), 동영상은 500MB 까지 그대로 받는다.
    메모리에 통째로 올리지 않고 받는 대로 디스크에 쓴다.
    파일은 서버 디스크(MEDIA_DIR)에 두고, 방이 사라지거나 메시지가 지워지면 한 시간 안에 함께 지운다.
-   같은 서버에 다른 서비스가 돌고 있으므로, 미디어 전체가 15GB 를 넘거나 디스크 여유가 8GB 아래면 받지 않는다.
+   같은 서버에 다른 서비스가 돌고 있으므로, 미디어 전체가 8GB 를 넘거나 디스크 여유가 4GB 아래면 받지 않는다(서버 디스크 24GB).
    보기는 그 방에 있는 사람만 된다(로그인 토큰을 주소에 붙여 확인). 동영상은 구간 요청(Range)을 받아 바로 재생된다. */
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(__dirname, "media");
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
-const MEDIA_CAP = 15 * 1024 ** 3, DISK_FLOOR = 8 * 1024 ** 3;
+const MEDIA_CAP = 8 * 1024 ** 3, DISK_FLOOR = 4 * 1024 ** 3;
 const VIDEO_MAX = 500 * 1024 ** 2, IMAGE_MAX = 10 * 1024 ** 2;
 const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };

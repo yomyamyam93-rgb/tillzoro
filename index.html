@@ -535,7 +535,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1731</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1742</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -597,7 +597,7 @@ const store={
   size(){try{let n=0;for(const k in localStorage) if(k.startsWith("tz:")) n+=localStorage[k].length;return n}catch(e){return 0}}
 };
 /* ---------- server ---------- */
-const API="https://167.233.90.254.sslip.io";
+const API="https://49.247.137.185.sslip.io";   // 한국 서버(아이윈브). 옛 독일 주소는 여기로 넘겨준다
 let auth = store.get("auth",null);          // {token, me}
 async function api(path,{method="GET",body}={}){
   let r;
