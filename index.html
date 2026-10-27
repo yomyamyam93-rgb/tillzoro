@@ -274,11 +274,16 @@
   .item .val{font-size:13px;color:var(--ink-3);margin-right:2px}
   .slot{font:500 10px var(--font-body);letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-2);color:var(--ink-2);flex:none;white-space:nowrap}
   /* 도구 미리보기 — 실제로 놓일 자리의 모양 그대로 보여준다 */
-  .tool{margin-top:16px;touch-action:pan-y}
+  .tool{margin-top:16px}
+  .tool .nm{cursor:pointer}
   .tool.off .roomtool{opacity:.4}
-  .tool .onoff{font:500 12px var(--font-body);padding:5px 12px;border-radius:14px;background:var(--ink);color:var(--paper)}
-  .tool.off .onoff{background:var(--card);color:var(--ink-3)}
-  .tool:not(.off) .onoff{color:var(--ink)}
+  /* 켜고 끄는 스위치. 동그라미가 오른쪽이면 켜짐 */
+  .sw{width:46px;height:28px;border-radius:14px;background:var(--ink-3);position:relative;flex:none;transition:background .2s}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s var(--ease)}
+  .sw.on{background:var(--ink)}
+  .sw.on::after{transform:translateX(18px)}
+  .tlist .trow{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px;cursor:pointer}
+  .tlist .trow+.trow{border-top:1px solid var(--line)}
   .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
   /* 상자는 하나의 규격이다. 어떤 도구든 이 안에서 해결한다. */
   .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.45;color:var(--ink);
@@ -377,6 +382,7 @@
       <div class="av" id="cavatar"></div>
       <div class="ccount" id="ccount">30</div>
       <div class="who"><div class="cname" id="cname">이름<small>KEEP 0 · DAYS 1</small></div></div>
+      <button class="sq" id="chatTools" aria-label="도구"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
     <div class="roomtool" id="roomTool"></div>
@@ -391,6 +397,7 @@
     </div>
     <div class="scrim" id="scrim"></div>
 
+    <div class="sheet" id="toolSheet"><div class="tlist" id="toolSheetList"></div></div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
     <input type="file" id="albumFile" accept="image/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
@@ -454,7 +461,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1259</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1318</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -888,7 +895,7 @@ const myId=()=>String(auth?.me?.id||"");
 const emptyQuest=()=>({on:false,quest:null,score:{}});
 
 async function loadQuest(){
-  if(!cur||cur.self){ quest=null; return }
+  if(!cur){ quest=null; return }
   try{ const d=await api(`/api/room/${cur.id}/quest`); quest=d.data||emptyQuest() }
   catch(e){ quest=null }
 }
@@ -900,11 +907,11 @@ function pts(id){ return Number(quest?.score?.[id]||0) }
 
 function renderQuest(){
   const box=$("#roomTool");
-  if(!quest||!quest.on||!cur||cur.self){ box.classList.remove("on"); box.innerHTML=""; return }
+  if(!quest||!quest.on||!cur){ box.classList.remove("on"); box.innerHTML=""; return }
   box.classList.add("on");
   const q=quest.quest;
   const other=Object.keys(quest.score||{}).find(k=>k!==myId());
-  const score=`<div class="rt-row rt-score"><span>나<b>${pts(myId())}</b></span><span>상대<b>${other?pts(other):0}</b></span></div>`;
+  const score=`<div class="rt-row rt-score"><span>나<b>${pts(myId())}</b></span>${cur.self?"":`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
 
   if(questEdit){
     box.innerHTML=`<div class="rt-row">
@@ -935,10 +942,10 @@ function renderQuest(){
   const mine=String(q.by)===myId();
   box.innerHTML=`<div class="rt-row">
       <span class="rt-title" id="qTitle">${esc(q.title)}</span><span class="rt-pt">${q.pt}P</span>
-      ${mine?`<button class="rt-btn ghost" id="qEdit">수정</button>`:`<button class="rt-btn" id="qDone">완료</button>`}
+      ${mine?`<button class="rt-btn ghost" id="qEdit">수정</button>`:""}${!mine||cur.self?`<button class="rt-btn" id="qDone">완료</button>`:""}
     </div>${score}`;
   if(mine) $("#qEdit").addEventListener("click",()=>{ questEdit=true; renderQuest() });
-  else $("#qDone").addEventListener("click",async()=>{
+  $("#qDone")?.addEventListener("click",async()=>{
     quest.score=quest.score||{}; quest.score[myId()]=pts(myId())+Number(q.pt||0);
     quest.quest=null; renderQuest(); await saveQuest(); toast(`+${q.pt}P`);
   });
@@ -1063,13 +1070,13 @@ $("#newPill").addEventListener("click",()=>{ const d=$("#days"); d.scrollTo({top
 /* attach sheet */
 const sheet=$("#sheet"),scrim=$("#scrim");
 function sheetOpen(v){sheet.classList.toggle("on",v);scrim.classList.toggle("on",v)}
-$("#plusBtn").addEventListener("click",()=>{renderSheetTools();sheetOpen(true)});
+$("#plusBtn").addEventListener("click",()=>sheetOpen(true));
 scrim.addEventListener("click",closeSheets);
 
 /* 대화방 설정 — 글자 크기와 글꼴 */
 const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
-function closeSheets(){["#sheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
+function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-code","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
@@ -1123,23 +1130,29 @@ function goTab(id){
 $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab)));
 
 /* ＋ 메뉴에서 설치한 도구를 이 방으로 불러온다 */
-function renderSheetTools(){
-  const grid=$("#sheet .grid");
-  grid.querySelectorAll("[data-tool]").forEach(e=>e.remove());
-  if(!cur||cur.self) return;
-  TOOLS.filter(t=>toolOn[t.id]).forEach(t=>{
-    const here=t.id==="quest"&&!!quest?.on;
-    const b=document.createElement("button"); b.dataset.tool=t.id;
-    b.innerHTML=`<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>${esc(t.name)}${here?" 내리기":""}`;
-    b.addEventListener("click",async()=>{
-      sheetOpen(false);
-      quest={...(quest||emptyQuest()),on:!here};
-      renderQuest(); await saveQuest();
-      toast(here?`${t.name} 내렸어요`:`${t.name} 불러왔어요`);
+/* 대화방 머리말의 도구 버튼. 설치한 도구를 이 방에 띄우거나 내린다. 설치한 게 없으면 도구 탭으로 안내한다 */
+function openToolSheet(){
+  const l=$("#toolSheetList"); l.innerHTML="";
+  const mine=TOOLS.filter(t=>toolOn[t.id]);
+  if(!mine.length){
+    l.innerHTML=`<div class="trow"><span style="flex:1;color:var(--ink-3)">설치한 도구가 없어요</span><button class="rt-btn" id="tsGo">도구 보기</button></div>`;
+    $("#tsGo").addEventListener("click",()=>{ closeSheets(); goTab("s-tools") });
+  }
+  mine.forEach(t=>{
+    const r=document.createElement("div"); r.className="trow";
+    r.innerHTML=`<span style="flex:1">${esc(t.name)}</span><button class="sw ${quest?.on?"on":""}" aria-label="${esc(t.name)} 띄우기"></button>`;
+    r.addEventListener("click",async()=>{
+      const on=!quest?.on;
+      quest={...(quest||emptyQuest()),on};
+      r.querySelector(".sw").classList.toggle("on",on);
+      renderQuest(); setTimeout(closeSheets,220);
+      await saveQuest();
     });
-    grid.appendChild(b);
+    l.appendChild(r);
   });
+  $("#toolSheet").classList.add("on"); scrim.classList.add("on");
 }
+$("#chatTools").addEventListener("click",openToolSheet);
 
 /* ---------- Tools ----------
    도구가 나타날 수 있는 자리는 둘뿐이다.
@@ -1167,16 +1180,15 @@ function renderTools(q=""){
     const on=!!toolOn[t.id];
     el.classList.toggle("off",!on);
     el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span>
-        <span style="flex:1"></span><button class="onoff">${on?"설치됨":"설치"}</button></div>
+        <span style="flex:1"></span><button class="sw ${on?"on":""}" aria-label="${esc(t.name)} 설치"></button></div>
       <div class="roomtool on" style="margin:0">${t.pv}</div>
       <div style="margin:7px 0 0 2px;color:var(--ink-3);font-size:12px">${esc(t.desc)}</div>`;
-    swipeToggle(el,t);
-    el.querySelector(".onoff").addEventListener("click",()=>setToolOn(t,!toolOn[t.id]));   // 끌기 말고 눌러서도 된다
+    el.querySelector(".nm").addEventListener("click",()=>setToolOn(t,!toolOn[t.id]));   // 이름 줄 어디를 눌러도 스위치가 바뀐다
     list.appendChild(el);
   });
 }
 
-/* 도구를 쓸지 말지는 카드를 좌우로 끌어서 정한다. 켜면 내 모든 방에서 쓸 수 있게 된다. */
+/* 도구는 스위치로 설치한다. 설치하면 내 모든 대화방의 머리말 도구 버튼에서 불러올 수 있다. */
 let toolOn={};
 async function loadToolStates(){
   try{ const d=await api("/api/me/tools"); toolOn={}; (d.tools||[]).forEach(id=>toolOn[id]=true) }
@@ -1188,23 +1200,6 @@ async function setToolOn(t,on){
   toolOn[t.id]=on; renderTools($("#toolSearch").value||"");
   try{ await api("/api/me/tools",{method:"POST",body:{id:t.id,on}}); toast(on?"설치했어요":"내렸어요") }
   catch(e){ toolOn[t.id]=!on; renderTools(); toast(e.message) }
-}
-function swipeToggle(el,t){
-  let x0=null;
-  el.addEventListener("pointerdown",e=>{ x0=e.clientX; el.style.transition="none" });
-  el.addEventListener("pointermove",e=>{
-    if(x0===null) return;
-    const dx=Math.max(-100,Math.min(100,e.clientX-x0));
-    el.style.transform=`translateX(${dx}px)`;
-  });
-  const end=e=>{
-    if(x0===null) return;
-    const dx=e.clientX-x0; x0=null;
-    el.style.transition="transform .2s"; el.style.transform="";
-    if(dx>55) setToolOn(t,true); else if(dx<-55) setToolOn(t,false);
-  };
-  el.addEventListener("pointerup",end);
-  el.addEventListener("pointercancel",()=>{ x0=null; el.style.transition="transform .2s"; el.style.transform="" });
 }
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
