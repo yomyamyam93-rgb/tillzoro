@@ -254,6 +254,9 @@
   .mrow .tm{flex:none;font:400 11px var(--font-body);color:var(--ink-3);white-space:nowrap;margin-bottom:3px}
   .mrow .tm.bad{color:var(--zero);font-weight:500;cursor:pointer}
   .msg.media img,.msg.media video{border-radius:var(--r-bubble)}
+  .msg.media .vthumb{position:relative;display:block;width:100%;max-height:260px;border-radius:var(--r-bubble);overflow:hidden;background:#1d1d1f}
+  .msg.media .vthumb img{width:100%;height:100%;max-height:none;border-radius:0}
+  .msg.media .vthumb::after{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(0,0,0,.45) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 5.5v13l11-6.5z' fill='white'/%3E%3C/svg%3E") 55% 50%/20px no-repeat}
   .msg.media img,.msg.media video{display:block;width:100%;max-height:260px;object-fit:cover}
   .msg.media{position:relative}
   .msg.media img{opacity:0;transition:opacity .18s;background:var(--line)}
@@ -535,7 +538,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1742</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1753</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -691,7 +694,7 @@ document.addEventListener("visibilitychange",sendVis);
 function catchUp(){
   if(!auth) return;
   connectWS();
-  syncTill().then(refreshChat).catch(()=>{ requireLogin() });
+  syncTill().then(()=>{ refreshChat(); resumeOutbox() }).catch(()=>{ requireLogin() });
 }
 const whenVisible=()=>{ if(document.visibilityState==="visible") catchUp() };
 document.addEventListener("visibilitychange",whenVisible);
@@ -1093,7 +1096,8 @@ function drawHead(p){
 }
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
-  cur.unread=false; cur.msgs=store.get("msgs:"+id,[]);   // 지난번에 본 대화를 먼저 보여준다
+  const live=[...sending.values()].filter(x=>x.bondId===id);   // 보내는 중이거나 못 보낸 사진·동영상
+  cur.unread=false; cur.msgs=store.get("msgs:"+id,[]).concat(live);   // 지난번에 본 대화를 먼저 보여준다
   drawHead(cur); showRoomInvite();
   roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   renderMsgs(); go("chat");
@@ -1106,7 +1110,7 @@ async function openChat(id){
     // 내 화면에서 지운 것은 다시 안 보이고, 못 보낸 것은 맨 아래에 남아 있다
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
     cur.msgs=d.messages.map(m=>fromServer(m,m.mine))
-      .filter(m=>!hidden.has(String(m.id))).concat(failed);
+      .filter(m=>!hidden.has(String(m.id))).concat(failed.filter(x=>!live.includes(x)),live);
     if(!cur.self){ cur.lastResetAt=NOW()-(30-d.bond.dday)*DAY; drawHead(cur) }
     showRoomInvite(); renderMsgs(); saveMsgs();
     const v=$("#days"); v.scrollTop=v.scrollHeight;
@@ -1250,8 +1254,11 @@ function bubble(ms){
     const poster=m.thumbSrc||(m.media?mediaURL(m.media,true):"");
     const arImg=ar||' style="aspect-ratio:4/3"';   // 크기를 모르는 예전 사진: 다 받으면 실제 비율로 한 번만 바뀐다
     el.innerHTML=m.type==="image"?`<img src="${thumbOf(m)}" alt=""${arImg} decoding="async">`
-      :`<video src="${srcOf(m)}" controls playsinline preload="none"${poster?` poster="${poster}"`:""}${ar}></video>`;
-    if(m.type==="image") el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
+      :`<span class="vthumb"${ar||' style="aspect-ratio:16/9"'}>${poster?`<img src="${poster}" alt="" decoding="async">`:""}</span>`;
+    el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
+    // 동영상 미리보기: 받은 직후엔 아직 서버에 없을 수 있어 한 번 더 받아본다. 그래도 없으면 어두운 칸에 재생 표시만
+    const vi=m.type==="video"&&el.querySelector(".vthumb img");
+    if(vi){ vi.onload=()=>vi.classList.add("ok"); vi.onerror=()=>{ if(vi.dataset.r){ vi.remove(); return } vi.dataset.r=1; setTimeout(()=>{ vi.src=poster+"&r=1" },3000) } }
     // 다 받으면 나타나고, 바닥을 보고 있었으면 곧바로 바닥에 붙인다
     const md=el.firstElementChild, d0=$("#days");
     const settle=()=>{
@@ -1297,7 +1304,7 @@ function copyText(t){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
 // 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,...m})=>m).slice(-200))) }catch(e){} }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,jobId,bondId,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"")+(small?"&s=t":"");
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
@@ -1331,6 +1338,50 @@ async function send(el,bondId){
    말풍선은 흐리게 먼저 보이고 옆에 % 가 나온다(줄이기 0~50, 올리기 50~100). 실패하면 "다시 보내기"를 누르면 다시 올린다 */
 const VIDEO_MAX=500*1024*1024;
 const pctOf=new WeakMap();   // 올리는 중인 메시지 → 옆의 시간 자리(여기에 % 를 쓴다)
+const setPct=(el,v)=>{ el.pct=v; const t=pctOf.get(el); if(t) t.textContent=v+"%" };
+/* 보내는 중인 것(sending)은 방을 나갔다 와도 보이고, 앱을 내리면 멈췄다가 돌아오면 처음부터 다시 한다
+   (아이폰은 뒤로 간 앱의 변환·전송을 멈추거나 끊는다). 파일은 IndexedDB(outbox)에 잠깐 넣어 두어,
+   그사이 앱이 꺼져도 다시 켜면 이어서 보낸다. 보내지면 지운다 */
+const sending=new Map();
+const outbox={
+  db:null,
+  open(){ return this.db||(this.db=new Promise((ok,no)=>{ const r=indexedDB.open("tz-outbox",1); r.onupgradeneeded=()=>r.result.createObjectStore("jobs",{keyPath:"id"}); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error) })) },
+  async run(mode,fn){ const db=await this.open(); return new Promise((ok,no)=>{ const tx=db.transaction("jobs",mode), r=fn(tx.objectStore("jobs")); tx.oncomplete=()=>ok(r&&r.result); tx.onerror=()=>no(tx.error) }) },
+  put(el){ return this.run("readwrite",st=>st.put({id:el.jobId,bondId:el.bondId,type:el.type,blob:el.blob,thumb:el.thumb||null,w:el.w,h:el.h,ts:el.ts,squeezed:!!el.squeezed})).catch(()=>{}) },
+  del(id){ return this.run("readwrite",st=>st.delete(id)).catch(()=>{}) },
+  all(){ return this.run("readonly",st=>st.getAll()).catch(()=>[]) },
+};
+async function runJob(el){
+  const gen=el.gen=(el.gen||0)+1; el.stopped=false;
+  const live=()=>gen===el.gen&&!el.stopped;
+  if(el.type==="video"&&!el.squeezed){
+    el.pending=true; el.ok=true; if(cur&&cur.id===el.bondId) renderMsgs(); setPct(el,0);
+    const out=await squeezeVideo(el.blob,p=>{ if(live()) setPct(el,Math.min(50,Math.floor(p*50))) },el);
+    if(!live()) return;
+    el.blob=out; el.squeezed=true; outbox.put(el);
+    if(out.size>VIDEO_MAX){ el.pending=false; el.ok=false; outbox.del(el.jobId); if(cur&&cur.id===el.bondId) renderMsgs(); toast("동영상은 500MB까지 보낼 수 있어요"); return }
+  }
+  await upload(el,live);
+}
+// 앱을 내리면 하던 걸 멈추고, 돌아오면 다시 한다
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden") sending.forEach(el=>{ if(!el.pending) return; el.stopped=true; mlog("stop on hide",el.pct+"%");
+    try{ el.conv&&el.conv.cancel() }catch(e){} try{ el.xhr&&el.xhr.abort() }catch(e){} });
+  else sending.forEach(el=>{ if(el.pending&&el.stopped){ mlog("resume on show"); runJob(el) } });
+});
+// 앱이 꺼졌다 켜졌으면 outbox 에 남은 걸 이어서 보낸다(하루 지난 것, 방이 사라진 것은 버린다)
+async function resumeOutbox(){
+  if(!auth||typeof indexedDB==="undefined") return;
+  for(const j of await outbox.all()){
+    if(sending.has(j.id)) continue;
+    if(NOW()-j.ts>DAY||!people.some(p=>p.id===j.bondId)){ outbox.del(j.id); continue }
+    const el={id:j.id,jobId:j.id,bondId:j.bondId,who:"me",type:j.type,blob:j.blob,thumb:j.thumb,w:j.w,h:j.h,ts:j.ts,squeezed:j.squeezed,ok:true,pending:true,
+      src:URL.createObjectURL(j.blob),thumbSrc:j.thumb?URL.createObjectURL(j.thumb):(j.type==="video"?null:URL.createObjectURL(j.blob))};
+    sending.set(el.id,el); mlog("resume from outbox",j.type,mb(j.blob.size));
+    if(cur&&cur.id===el.bondId){ cur.msgs.push(el); renderMsgs() }
+    runJob(el);
+  }
+}
 // 사진: 원본(긴 쪽 1600px)과 미리보기(480px)를 같이 만든다. 움직이는 GIF 는 원본 그대로
 function canvasJpeg(src,w,h,max,q){
   const k=Math.min(1,max/Math.max(w,h)), c=document.createElement("canvas");
@@ -1355,10 +1406,14 @@ function shrinkImage(f){
 // 동영상 줄이기: 기기에 들어 있는 변환기(WebCodecs)를 mediabunny 로 쓴다. 보낼 때 처음 한 번만 불러온다.
 // 변환기가 없거나, 소리·화면 중 하나라도 못 옮기거나, 줄인 게 더 크면 원본을 보낸다
 const MB_URL="https://cdn.jsdelivr.net/npm/mediabunny@1.61.2/dist/bundles/mediabunny.min.mjs";
-async function squeezeVideo(f,onp){
+const mlog=(...a)=>{ if(auth) api("/api/kblog",{method:"POST",body:{lines:["media "+(performance.now()/1000).toFixed(1)+" "+a.join(" ")],ua:navigator.userAgent,standalone:!!navigator.standalone}}).catch(()=>{}) };
+const mb=n=>(n/1e6).toFixed(1)+"MB";
+async function squeezeVideo(f,onp,el){
+  const t0=performance.now(), ms=()=>Math.round(performance.now()-t0)+"ms";
   try{
-    if(typeof VideoEncoder==="undefined") return f;
+    if(typeof VideoEncoder==="undefined"){ mlog("squeeze skip: no VideoEncoder"); return f }
     const MB=await import(MB_URL);
+    mlog("lib loaded",ms());
     const input=new MB.Input({source:new MB.BlobSource(f),formats:MB.ALL_FORMATS});
     const output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:"in-memory"}),target:new MB.BufferTarget()});
     const conv=await MB.Conversion.init({input,output,showWarnings:false,
@@ -1366,12 +1421,17 @@ async function squeezeVideo(f,onp){
         const w=await t.getDisplayWidth(), h=await t.getDisplayHeight(), k=Math.min(1,720/Math.min(w,h));
         return {width:Math.round(w*k/2)*2,height:Math.round(h*k/2)*2,fit:"fill",codec:"avc",quality:new MB.Quality({bitrate:2500000})};
       }});
-    if(!conv.isValid||conv.discardedTracks.some(d=>d.track.isVideoTrack()||d.track.isAudioTrack())) return f;
-    conv.onProgress=p=>onp(p);
+    const vt=await input.getPrimaryVideoTrack();
+    mlog("input",vt?vt.codec:"-",vt?(await vt.getDisplayWidth())+"x"+(await vt.getDisplayHeight()):"-","dur",(await input.computeDuration()).toFixed(1)+"s",ms());
+    if(!conv.isValid||conv.discardedTracks.some(d=>d.track.isVideoTrack()||d.track.isAudioTrack())){ mlog("squeeze skip: invalid",conv.discardedTracks.map(d=>d.track.type+":"+d.reason).join(",")); return f }
+    let step=0; if(el) el.conv=conv;
+    conv.onProgress=p=>{ onp(p); if(p*10>=step+1){ step=Math.floor(p*10); mlog("squeeze",step*10+"%",ms()) } };
     await conv.execute();
+    if(el){ delete el.conv; if(el.stopped) return f }
     const out=new Blob([output.target.buffer],{type:"video/mp4"});
+    mlog("squeeze done",mb(f.size),"->",mb(out.size),ms());
     return out.size&&out.size<f.size?out:f;
-  }catch(e){ return f }
+  }catch(e){ if(el) delete el.conv; mlog("squeeze fail",String(e&&e.message||e).slice(0,120),ms()); return f }
 }
 // 동영상: 가로·세로와 첫 장면(미리보기). 3초 안에 못 읽으면 없이 보낸다
 function videoInfo(f){
@@ -1390,54 +1450,58 @@ async function sendFile(f){
   if(!cur) return;
   const video=f.type.startsWith("video/");
   let blob, thumb, w, h;
+  if(video) mlog("pick",f.type||"?",mb(f.size));
   try{
-    if(video){ const d=await videoInfo(f); blob=f; thumb=d.thumb; w=d.w; h=d.h }
+    if(video){ const d=await videoInfo(f); mlog("info",d.w+"x"+d.h,d.thumb?"thumb":"nothumb"); blob=f; thumb=d.thumb; w=d.w; h=d.h }
     else{ const r=await shrinkImage(f); blob=r.full; thumb=r.thumb; w=blob.w; h=blob.h }
   }catch(e){ toast(e.message); return }
   const src=URL.createObjectURL(blob);
   const el={id:uid(),who:"me",type:video?"video":"image",blob,thumb,src,thumbSrc:thumb?URL.createObjectURL(thumb):(video?null:src),w,h,ts:NOW(),ok:true,pending:true};
-  appendBubble(el);
-  const bondId=cur.id;
-  if(video){
-    el.pct=0;
-    const setP=v=>{ el.pct=v; const t=pctOf.get(el); if(t) t.textContent=v+"%" };
-    el.blob=await squeezeVideo(f,p=>setP(Math.min(50,Math.floor(p*50))));
-    el.base=50; setP(50);
-    if(el.blob.size>VIDEO_MAX){ el.pending=false; el.ok=false; renderMsgs(); toast("동영상은 500MB까지 보낼 수 있어요"); return }
-  }
-  upload(el,bondId);
+  el.jobId=el.id; el.bondId=cur.id; sending.set(el.id,el); outbox.put(el);
+  appendBubble(el); runJob(el);
 }
-async function upload(el,bondId){
-  const base=el.base||0; el.base=0;   // 줄이기가 앞에 있었으면 50% 부터
-  el.pending=true; el.pct=base; renderMsgs();
+async function upload(el,live){
+  const bondId=el.bondId, base=el.type==="video"&&el.squeezed?50:0;   // 줄이기가 앞에 있었으면 50% 부터
+  el.pending=true; el.ok=true; el.pct=base; if(cur&&cur.id===bondId) renderMsgs();
   try{
     const q=el.w&&el.h?`&w=${el.w}&h=${el.h}`:"";
     // 큰 동영상은 오래 걸리므로 올라가는 만큼 보여준다(fetch 는 진행률을 못 주니 XHR)
+    let x;
     const r=await new Promise((ok,no)=>{
-      const x=new XMLHttpRequest();
+      x=new XMLHttpRequest();
       x.open("POST",API+"/api/messages/media?bondId="+encodeURIComponent(bondId)+q);
       x.setRequestHeader("authorization","Bearer "+auth.token);
       x.setRequestHeader("content-type",el.blob.type||(el.type==="video"?"video/mp4":"image/jpeg"));
       x.upload.onprogress=e=>{ if(!e.lengthComputable) return; el.pct=Math.min(99,base+Math.floor(e.loaded/e.total*(100-base))); const t=pctOf.get(el); if(t) t.textContent=el.pct+"%" };
-      x.onload=()=>{ let d={}; try{ d=JSON.parse(x.responseText) }catch(e){} ok({ok:x.status>=200&&x.status<300,d}) };
+      const u0=performance.now(); if(el.type==="video") mlog("upload start",mb(el.blob.size));
+      x.onload=()=>{ let d={}; try{ d=JSON.parse(x.responseText) }catch(e){} if(el.type==="video") mlog("upload done",x.status,Math.round(performance.now()-u0)+"ms"); ok({ok:x.status>=200&&x.status<300,d}) };
       x.onerror=x.ontimeout=()=>no(new Error("보내지 못했어요"));
-      x.send(el.blob);
+      x.onabort=()=>no(new Error("멈춤"));
+      el.xhr=x; x.send(el.blob);
     });
     const d=r.d;
-    if(!r.ok) throw new Error(d.error||"보내지 못했어요");
+    if(el.xhr&&el.xhr!==x) try{ el.xhr.abort() }catch(e){}   // 앱을 내렸다 와서 다시 올리던 게 있으면 멈춘다(이미 보내졌다)
+    delete el.xhr;
+    if(!r.ok){ outbox.del(el.jobId); throw new Error(d.error||"보내지 못했어요") }   // 서버가 거절한 건 다시 켜도 다시 보내지 않는다
+    el.gen++; sending.delete(el.jobId); outbox.del(el.jobId);
     el.id=d.id; el.media=d.media; el.pending=false;
     // 미리보기는 원본을 올린 뒤에 따로 올린다(받는 쪽은 미리보기가 없으면 원본을 받는다)
     if(el.thumb) fetch(API+"/api/media/"+d.media+"/thumb",{method:"POST",headers:{authorization:"Bearer "+auth.token,"content-type":"image/jpeg"},body:el.thumb}).catch(()=>{});
     if(cur&&cur.id===bondId){ cur.mySent=true; renderMsgs(); saveMsgs() }
     if(d.reset) toast("30으로 돌아왔어요");
     syncTill().then(refreshChat).catch(()=>{});
-  }catch(e){ el.pending=false; el.ok=false; renderMsgs(); toast(e.message) }
+  }catch(e){
+    if(!live()) return;   // (el.xhr 는 새로 시작한 쪽 것일 수 있으니 건드리지 않는다)
+    delete el.xhr;   // 앱을 내려서 멈춘 것: 돌아오면 다시 한다
+    el.pending=false; el.ok=false; if(cur&&cur.id===bondId) renderMsgs(); toast(e.message);
+  }
 }
 // 못 보낸 것만 지금 시각으로 맨 아래에 다시 붙여 보낸다
 function resend(ms){
   const bad=ms.filter(x=>x.ok===false), ids=new Set(bad.map(x=>x.id));
   cur.msgs=cur.msgs.filter(x=>!ids.has(x.id));
-  bad.forEach(x=>{ x.ok=true; x.ts=NOW(); appendBubble(x); x.type==="text"?send(x,cur.id):upload(x,cur.id) });
+  bad.forEach(x=>{ x.ok=true; x.ts=NOW(); appendBubble(x);
+    if(x.type==="text") send(x,cur.id); else { x.jobId=x.jobId||x.id; x.bondId=cur.id; sending.set(x.jobId,x); outbox.put(x); runJob(x) } });
 }
 const msgIn=$("#msgIn");
 // 손가락으로 쓰는 기기(pointer: coarse)에서는 return이 줄바꿈이고 전송은 버튼으로만. PC는 Enter 전송, Shift+Enter 줄바꿈 (C-4)

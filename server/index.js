@@ -712,8 +712,9 @@ app.get("/api/media/:id", async (req, res) => {
       where m.media = $1 and (b.a_id = $2 or b.b_id = $2 or exists (select 1 from bond_members x where x.bond_id = b.id and x.user_id = $2))`,
     [id, s.user_id])).rows[0];
   if (!m) return res.sendStatus(404);
-  // ?s=t 이면 미리보기. 아직 없으면(올리는 중) 원본을 준다
+  // ?s=t 이면 미리보기. 아직 없으면(올리는 중) 사진은 원본을 주고, 동영상은 없다고 한다(원본이 크다)
   const thumb = req.query.s === "t" && fs.existsSync(path.join(MEDIA_DIR, id + ".t.jpg"));
+  if (req.query.s === "t" && !thumb && m.mime.startsWith("video/")) return res.set("Cache-Control", "no-store").sendStatus(404);
   res.sendFile(path.join(MEDIA_DIR, thumb ? id + ".t.jpg" : id),
     { headers: { "Content-Type": thumb ? "image/jpeg" : m.mime, "Cache-Control": "private, max-age=2592000, immutable" } },
     (e) => { if (e && !res.headersSent) res.sendStatus(404); });
