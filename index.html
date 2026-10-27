@@ -242,12 +242,17 @@
   .evt{flex:none;align-self:center;max-width:85%;margin:6px 0;padding:4px 11px;border-radius:11px;background:var(--line);font-size:12px;line-height:1.45;color:var(--ink-2);text-align:center}
   .sep{flex:none;align-self:center;margin:8px 0 5px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
   .empty{margin:auto;font-size:13px;color:var(--ink-3)}
-  .msg{flex:none;max-width:80%;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;padding:7px 11px 6px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0;align-self:flex-start;display:flex;align-items:flex-end;gap:8px}
+  .msg{flex:none;max-width:80%;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;padding:7px 11px 6px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--text-body);font-family:var(--font-body);line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0;align-self:flex-start;display:flex;align-items:flex-end;gap:8px}
   .msg.me{align-self:flex-end;background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-left-radius:var(--r-bubble);border-bottom-right-radius:var(--r-bubble-tail)}
   .msg.media{display:block;padding:4px;overflow:hidden;width:68%;border-radius:var(--r-bubble);background:var(--card)}
   .msg.media.me{background:var(--bubble-me)}
   .msg.media img,.msg.media video{border-radius:calc(var(--r-bubble) - 4px)}
   .msg.media img,.msg.media video{display:block;width:100%;max-height:260px;object-fit:cover}
+  .msg.media{position:relative}
+  .msg.media .stamp{position:absolute;right:10px;bottom:8px;color:#fff;opacity:.95;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+  .msg.media.pending img,.msg.media.pending video{opacity:.55}
+  .msg.media.failed .stamp{color:#fff;background:var(--zero);padding:2px 7px;border-radius:9px;text-shadow:none}
+  #mediaGrid video{width:100%;aspect-ratio:1;object-fit:cover;display:block}
   .msg .stamp{font:400 11px var(--font-body);opacity:.5;flex:none;margin-left:2px;padding-bottom:1px;white-space:nowrap}
   .msg .txts{min-width:0}
   .msg .txts>div+div{margin-top:3px}
@@ -290,9 +295,6 @@
   .full .bar .icon{background:rgba(255,255,255,.14);color:#fff;border:0}
   .full .body{flex:1;display:grid;place-items:center;overflow:hidden}
   .full img,.full video{max-width:100%;max-height:100%;object-fit:contain}
-  #cam video{width:100%;height:100%;object-fit:cover}
-  .full .foot{padding:18px 0 44px;display:flex;justify-content:center;gap:28px;align-items:center}
-  .shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}
 
   /* settings */
     .list{display:flex;flex-direction:column;background:var(--card);border-radius:var(--r-list);overflow:hidden}
@@ -443,7 +445,7 @@
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
       <div class="bar2">
-        <button class="icon" id="plusBtn" aria-label="첨부" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
         <button class="icon send off" id="sendBtn" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button>
       </div>
@@ -452,8 +454,8 @@
 
     <div class="sheet" id="toolSheet"><div class="tlist" id="toolSheetList"></div></div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button></div></div>
-    <input type="file" id="albumFile" accept="image/*" multiple hidden>
-    <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
+    <input type="file" id="albumFile" accept="image/*,video/*" multiple hidden>
+    <input type="file" id="captureFile" accept="image/*,video/*" capture="environment" hidden>
   </section>
 
   <section class="screen" id="s-tools">
@@ -479,14 +481,9 @@
         <div class="lbl">People</div>
         <div class="list" id="mMembers"></div>
       </div>
-      <div class="lbl" style="margin-top:10px">Display</div>
-      <div class="list">
-        <div class="item" style="cursor:default"><div class="t">글자 크기</div><div class="seg" id="segSize" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button><button data-v="xl">아주 크게</button></div></div>
-        <div class="item" style="cursor:default;border-bottom:0"><div class="t">글꼴</div><div class="seg" id="segFont" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="default">기본</button><button data-v="gothic">고딕</button><button data-v="system">시스템</button></div></div>
-      </div>
       <div class="lbl" style="margin-top:10px">Export</div>
       <div class="list">
-        <div class="item" id="mMedia" hidden><div class="t">사진 모아보기<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mMedia"><div class="t">사진·동영상<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       </div>
       <div class="list" id="sChatLeave" style="margin-top:10px"><div class="item danger" id="mLeave" style="border-bottom:0"><div class="t">나가기</div></div></div>
@@ -499,7 +496,7 @@
   </section>
 
   <section class="screen" id="s-media">
-    <div class="bar big"><button class="icon" data-back="s-chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Photos</h2></div>
+    <div class="bar big"><button class="icon" data-back="s-chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Media</h2></div>
     <div class="pad"><div class="mediagrid" id="mediaGrid"></div></div>
   </section>
 
@@ -516,8 +513,6 @@
         <div class="item"><div class="t">D-DAY 7일 · 1일</div><div class="toggle on" data-k="n_dday"></div></div>
         <div class="item"><div class="t">방해 금지<div class="sub">23:00 – 08:00</div></div><div class="toggle" data-k="n_dnd"></div></div>
       </div>
-      <div class="lbl sect">Appearance</div>
-      <div class="list"><div class="item" style="cursor:default"><div class="t">테마</div><div class="seg" id="themeSeg" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-th="light">밝게</button><button data-th="dark">어둡게</button><button data-th="system">시스템</button></div></div></div>
       <div class="lbl sect">Data & Safety</div>
       <div class="list">
         <div class="item" data-go="s-blocked"><div class="t">차단 목록</div><span class="val" id="blockSub">0명</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
@@ -532,7 +527,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1533</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1543</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -565,7 +560,6 @@
 
   <!-- overlays -->
   <div class="full" id="viewer"><div class="bar"><button class="icon" id="viewerClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff"></h2><a class="icon" id="viewerSave" download="tillzero"><svg viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></a></div><div class="body" id="viewerBody"></div></div>
-  <div class="full" id="cam"><div class="bar"><button class="icon" id="camClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff">촬영</h2><button class="icon" id="camFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></button></div><div class="body"><video id="camVideo" autoplay playsinline muted></video></div><div class="foot"><button class="shutter" id="shutter" aria-label="찍기"></button></div></div>
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="menu-bg" id="msgMenuBg"></div>
   <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
@@ -622,7 +616,7 @@ function requireLogin(){
 
 let me = null;
 let people = [];
-let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false,theme:"light"});
+let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false});
 
 function uid(){return Math.random().toString(36).slice(2,10)}
 function dday(p){return Math.max(0,30-Math.floor((NOW()-p.lastResetAt)/DAY))}
@@ -672,7 +666,7 @@ function connectWS(){
   ws.onmessage=e=>{
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
-      appendBubble({id:d.id,who:"you",from:String(d.from||""),type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
+      appendBubble(fromServer(d,false));
     }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
@@ -727,8 +721,9 @@ function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("
 /* ---------- theme ---------- */
 $("#phone").addEventListener("scroll",e=>{ const ph=e.currentTarget; if(ph.scrollLeft||ph.scrollTop){ ph.scrollLeft=0; ph.scrollTop=0 } });
 let splashing=true, linkAfterSplash=false;   // 시작 화면 중에 번호 연결이 필요해지면, 끝난 뒤에 띄운다
-function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":""; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
-$$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.dataset.th;store.set("prefs",prefs);applyTheme()}));
+function applyTheme(){const dark = matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":"";}
+// 테마는 폰 설정을 따른다. 폰에서 바꾸면 바로 따라간다
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
 
 /* ---------- splash → route ---------- */
 applyTheme();
@@ -843,7 +838,6 @@ function setPhoneMode(m){
 $("#phoneBtn").addEventListener("click",()=>{ setPhoneMode("change"); go("ob-phone"); setTimeout(()=>phoneIn.focus(),350) });
 $("#phBack").addEventListener("click",()=>setTimeout(()=>setPhoneMode("signin"),400));
 let draftAvatar=null, draftSrc=null;
-function readImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.78))};im.src=r.result};r.readAsDataURL(file)}
 $("#avatarFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(!f)return;cropPhoto(f,(d,src)=>{draftAvatar=d;draftSrc=src;$("#avatarPick").style.backgroundImage=`url(${d})`;$("#avatarPick").textContent=""})});
 /* 프로필 사진 자리 정하기. 한 손가락으로 끌고 두 손가락으로 키운다(PC는 휠).
    틀은 지금 내 Till 카드와 같은 비율이라 고른 그대로 보이고, 가운데 원이 대화방 동그라미에 보이는 자리다.
@@ -1073,7 +1067,7 @@ function fitRows(live){
   const photo=Math.floor(avail/cards.length-lastH);
   if(photo>76) rows.style.setProperty("--photo-h",photo+"px");
 }
-function preview(m){return m.type==="text"?esc(m.text):"사진"}
+function preview(m){return m.type==="text"?esc(m.text):m.type==="video"?"동영상":"사진"}
 // 목록의 시간 (L-1): 오늘은 시각, 어제는 어제, 올해는 월 일, 그 전은 연. 월. 일
 function fmtD(ts){const d=new Date(ts),t=new Date();if(d.toDateString()===t.toDateString())return fmtT(ts);if(d.toDateString()===new Date(t-DAY).toDateString())return "어제";if(d.getFullYear()===t.getFullYear())return `${d.getMonth()+1}월 ${d.getDate()}일`;return `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`}
 function fmtT(ts){const d=new Date(ts),h=d.getHours();return `${h<12?"오전":"오후"} ${h%12||12}:${String(d.getMinutes()).padStart(2,"0")}`}
@@ -1103,7 +1097,7 @@ async function openChat(id){
     if(d.bond.group){ cur.members=d.bond.members||cur.members; cur.history=!!d.bond.history; cur.name=d.bond.name; cur.named=!!d.bond.named }
     // 내 화면에서 지운 것은 다시 안 보이고, 못 보낸 것은 맨 아래에 남아 있다
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
-    cur.msgs=d.messages.map(m=>({id:m.id,who:m.mine?"me":"you",from:String(m.from||""),type:"text",text:m.body,ts:new Date(m.at).getTime(),ok:true}))
+    cur.msgs=d.messages.map(m=>fromServer(m,m.mine))
       .filter(m=>!hidden.has(String(m.id))).concat(failed);
     if(!cur.self){ cur.lastResetAt=NOW()-(30-d.bond.dday)*DAY; drawHead(cur) }
     showRoomInvite(); renderMsgs(); saveMsgs();
@@ -1219,7 +1213,7 @@ function renderMsgs(){
     const d=new Date(m.ts), key=d.toDateString();
     if(key!==lastDay){ flush(); lastDay=key; days.insertAdjacentHTML("beforeend",`<div class="sep">${sepLabel(d)}</div>`) }
     if(m.type==="event"){ flush(); days.insertAdjacentHTML("beforeend",`<div class="evt">${esc(m.who)} · ${esc(m.text)}</div>`); return }
-    if(m.type!=="text"){ flush(); days.appendChild(bubble([m])); return }
+    if(m.type!=="text"){ flush(); if(named&&m.who==="you") days.insertAdjacentHTML("beforeend",`<div class="fromname">${esc(nameOf(m.from))}</div>`); days.appendChild(bubble([m])); return }
     if(group.length&&!sameGroup(group[group.length-1],m)) flush();
     group.push(m);
   });
@@ -1242,7 +1236,12 @@ function bubble(ms){
     el.innerHTML=`<div class="txts">${ms.map(x=>`<div>${esc(x.text)}</div>`).join("")}</div>`
       +`<span class="stamp">${failed?"다시 보내기":fmtT(m.ts)}</span>`;
   }
-  else if(m.type==="image"){el.classList.add("media");el.innerHTML=`<img src="${m.src}" alt="">`;el.addEventListener("click",()=>{ if(!held) viewer(m) })}
+  else if(m.type==="image"||m.type==="video"){
+    el.classList.add("media"); if(m.pending) el.classList.add("pending");
+    el.innerHTML=(m.type==="image"?`<img src="${srcOf(m)}" alt="">`:`<video src="${srcOf(m)}" controls playsinline preload="metadata"></video>`)
+      +(m.type==="image"||failed?`<span class="stamp">${failed?"다시 보내기":fmtT(m.ts)}</span>`:"");
+    if(m.type==="image") el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
+  }
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
   // 길게 누르면 메뉴 (M-4). 스크롤이 시작되면 pointercancel이 와서 취소된다
@@ -1253,7 +1252,7 @@ function bubble(ms){
 }
 // 복사 · 내 화면에서 삭제. 삭제는 R-7.6대로 내 화면에서만이고, 다음에 열어도 안 돌아온다
 function msgMenu(ms){
-  if(ms[0].type!=="text") return;
+  $("#mmCopy").style.display=ms[0].type==="text"?"":"none";   // 사진·동영상은 내 화면에서 삭제만
   const box=$("#msgMenu"), bg=$("#msgMenuBg");
   const close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
   $("#mmCopy").onclick=()=>{ close(); copyText(ms.map(x=>x.text).join("\n")) };
@@ -1271,7 +1270,15 @@ function copyText(t){
     let ok=false; try{ ok=document.execCommand("copy") }catch(e){} ta.remove(); ok?done():fail() };
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.slice(-200))) }catch(e){} }
+// 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,...m})=>m).slice(-200))) }catch(e){} }
+// 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
+const mediaURL=id=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"");
+const srcOf=m=>m.media?mediaURL(m.media):m.src;
+function fromServer(m,mine){
+  const type=m.kind==="image"||m.kind==="video"?m.kind:"text";
+  return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,ts:new Date(m.at).getTime(),ok:true};
+}
 // 내가 보낸 것이거나 바닥 근처를 보고 있으면 따라 내려가고, 위를 보고 있으면 자리를 지키고 알약만 띄운다 (S-2 S-3)
 function appendBubble(m){
   const d=$("#days"), near=d.scrollHeight-d.scrollTop-d.clientHeight<120;
@@ -1281,7 +1288,6 @@ function appendBubble(m){
   else $("#newPill").classList.add("on");
 }
 async function push(m){
-  if(m.type!=="text"){ toast("사진은 아직 서버에 안 올라가요"); return }
   const el={id:uid(),who:"me",type:"text",text:m.text,ts:NOW(),ok:true};
   appendBubble(el); send(el,cur.id);
 }
@@ -1293,11 +1299,46 @@ async function send(el,bondId){
     syncTill().then(refreshChat).catch(()=>{});
   }catch(e){ el.ok=false; renderMsgs(); saveMsgs(); if(!requireLogin()) toast(e.message) }
 }
+/* 사진·동영상 보내기. 사진은 긴 쪽 1600px JPEG 로 줄이고(움직이는 GIF 는 그대로), 동영상은 60MB 까지 그대로.
+   올리는 동안 말풍선은 흐리게 먼저 보이고, 실패하면 "다시 보내기"를 누르면 다시 올린다 */
+const VIDEO_MAX=60*1024*1024;
+function shrinkImage(f){
+  return new Promise((ok,no)=>{
+    if(f.type==="image/gif"&&f.size<10*1024*1024) return ok(f);
+    const u=URL.createObjectURL(f), im=new Image();
+    im.onload=()=>{ const k=Math.min(1,1600/Math.max(im.width,im.height)), c=document.createElement("canvas");
+      c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      URL.revokeObjectURL(u); c.toBlob(b=>b?ok(b):no(new Error("사진을 열지 못했어요")),"image/jpeg",.82) };
+    im.onerror=()=>{ URL.revokeObjectURL(u); no(new Error("사진을 열지 못했어요")) };
+    im.src=u;
+  });
+}
+async function sendFile(f){
+  if(!cur) return;
+  const video=f.type.startsWith("video/");
+  if(video&&f.size>VIDEO_MAX){ toast("동영상은 60MB까지 보낼 수 있어요"); return }
+  let blob; try{ blob=video?f:await shrinkImage(f) }catch(e){ toast(e.message); return }
+  const el={id:uid(),who:"me",type:video?"video":"image",blob,src:URL.createObjectURL(blob),ts:NOW(),ok:true,pending:true};
+  appendBubble(el); upload(el,cur.id);
+}
+async function upload(el,bondId){
+  el.pending=true; renderMsgs();
+  try{
+    const r=await fetch(API+"/api/messages/media?bondId="+encodeURIComponent(bondId),{method:"POST",
+      headers:{authorization:"Bearer "+auth.token,"content-type":el.blob.type||(el.type==="video"?"video/mp4":"image/jpeg")},body:el.blob});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||"보내지 못했어요");
+    el.id=d.id; el.media=d.media; el.pending=false;
+    if(cur&&cur.id===bondId){ cur.mySent=true; renderMsgs(); saveMsgs() }
+    if(d.reset) toast("30으로 돌아왔어요");
+    syncTill().then(refreshChat).catch(()=>{});
+  }catch(e){ el.pending=false; el.ok=false; renderMsgs(); toast(e.message) }
+}
 // 못 보낸 것만 지금 시각으로 맨 아래에 다시 붙여 보낸다
 function resend(ms){
   const bad=ms.filter(x=>x.ok===false), ids=new Set(bad.map(x=>x.id));
   cur.msgs=cur.msgs.filter(x=>!ids.has(x.id));
-  bad.forEach(x=>{ x.ok=true; x.ts=NOW(); appendBubble(x); send(x,cur.id) });
+  bad.forEach(x=>{ x.ok=true; x.ts=NOW(); appendBubble(x); x.type==="text"?send(x,cur.id):upload(x,cur.id) });
 }
 const msgIn=$("#msgIn");
 // 손가락으로 쓰는 기기(pointer: coarse)에서는 return이 줄바꿈이고 전송은 버튼으로만. PC는 Enter 전송, Shift+Enter 줄바꿈 (C-4)
@@ -1325,8 +1366,6 @@ $("#plusBtn").addEventListener("click",()=>sheetOpen(true));
 scrim.addEventListener("click",closeSheets);
 
 /* 대화방 설정 — 글자 크기와 글꼴 */
-const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
-const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
@@ -1518,8 +1557,8 @@ $("#chatMenu").addEventListener("click",()=>{
   $("#sChatRoom").style.display=cur.group?"flex":"none"; $("#sChatLeave").style.display=cur.group?"":"none";
   $("#mBlock").style.display=cur.group?"none":"";
   if(cur.group) fillRoomSettings();
-  const n=cur.msgs.filter(m=>m.type==="image").length;
-  $("#mMediaSub").textContent = n ? `사진 ${n}장` : "";
+  const n=cur.msgs.filter(m=>m.type==="image"||m.type==="video").length;
+  $("#mMediaSub").textContent = n ? `${n}개` : "";
   go("s-chat");
 });
 $("#mMedia").addEventListener("click",()=>{renderMedia();go("s-media")});
@@ -1565,10 +1604,11 @@ $("#mExport").addEventListener("click",exportChat);
 
 function renderMedia(){
   const g=$("#mediaGrid"); g.innerHTML="";
-  const pics=(cur?.msgs||[]).filter(m=>m.type==="image");
-  if(!pics.length){ g.innerHTML=`<div class="none">사진이 없어요</div>`; return }
+  const pics=(cur?.msgs||[]).filter(m=>(m.type==="image"||m.type==="video")&&(m.media||m.src));
+  if(!pics.length){ g.innerHTML=`<div class="none">사진·동영상이 없어요</div>`; return }
   pics.forEach(m=>{
-    const im=document.createElement("img"); im.src=m.src; im.alt="";
+    const im=document.createElement(m.type==="video"?"video":"img"); im.src=srcOf(m);
+    if(m.type==="video"){ im.muted=true; im.playsInline=true; im.preload="metadata" } else im.alt="";
     im.addEventListener("click",()=>viewer(m));
     g.appendChild(im);
   });
@@ -1583,7 +1623,7 @@ function exportChat(){
   cur.msgs.forEach(m=>{
     const d=new Date(m.ts), k=d.toDateString();
     if(k!==day){ day=k; out.push("",`── ${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())} ──`) }
-    out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":nameOf(m.from)}  ${m.type==="text"?m.text:"(사진)"}`);
+    out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":nameOf(m.from)}  ${m.type==="text"?m.text:m.type==="video"?"(동영상)":"(사진)"}`);
   });
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/plain;charset=utf-8"}));
@@ -1591,35 +1631,19 @@ function exportChat(){
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   toast("내려받기 시작");
 }
-function applyChat(){
-  const size=prefs.chatSize||"m", font=prefs.chatFont||"default";
-  const st=$("#chat").style;
-  st.setProperty("--chat-size",CHAT_SIZE[size]||CHAT_SIZE.m);
-  st.setProperty("--chat-font",CHAT_FONT[font]||CHAT_FONT.default);
-  $$("#segSize button").forEach(b=>b.classList.toggle("on",b.dataset.v===size));
-  $$("#segFont button").forEach(b=>b.classList.toggle("on",b.dataset.v===font));
-}
-$$("#segSize button").forEach(b=>b.addEventListener("click",()=>{prefs.chatSize=b.dataset.v;store.set("prefs",prefs);applyChat()}));
-$$("#segFont button").forEach(b=>b.addEventListener("click",()=>{prefs.chatFont=b.dataset.v;store.set("prefs",prefs);applyChat()}));
-applyChat();
-$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam})[b.dataset.act]()}));
-$("#albumFile").addEventListener("change",e=>{[...e.target.files].forEach(f=>readImage(f,1280,d=>push({type:"image",src:d}))); e.target.value=""});
+$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:()=>$("#captureFile").click()})[b.dataset.act]()}));
+$("#albumFile").addEventListener("change",e=>{ [...e.target.files].forEach(sendFile); e.target.value="" });
 
 /* camera */
-let camStream=null, facing="environment";
-async function openCam(){
-  try{ camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false}); $("#camVideo").srcObject=camStream; $("#cam").classList.add("on"); }
-  catch(e){ $("#captureFile").click(); }
-}
-function closeCam(){ if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null} $("#cam").classList.remove("on") }
-$("#camClose").addEventListener("click",closeCam);
-$("#camFlip").addEventListener("click",()=>{facing=facing==="user"?"environment":"user";closeCam();openCam()});
-$("#shutter").addEventListener("click",()=>{const v=$("#camVideo");const c=document.createElement("canvas");const s=Math.min(1,1280/Math.max(v.videoWidth,v.videoHeight));c.width=v.videoWidth*s;c.height=v.videoHeight*s;c.getContext("2d").drawImage(v,0,0,c.width,c.height);push({type:"image",src:c.toDataURL("image/jpeg",.8)});closeCam()});
-$("#captureFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)readImage(f,1280,d=>push({type:"image",src:d}));e.target.value=""});
+$("#captureFile").addEventListener("change",e=>{ const f=e.target.files[0]; if(f) sendFile(f); e.target.value="" });
 
 /* viewer */
-function viewer(m){$("#viewerBody").innerHTML=`<img src="${m.src}" alt="">`;$("#viewerSave").href=m.src;$("#viewer").classList.add("on")}
-$("#viewerClose").addEventListener("click",()=>$("#viewer").classList.remove("on"));
+function viewer(m){
+  const u=srcOf(m);
+  $("#viewerBody").innerHTML=m.type==="video"?`<video src="${u}" controls playsinline autoplay></video>`:`<img src="${u}" alt="">`;
+  $("#viewerSave").href=u; $("#viewer").classList.add("on");
+}
+$("#viewerClose").addEventListener("click",()=>{ $("#viewer").classList.remove("on"); $("#viewerBody").innerHTML="" });
 
 
 /* ---------- Settings ---------- */

@@ -55,6 +55,10 @@ create table if not exists messages (
   bond_id    bigint not null references bonds(id) on delete cascade,
   sender_id  bigint not null references users(id) on delete cascade,
   body       text not null,
+  kind       text not null default 'text',   -- text / image / video
+  media      text,          -- 사진·동영상 파일 이름(MEDIA_DIR 안). 방이 사라지면 파일도 정리된다
+  mime       text,
+  size       int,
   created_at timestamptz not null default now()
 );
 create index if not exists messages_bond_idx on messages(bond_id, id);

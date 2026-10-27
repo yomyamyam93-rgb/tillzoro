@@ -7,6 +7,8 @@
  *   R-7.1  대화는 1:1만.
  */
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
@@ -610,7 +612,7 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
   const mine = bond.kind === "group" && (bond.members || []).find((m) => String(m.id) === String(req.user.id));
   const since = mine && !bond.show_history ? mine.joined_at : new Date(0);
   const { rows } = await pool.query(
-    "select id, sender_id, body, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
+    "select id, sender_id, body, kind, media, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
     [bond.id, since]
   );
   // 여는 순간 읽은 것으로 친다 (R-7.4에 따라 상대에게는 알리지 않는다)
@@ -627,6 +629,8 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
       mine: m.sender_id === req.user.id,
       from: String(m.sender_id),
       body: m.body,
+      kind: m.kind || "text",
+      media: m.media,
       at: m.created_at,
     })),
   });
@@ -635,25 +639,74 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
 app.post("/api/messages", auth, async (req, res) => {
   const body = String(req.body?.body || "").trim();
   if (!body) return res.status(400).json({ error: "빈 메시지는 보낼 수 없어요" });
-
   const bond = await myBond(req.body?.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  if (bond.kind === "group") return groupMessage(req, res, bond, body);
+  sendMessage(req, res, bond, { body, kind: "text" });
+});
+
+/* ---------- 사진·동영상 ----------
+   사진은 앱이 1600px 로 줄여서 보내고(약 0.3MB), 동영상은 60MB 까지 그대로 받는다.
+   파일은 서버 디스크(MEDIA_DIR)에 두고, 방이 사라지거나 메시지가 지워지면 한 시간 안에 함께 지운다.
+   같은 서버에 다른 서비스가 돌고 있으므로, 미디어 전체가 10GB 를 넘거나 디스크 여유가 8GB 아래면 받지 않는다.
+   보기는 그 방에 있는 사람만 된다(로그인 토큰을 주소에 붙여 확인). 동영상은 구간 요청(Range)을 받아 바로 재생된다. */
+const MEDIA_DIR = process.env.MEDIA_DIR || path.join(__dirname, "media");
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
+const MEDIA_CAP = 10 * 1024 ** 3, DISK_FLOOR = 8 * 1024 ** 3;
+const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
+let mediaBytes = 0;
+try { for (const f of fs.readdirSync(MEDIA_DIR)) mediaBytes += fs.statSync(path.join(MEDIA_DIR, f)).size; } catch (e) {}
+const diskFree = () => { try { const st = fs.statfsSync(MEDIA_DIR); return st.bavail * st.bsize; } catch (e) { return Infinity; } };
+
+app.post("/api/messages/media", auth, express.raw({ type: () => true, limit: "60mb" }), async (req, res) => {
+  const mime = String(req.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  const ext = EXT[mime];
+  const kind = mime.startsWith("video/") ? "video" : "image";
+  const buf = req.body;
+  if (!ext || !Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: "보낼 수 없는 파일이에요" });
+  if (kind === "image" && buf.length > 10 * 1024 ** 2) return res.status(413).json({ error: "사진이 너무 커요" });
+  if (mediaBytes + buf.length > MEDIA_CAP || diskFree() - buf.length < DISK_FLOOR)
+    return res.status(507).json({ error: "지금은 사진·동영상을 보낼 수 없어요" });
+  const bond = await myBond(req.query.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  const id = crypto.randomBytes(16).toString("hex") + "." + ext;
+  fs.writeFileSync(path.join(MEDIA_DIR, id), buf);
+  mediaBytes += buf.length;
+  sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size: buf.length });
+});
+
+app.get("/api/media/:id", async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^[a-f0-9]{32}\.[a-z0-9]{2,5}$/.test(id)) return res.sendStatus(404);
+  const s = (await pool.query("select user_id from sessions where token = $1", [String(req.query.t || "")])).rows[0];
+  if (!s) return res.sendStatus(401);
+  const m = (await pool.query(
+    `select m.mime, m.bond_id from messages m join bonds b on b.id = m.bond_id
+      where m.media = $1 and (b.a_id = $2 or b.b_id = $2 or exists (select 1 from bond_members x where x.bond_id = b.id and x.user_id = $2))`,
+    [id, s.user_id])).rows[0];
+  if (!m) return res.sendStatus(404);
+  res.sendFile(path.join(MEDIA_DIR, id), { headers: { "Content-Type": m.mime, "Cache-Control": "private, max-age=604800" } }, (e) => { if (e && !res.headersSent) res.sendStatus(404); });
+});
+
+// 글·사진·동영상 공통: 메시지를 남기고 Count 규칙을 적용하고 알린다
+async function sendMessage(req, res, bond, m) {
+  const body = m.body;
+  if (bond.kind === "group") return groupMessage(req, res, bond, m);
   const isSelf = String(bond.a_id) === String(bond.b_id);
   // R-11: Zero 처리가 먼저면 메시지는 거부된다. 나와의 방은 Zero가 없다.
   if (!isSelf && ddayOf(bond.last_reset_at) <= 0)
     return res.status(410).json({ error: "이 대화는 끝났어요" });
 
   const { rows } = await pool.query(
-    "insert into messages (bond_id, sender_id, body) values ($1, $2, $3) returning id, created_at",
-    [bond.id, req.user.id, body]
+    "insert into messages (bond_id, sender_id, body, kind, media, mime, size) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at",
+    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null]
   );
 
   // R-4.2 / R-4.3: 양쪽이 각각 한 번 이상 보냈을 때만 Reset한다. 나와의 방은 셈하지 않는다.
   if (isSelf) {
-    const m = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id };
-    notify([req.user.id], { type: "message", ...m }, req.user.id);
-    return res.json({ ...m, reset: false });
+    const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, kind: m.kind || "text", media: m.media || null };
+    notify([req.user.id], { type: "message", ...msg }, req.user.id);
+    return res.json({ ...msg, reset: false });
   }
   const iAmA = bond.a_id === req.user.id;
   const aSent = bond.a_sent || iAmA;
@@ -667,18 +720,20 @@ app.post("/api/messages", auth, async (req, res) => {
     reset ? [bond.id] : [bond.id, aSent, bSent]
   );
 
-  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id) };
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null };
   notify([bond.a_id, bond.b_id], { type: "message", ...msg }, req.user.id);
   push(iAmA ? bond.b_id : bond.a_id, "msg", { title: req.user.nickname, body: body.slice(0, 120), tag: "bond-" + bond.id });
   res.json({ ...msg, reset });
-});
+}
 
 // 방 메시지. 마지막 Reset 이후 두 사람 이상이 말하면 Count 가 30 으로 돌아가고 Keep 이 오른다.
 // 두 명 방에서는 R-4.2 그대로(둘 다 한 번씩). Reset 을 만든 메시지는 다음 회차에 세지 않는다(R-4.4)
-async function groupMessage(req, res, bond, body) {
+async function groupMessage(req, res, bond, m) {
+  const body = m.body;
   if (ddayOf(bond.last_reset_at) <= 0) return res.status(410).json({ error: "이 대화는 끝났어요" });
   const { rows } = await pool.query(
-    "insert into messages (bond_id, sender_id, body) values ($1, $2, $3) returning id, created_at", [bond.id, req.user.id, body]);
+    "insert into messages (bond_id, sender_id, body, kind, media, mime, size) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at",
+    [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null]);
   const sp = new Set((bond.speakers || []).map(String)); sp.add(String(req.user.id));
   const reset = sp.size >= 2;
   await pool.query(
@@ -686,7 +741,7 @@ async function groupMessage(req, res, bond, body) {
           : "update bonds set speakers = $2::jsonb where id = $1",
     reset ? [bond.id] : [bond.id, JSON.stringify([...sp])]);
   await pool.query("update bond_members set read_at = now() where bond_id = $1 and user_id = $2", [bond.id, req.user.id]);
-  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id) };
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null };
   const ids = memberIds(bond);
   notify(ids, { type: "message", ...msg }, req.user.id);
   for (const id of ids) if (id !== String(req.user.id))
@@ -847,6 +902,12 @@ async function sweep() {
   await pool.query("delete from requests where created_at < now() - interval '7 days'");
   await pool.query("delete from zeros where zeroed_at < now() - interval '90 days'");
   await pool.query("delete from reports where created_at < now() - interval '90 days'");
+  // 주인 없는 사진·동영상 파일 정리. 올리는 중인 파일을 건드리지 않게 한 시간 지난 것만
+  const used = new Set((await pool.query("select media from messages where media is not null")).rows.map((r) => r.media));
+  for (const f of fs.readdirSync(MEDIA_DIR)) {
+    const fp = path.join(MEDIA_DIR, f), st = fs.statSync(fp);
+    if (!used.has(f) && Date.now() - st.mtimeMs > 3600000) { fs.unlinkSync(fp); mediaBytes = Math.max(0, mediaBytes - st.size); }
+  }
   // 인증 문자 기록은 하루만
   await pool.query("delete from sms_sends where at < now() - interval '1 day'");
   await pool.query("delete from phone_codes where last_sent < now() - interval '1 day'");
