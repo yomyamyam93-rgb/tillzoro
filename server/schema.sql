@@ -10,6 +10,8 @@ create table if not exists users (
   tools      jsonb  not null default '[]'::jsonb,   -- 설치한 도구 id 목록 (계정 단위)
   code       text unique,  -- 내 초대 코드 6자리. 새로 만들면 이전 코드는 무효
   noti       jsonb  not null default '{}'::jsonb,   -- 알림 설정 {msg, req, dday, dnd}
+  phone_hash text unique,  -- 휴대폰 번호를 되돌릴 수 없게 바꾼 값. 번호 하나에 계정 하나(R-8.1, R-8.4)
+  phone_tail text,         -- 화면 표시용 끝 4자리
 
   created_at timestamptz not null default now()
 );
@@ -101,4 +103,20 @@ create table if not exists room_state (
   data       jsonb  not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   primary key (bond_id, tool)
+);
+
+-- 휴대폰 인증번호. 번호마다 하나, 3분 유효, 하루 지나면 지운다
+create table if not exists phone_codes (
+  phone_hash text primary key,
+  code_hash  text not null,
+  expires_at timestamptz not null,
+  tries      int not null default 0,
+  sends      int not null default 0,
+  day        date,
+  last_sent  timestamptz not null default now()
+);
+
+-- 인증 문자를 보낸 시각. 하루 전체 발송량 제한용, 하루 지나면 지운다
+create table if not exists sms_sends (
+  at timestamptz not null default now()
 );

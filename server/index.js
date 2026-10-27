@@ -23,6 +23,15 @@ try {
   else webpush = null;
 } catch (e) { webpush = null; }
 
+// 인증 문자(솔라피). 열쇠(.env 의 SOLAPI_*)가 없으면 문자를 보내지 않고 인증번호를 서버 기록에만 남긴다(준비 기간용)
+let sms = null;
+try {
+  if (process.env.SOLAPI_KEY && process.env.SOLAPI_SECRET && process.env.SOLAPI_FROM) {
+    const { SolapiMessageService } = require("solapi");
+    sms = new SolapiMessageService(process.env.SOLAPI_KEY, process.env.SOLAPI_SECRET);
+  }
+} catch (e) { sms = null; }
+
 const PORT = Number(process.env.PORT || 8790);
 const CYCLE_DAYS = 30;
 const DAY = 86400000;
@@ -57,7 +66,7 @@ async function auth(req, res, next) {
   const t = (req.get("authorization") || "").replace(/^Bearer /, "");
   if (!t) return res.status(401).json({ error: "로그인이 필요해요" });
   const { rows } = await pool.query(
-    "select u.id, u.nickname, u.dob, u.photo from sessions s join users u on u.id = s.user_id where s.token = $1",
+    "select u.id, u.nickname, u.dob, u.photo, u.phone_tail from sessions s join users u on u.id = s.user_id where s.token = $1",
     [t]
   );
   if (!rows[0]) return res.status(401).json({ error: "로그인이 필요해요" });
@@ -108,30 +117,142 @@ const BOND_SELECT = `
 
 /* ---------- 계정 ---------- */
 
-app.post("/api/signup", async (req, res) => {
-  const { nickname, password, dob } = req.body || {};
-  if (!nickname || !password) return res.status(400).json({ error: "닉네임과 비밀번호를 입력해주세요" });
-  const exists = await pool.query("select 1 from users where nickname = $1", [nickname]);
-  if (exists.rowCount) return res.status(409).json({ error: "이미 쓰는 닉네임이에요" });
+/* 휴대폰 인증 (R-8.1, 2026-10-27)
+   번호 하나에 계정 하나. 같은 번호로 다시 오면 새 계정이 아니라 그 계정으로 들어간다. 비밀번호는 없다.
+   서버에는 번호를 되돌릴 수 없게 바꾼 값(phone_hash)과 화면 표시용 끝 4자리만 둔다(R-8.4).
+   문자 남용(남의 번호로 계속 보내 충전금을 태우는 것)을 막는 제한:
+     같은 번호 60초에 1번·하루 5번 / 같은 접속지 1시간 10번 / 전체 하루 500번 / 국내 휴대폰 번호만
+   인증번호는 6자리, 3분 안에, 5번까지 틀릴 수 있다. */
+const PEPPER = process.env.PHONE_PEPPER || "";
+const phoneDigits = (p) => String(p || "").replace(/\D/g, "");
+const validPhone = (d) => /^01[016789]\d{7,8}$/.test(d);
+const phoneHash = (d) => crypto.createHmac("sha256", PEPPER).update(d).digest("hex");
+const sha = (x) => crypto.createHash("sha256").update(x).digest("hex");
+const masked = (tail) => (tail ? `010-••••-${tail}` : null);
 
-  const { rows } = await pool.query(
-    "insert into users (nickname, dob, pass_hash) values ($1, $2, $3) returning id, nickname, dob",
-    [nickname, dob || null, await bcrypt.hash(password, 10)]
-  );
+// 인증을 마친 번호에 주는 30분짜리 표. 서버 비밀값으로 서명해서 위조할 수 없다
+function makeTicket(h, tail) {
+  const body = Buffer.from(JSON.stringify({ h, t: tail, e: Date.now() + 30 * 60000 })).toString("base64url");
+  return body + "." + crypto.createHmac("sha256", PEPPER).update("ticket." + body).digest("base64url");
+}
+function readTicket(tk) {
+  const [body, sig] = String(tk || "").split(".");
+  if (!body || !sig) return null;
+  const want = crypto.createHmac("sha256", PEPPER).update("ticket." + body).digest("base64url");
+  if (sig.length !== want.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return null;
+  try { const d = JSON.parse(Buffer.from(body, "base64url").toString()); return d.e > Date.now() ? d : null; } catch (e) { return null; }
+}
+const ipHits = new Map(); // 접속지 -> [시각]. 서버 메모리에만 잠깐 둔다
+const clientIp = (req) => String(req.get("x-forwarded-for") || req.socket.remoteAddress || "").split(",")[0].trim();
+async function newSession(uid) {
   const t = token();
-  await pool.query("insert into sessions (token, user_id) values ($1, $2)", [t, rows[0].id]);
-  res.json({ token: t, me: rows[0] });
+  await pool.query("insert into sessions (token, user_id) values ($1, $2)", [t, uid]);
+  return t;
+}
+const meOf = (u) => ({ id: u.id, nickname: u.nickname, dob: u.dob, phone: masked(u.phone_tail) });
+
+app.post("/api/phone/send", async (req, res) => {
+  if (!PEPPER) return res.status(503).json({ error: "인증 준비 중이에요" });
+  const d = phoneDigits(req.body?.phone);
+  if (!validPhone(d)) return res.status(400).json({ error: "휴대폰 번호를 확인해주세요" });
+  const ip = clientIp(req), now = Date.now();
+  const hits = (ipHits.get(ip) || []).filter((t) => now - t < 3600000);
+  if (hits.length >= 10) return res.status(429).json({ error: "잠시 뒤에 다시 해주세요" });
+  const total = await pool.query("select count(*)::int n from sms_sends where at > now() - interval '1 day'");
+  if (total.rows[0].n >= 500) return res.status(503).json({ error: "잠시 뒤에 다시 해주세요" });
+
+  const h = phoneHash(d);
+  const cur = (await pool.query("select * from phone_codes where phone_hash = $1", [h])).rows[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const sendsToday = cur && cur.day && cur.day.toISOString().slice(0, 10) === today ? cur.sends : 0;
+  if (cur && now - new Date(cur.last_sent).getTime() < 60000)
+    return res.status(429).json({ error: "1분 뒤에 다시 받을 수 있어요" });
+  if (sendsToday >= 5) return res.status(429).json({ error: "오늘은 더 받을 수 없어요. 내일 다시 해주세요" });
+
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+  await pool.query(
+    `insert into phone_codes (phone_hash, code_hash, expires_at, tries, sends, day, last_sent)
+       values ($1, $2, now() + interval '3 minutes', 0, $3, current_date, now())
+     on conflict (phone_hash) do update set code_hash = $2, expires_at = now() + interval '3 minutes',
+       tries = 0, sends = $3, day = current_date, last_sent = now()`,
+    [h, sha(h + code), sendsToday + 1]);
+  hits.push(now); ipHits.set(ip, hits);
+  await pool.query("insert into sms_sends default values");
+
+  const text = `[Till Zero] 인증번호 ${code}`;
+  if (sms) {
+    try { await sms.send({ to: d, from: process.env.SOLAPI_FROM, text }); }
+    catch (e) { console.error("sms", e.message); return res.status(502).json({ error: "문자를 보내지 못했어요. 잠시 뒤에 다시 해주세요" }); }
+  } else {
+    console.log(`[sms 준비 중] ${d.slice(0, 3)}-****-${d.slice(-4)} ${text}`);
+  }
+  res.json({ ok: true, wait: 60 });
 });
 
-app.post("/api/login", async (req, res) => {
-  const { nickname, password } = req.body || {};
-  const { rows } = await pool.query("select * from users where nickname = $1", [nickname || ""]);
-  if (!rows[0] || !(await bcrypt.compare(password || "", rows[0].pass_hash)))
-    return res.status(401).json({ error: "닉네임이나 비밀번호가 맞지 않아요" });
+app.post("/api/phone/verify", async (req, res) => {
+  const d = phoneDigits(req.body?.phone), code = String(req.body?.code || "").replace(/\D/g, "");
+  if (!validPhone(d) || code.length !== 6) return res.status(400).json({ error: "인증번호를 확인해주세요" });
+  const h = phoneHash(d);
+  const cur = (await pool.query("select * from phone_codes where phone_hash = $1", [h])).rows[0];
+  if (!cur || new Date(cur.expires_at) < new Date()) return res.status(410).json({ error: "인증번호가 지났어요. 다시 받아주세요" });
+  if (cur.tries >= 5) return res.status(429).json({ error: "여러 번 틀렸어요. 다시 받아주세요" });
+  if (cur.code_hash !== sha(h + code)) {
+    await pool.query("update phone_codes set tries = tries + 1 where phone_hash = $1", [h]);
+    return res.status(400).json({ error: "인증번호가 맞지 않아요" });
+  }
+  await pool.query("update phone_codes set expires_at = now() where phone_hash = $1", [h]);   // 한 번 쓰면 끝
+  const u = (await pool.query("select id from users where phone_hash = $1", [h])).rows[0];
+  res.json({ ticket: makeTicket(h, d.slice(-4)), existing: !!u });
+});
 
-  const t = token();
-  await pool.query("insert into sessions (token, user_id) values ($1, $2)", [t, rows[0].id]);
-  res.json({ token: t, me: { id: rows[0].id, nickname: rows[0].nickname, dob: rows[0].dob } });
+// 이미 이 번호로 쓰던 계정이 있으면 그 계정으로 들어간다
+app.post("/api/phone/login", async (req, res) => {
+  const t = readTicket(req.body?.ticket);
+  if (!t) return res.status(400).json({ error: "인증이 지났어요. 다시 해주세요" });
+  const u = (await pool.query("select * from users where phone_hash = $1", [t.h])).rows[0];
+  if (!u) return res.status(404).json({ error: "이 번호로 쓰던 계정이 없어요" });
+  res.json({ token: await newSession(u.id), me: meOf(u) });
+});
+
+// 새 계정. 번호 하나에 계정 하나
+app.post("/api/signup", async (req, res) => {
+  const t = readTicket(req.body?.ticket);
+  if (!t) return res.status(400).json({ error: "인증이 지났어요. 다시 해주세요" });
+  const nickname = String(req.body?.nickname || "").trim();
+  if (!nickname) return res.status(400).json({ error: "이름을 입력해주세요" });
+  if ((await pool.query("select 1 from users where phone_hash = $1", [t.h])).rowCount)
+    return res.status(409).json({ error: "이 번호로 쓰던 계정이 있어요" });
+  if ((await pool.query("select 1 from users where nickname = $1", [nickname])).rowCount)
+    return res.status(409).json({ error: "이미 쓰는 이름이에요" });
+  // pass_hash 는 옛 방식의 칸이라 아무도 알 수 없는 값으로 채운다
+  const { rows } = await pool.query(
+    "insert into users (nickname, dob, pass_hash, phone_hash, phone_tail) values ($1, $2, $3, $4, $5) returning *",
+    [nickname, req.body?.dob || null, await bcrypt.hash(token(), 10), t.h, t.t]);
+  res.json({ token: await newSession(rows[0].id), me: meOf(rows[0]) });
+});
+
+// 지금 로그인한(번호 없는 옛) 계정에 번호를 잇는다
+app.post("/api/phone/link", auth, async (req, res) => {
+  const t = readTicket(req.body?.ticket);
+  if (!t) return res.status(400).json({ error: "인증이 지났어요. 다시 해주세요" });
+  if (req.user.phone_tail) return res.status(409).json({ error: "이미 번호가 연결돼 있어요" });
+  if ((await pool.query("select 1 from users where phone_hash = $1", [t.h])).rowCount)
+    return res.status(409).json({ error: "이 번호는 다른 계정에 연결돼 있어요" });
+  await pool.query("update users set phone_hash = $2, phone_tail = $3 where id = $1", [req.user.id, t.h, t.t]);
+  res.json({ ok: true, phone: masked(t.t) });
+});
+
+// 로그아웃한 상태에서 옛 닉네임·비밀번호 계정을 이 번호에 잇는다
+app.post("/api/phone/legacy", async (req, res) => {
+  const t = readTicket(req.body?.ticket);
+  if (!t) return res.status(400).json({ error: "인증이 지났어요. 다시 해주세요" });
+  const u = (await pool.query("select * from users where nickname = $1", [String(req.body?.nickname || "").trim()])).rows[0];
+  if (!u || u.phone_hash || !(await bcrypt.compare(String(req.body?.password || ""), u.pass_hash)))
+    return res.status(403).json({ error: "닉네임이나 비밀번호가 맞지 않아요" });
+  if ((await pool.query("select 1 from users where phone_hash = $1", [t.h])).rowCount)
+    return res.status(409).json({ error: "이 번호는 다른 계정에 연결돼 있어요" });
+  await pool.query("update users set phone_hash = $2, phone_tail = $3 where id = $1", [u.id, t.h, t.t]);
+  res.json({ token: await newSession(u.id), me: meOf({ ...u, phone_tail: t.t }) });
 });
 
 /* ---------- Till ---------- */
@@ -157,7 +278,8 @@ app.get("/api/till", auth, async (req, res) => {
       new Date(y.lastAt || 0) - new Date(x.lastAt || 0) ||
       x.name.localeCompare(y.name)
   );
-  res.json({ me: req.user, bonds });
+  // sms: 문자가 실제로 나가는지. 준비되기 전에는 옛 계정에 번호 연결을 요구하지 않는다
+  res.json({ me: { ...meOf(req.user), photo: req.user.photo }, bonds, sms: !!sms });
 });
 
 app.post("/api/profile", auth, async (req, res) => {
@@ -352,13 +474,10 @@ app.post("/api/report", auth, async (req, res) => {
 });
 
 /* ---------- 계정 삭제 (R-8.4) ----------
-   비밀번호를 한 번 더 받는다. 지우면 세션·Bond·대화·도구 데이터·차단·요청·알림 구독·Zero 기록이 함께 지워진다.
+   잘못 누르는 일이 없게 "삭제"를 직접 입력해야 한다(비밀번호는 휴대폰 인증으로 바뀌며 없어졌다). 지우면 세션·Bond·대화·도구 데이터·차단·요청·알림 구독·Zero 기록이 함께 지워진다.
    신고 기록에는 보낸 사람 칸만 비운 채 90일까지 남는다(R-8.6). */
 app.post("/api/me/delete", auth, async (req, res) => {
-  const { rows } = await pool.query("select pass_hash from users where id = $1", [req.user.id]);
-  // 401 은 앱이 "다시 로그인"으로 받으므로 403 으로 답한다
-  if (!(await bcrypt.compare(String(req.body?.password || ""), rows[0].pass_hash)))
-    return res.status(403).json({ error: "비밀번호가 맞지 않아요" });
+  if (req.body?.confirm !== "삭제") return res.status(400).json({ error: "삭제라고 입력해주세요" });
   const partners = (await pool.query("select a_id, b_id from bonds where a_id = $1 or b_id = $1", [req.user.id])).rows
     .flatMap((r) => [String(r.a_id), String(r.b_id)]).filter((id) => id !== String(req.user.id));
   await pool.query("delete from users where id = $1", [req.user.id]);
@@ -618,6 +737,9 @@ async function sweep() {
   await pool.query("delete from requests where created_at < now() - interval '7 days'");
   await pool.query("delete from zeros where zeroed_at < now() - interval '90 days'");
   await pool.query("delete from reports where created_at < now() - interval '90 days'");
+  // 인증 문자 기록은 하루만
+  await pool.query("delete from sms_sends where at < now() - interval '1 day'");
+  await pool.query("delete from phone_codes where last_sent < now() - interval '1 day'");
 }
 setTimeout(() => sweep().catch((e) => console.error("sweep", e.message)), 10000);
 setInterval(() => sweep().catch((e) => console.error("sweep", e.message)), 3600000);
