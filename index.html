@@ -255,6 +255,8 @@
   .msg.media img,.msg.media video{border-radius:calc(var(--r-bubble) - 4px)}
   .msg.media img,.msg.media video{display:block;width:100%;max-height:260px;object-fit:cover}
   .msg.media{position:relative}
+  .msg.media img{opacity:0;transition:opacity .18s;background:var(--line)}
+  .msg.media img.ok{opacity:1}
   .msg.media.pending img,.msg.media.pending video{opacity:.55}
   #mediaGrid video{width:100%;aspect-ratio:1;object-fit:cover;display:block}
   .msg .stamp{font:400 11px var(--font-body);opacity:.5;flex:none;margin-left:2px;padding-bottom:1px;white-space:nowrap}
@@ -263,6 +265,7 @@
   .msg.failed{outline:1px solid var(--zero);cursor:pointer}
   .msg.failed .stamp{color:var(--zero);opacity:1;font-weight:500}
   .compose{flex:none;position:relative;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
+  .compose::after{content:"";position:absolute;left:0;right:0;top:100%;height:420px;background:var(--paper-2);pointer-events:none}
   /* 키보드가 올라오면 아래 여백이 필요 없다 */
   .phone.kb .compose{padding-bottom:6px}
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
@@ -531,7 +534,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1617</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1623</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1244,13 +1247,18 @@ function bubble(ms){
     el.classList.add("media"); if(m.pending) el.classList.add("pending");
     const ar=m.w&&m.h?` style="aspect-ratio:${m.w}/${m.h}"`:"";
     const poster=m.thumbSrc||(m.media?mediaURL(m.media,true):"");
-    el.innerHTML=m.type==="image"?`<img src="${thumbOf(m)}" alt=""${ar} decoding="async">`
+    const arImg=ar||' style="aspect-ratio:4/3"';   // 크기를 모르는 예전 사진: 다 받으면 실제 비율로 한 번만 바뀐다
+    el.innerHTML=m.type==="image"?`<img src="${thumbOf(m)}" alt=""${arImg} decoding="async">`
       :`<video src="${srcOf(m)}" controls playsinline preload="none"${poster?` poster="${poster}"`:""}${ar}></video>`;
     if(m.type==="image") el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
-    const md=el.firstElementChild;
-    md.addEventListener(m.type==="image"?"load":"loadedmetadata",()=>{
-      const d=$("#days"); if(d.scrollHeight-d.scrollTop-d.clientHeight<md.offsetHeight+160) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
-    },{once:true});
+    // 다 받으면 나타나고, 바닥을 보고 있었으면 곧바로 바닥에 붙인다
+    const md=el.firstElementChild, d0=$("#days");
+    const settle=()=>{
+      const stick=pinned||d0.scrollHeight-d0.scrollTop-d0.clientHeight<40;
+      if(m.type==="image"){ if(!ar&&md.naturalWidth) md.style.aspectRatio=md.naturalWidth+"/"+md.naturalHeight; md.classList.add("ok") }
+      if(stick) d0.scrollTop=d0.scrollHeight;
+    };
+    if(m.type==="image"){ if(md.complete&&md.naturalWidth) md.classList.add("ok"); else md.addEventListener("load",settle,{once:true}) }
   }
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
@@ -1957,7 +1965,10 @@ let kbLog=[];
   },{passive:true});
   inp.addEventListener("focus",()=>log(`focus nav=${((performance.now()-navAt)/1000).toFixed(1)}s`));
   window.addEventListener("scroll",()=>{ if(window.scrollY) log("winscroll") },{passive:true});
-  inp.addEventListener("blur",()=>log("blur"));
+  inp.addEventListener("blur",()=>{ log("blur"); setTimeout(()=>{
+    const a=document.activeElement; if(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+    if(ph.classList.contains("kb")) flip(noKb());
+  },0) });
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   flip(vv.height); log("start");
