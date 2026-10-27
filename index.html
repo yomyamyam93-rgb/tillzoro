@@ -87,7 +87,7 @@
 
   /* splash */
   #splash{background:#050506;align-items:center;justify-content:center;padding-top:0}
-  #splash .zero{font:600 160px/1 Orbitron,sans-serif;color:#FF2D3A;text-shadow:0 0 24px rgba(255,45,58,.75),0 0 60px rgba(255,45,58,.35)}
+  #splash .zero{width:132px;height:132px;border-radius:30px;box-shadow:0 0 48px rgba(255,45,58,.35)}
   #splash .wm{margin-top:18px;font:500 13px var(--font-body);letter-spacing:.36em;color:#8a8a90;text-transform:uppercase}
 
   /* onboarding */
@@ -96,6 +96,16 @@
   .ob .spacer{flex:1}
   .code{display:flex;gap:8px}
   .code input{flex:1;text-align:center;font-size:22px;padding:0}
+  /* 프로필 사진 자리 정하기. 밝은 틀은 Till 카드에 보이는 자리, 가운데 원은 대화방 동그라미에 보이는 자리 */
+  .crop{position:absolute;inset:0;z-index:40;background:#000;display:none;flex-direction:column;touch-action:none}
+  .crop.on{display:flex}
+  .crop .cbar{position:relative;z-index:2;display:flex;justify-content:space-between;padding:calc(var(--statusbar) + 4px) 12px 8px}
+  .crop .cbar button{color:#fff;font-size:16px;padding:10px 8px}
+  .crop .cbar #cropOk{font-weight:600}
+  .crop .cstage{position:relative;flex:1;overflow:hidden}
+  .crop .cstage img{position:absolute;left:50%;top:50%;max-width:none;height:auto;transform-origin:center;pointer-events:none;-webkit-user-select:none;user-select:none}
+  .crop .cframe{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:var(--r-card);box-shadow:0 0 0 100vmax rgba(0,0,0,.62);outline:1px solid rgba(255,255,255,.55);pointer-events:none}
+  .crop .cframe::after{content:"";position:absolute;top:0;bottom:0;left:50%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;border:1.5px dashed rgba(255,255,255,.75)}
   .avatarpick{width:96px;height:96px;border-radius:50%;background:var(--line) center/cover;display:grid;place-items:center;color:var(--ink-3);font-size:12px;align-self:center;overflow:hidden;cursor:pointer}
   .rule{font:600 22px/1.45 inherit;margin:40px 0 0;letter-spacing:-.01em}
   .rule small{display:block;margin-top:12px;font:400 14px/1.6 inherit;color:var(--ink-2)}
@@ -318,7 +328,7 @@
 <div class="phone" id="phone">
 
   <!-- 0. splash -->
-  <section class="screen base" id="splash"><div class="zero">0</div><div class="wm">Till Zero</div></section>
+  <section class="screen base" id="splash"><img class="zero" src="icon-512.png" alt=""><div class="wm">Till Zero</div></section>
 
   <!-- 1. onboarding -->
   <section class="screen ob" id="ob-phone"><div class="pad">
@@ -444,7 +454,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1026-1740</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1234</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -489,6 +499,7 @@
   <div class="full" id="cam"><div class="bar"><button class="icon" id="camClose"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2 style="color:#fff">촬영</h2><button class="icon" id="camFlip"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></button></div><div class="body"><video id="camVideo" autoplay playsinline muted></video></div><div class="foot"><button class="shutter" id="shutter" aria-label="찍기"></button></div></div>
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="menu-bg" id="msgMenuBg"></div>
+  <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
   <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">내 화면에서 삭제</button></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
@@ -633,7 +644,8 @@ let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.ad
 function confirmBox(text,cb){$("#confirmText").textContent=text;$("#confirm").classList.add("on");$("#confirmYes").onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
 /* ---------- theme ---------- */
-function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = dark?"#111114":"#F2F2F4"; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
+let splashing=true;
+function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":""; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
 $$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.dataset.th;store.set("prefs",prefs);applyTheme()}));
 
 /* ---------- splash → route ---------- */
@@ -651,6 +663,7 @@ applyTheme();
   // 서버가 느려도 시작 화면에 갇히지 않게 한다
   await Promise.all([최소노출, Promise.race([준비, new Promise(r=>setTimeout(r,2500))])]);
   $("#splash").classList.remove("base"); $("#splash").style.display="none";
+  splashing=false; applyTheme();
   if(auth){
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
@@ -685,7 +698,62 @@ $("#codeNext").addEventListener("click",async()=>{
 });
 let draftAvatar=null;
 function readImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.78))};im.src=r.result};r.readAsDataURL(file)}
-$("#avatarFile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,480,d=>{draftAvatar=d;$("#avatarPick").style.backgroundImage=`url(${d})`;$("#avatarPick").textContent=""})});
+$("#avatarFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(!f)return;cropPhoto(f,d=>{draftAvatar=d;$("#avatarPick").style.backgroundImage=`url(${d})`;$("#avatarPick").textContent=""})});
+/* 프로필 사진 자리 정하기. 한 손가락으로 끌고 두 손가락으로 키운다(PC는 휠).
+   틀은 지금 내 Till 카드와 같은 비율이라 고른 그대로 보이고, 가운데 원이 대화방 동그라미에 보이는 자리다.
+   카드가 더 길쭉해지거나 동그라미로 보여도 가운데는 늘 남는다. */
+function cropPhoto(file,cb){
+  const r=new FileReader();
+  r.onload=()=>{ const im=new Image(); im.onload=()=>openCrop(im,cb); im.onerror=()=>toast("사진을 열지 못했어요"); im.src=r.result };
+  r.readAsDataURL(file);
+}
+function openCrop(im,cb){
+  const box=$("#crop"), stage=$("#cropStage"), fr=$("#cropFrame"), img=$("#cropImg");
+  const ref=document.querySelector("#rows .card .photo");
+  const aspect=ref&&ref.offsetHeight?Math.max(1.6,Math.min(4,ref.offsetWidth/ref.offsetHeight)):3.4;
+  box.classList.add("on");
+  const W=stage.clientWidth-32, H=Math.round(W/aspect);
+  fr.style.width=W+"px"; fr.style.height=H+"px";
+  img.src=im.src; img.style.width=im.width+"px";
+  const min=Math.max(W/im.width,H/im.height);
+  let s=min, x=0, y=0;   // 사진 가운데가 틀 가운데에서 떨어진 거리(x,y)와 배율(s)
+  const draw=()=>{
+    s=Math.max(min,Math.min(min*6,s));
+    const mx=(im.width*s-W)/2, my=(im.height*s-H)/2;
+    x=Math.max(-mx,Math.min(mx,x)); y=Math.max(-my,Math.min(my,y));
+    img.style.transform=`translate(-50%,-50%) translate(${x}px,${y}px) scale(${s})`;
+  };
+  draw();
+  const pts=new Map(); let st=null;
+  const mark=()=>{
+    const p=[...pts.values()], rc=stage.getBoundingClientRect();
+    const cx=p.reduce((a,q)=>a+q.x,0)/(p.length||1), cy=p.reduce((a,q)=>a+q.y,0)/(p.length||1);
+    st={s,x,y,cx,cy,fx:rc.left+rc.width/2,fy:rc.top+rc.height/2,d:p.length>1?Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y):0};
+  };
+  stage.onpointerdown=e=>{ try{ stage.setPointerCapture(e.pointerId) }catch(err){} pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); mark() };
+  stage.onpointermove=e=>{
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const p=[...pts.values()];
+    const cx=p.reduce((a,q)=>a+q.x,0)/p.length, cy=p.reduce((a,q)=>a+q.y,0)/p.length;
+    const k=p.length>1&&st.d?Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)/st.d:1;
+    s=st.s*k;
+    // 두 손가락 사이를 중심으로 키운다
+    const ox=st.cx-st.fx, oy=st.cy-st.fy, kk=Math.max(min,Math.min(min*6,s))/st.s;
+    x=(st.x-ox)*kk+ox+(cx-st.cx); y=(st.y-oy)*kk+oy+(cy-st.cy);
+    draw();
+  };
+  stage.onpointerup=stage.onpointercancel=e=>{ pts.delete(e.pointerId); mark() };
+  stage.onwheel=e=>{ e.preventDefault(); s*=e.deltaY<0?1.1:1/1.1; draw() };
+  const close=()=>{ box.classList.remove("on"); img.removeAttribute("src"); pts.clear() };
+  $("#cropNo").onclick=close;
+  $("#cropOk").onclick=()=>{
+    const ow=720, oh=Math.round(ow/aspect), c=document.createElement("canvas"); c.width=ow; c.height=oh;
+    const sw=W/s, sh=H/s, sx=im.width/2-x/s-sw/2, sy=im.height/2-y/s-sh/2;
+    c.getContext("2d").drawImage(im,sx,sy,sw,sh,0,0,ow,oh);
+    close(); cb(c.toDataURL("image/jpeg",.85));
+  };
+}
 function checkProfile(){const dob=$("#dobIn").value;let young=false;if(dob){const a=(NOW()-new Date(dob).getTime())/(365.25*DAY);young=a<14;}$("#dobWarn").style.display=young?"block":"none";$("#profileNext").disabled=!dob||young}
 $("#dobIn").addEventListener("input",checkProfile);
 $("#profileNext").addEventListener("click",()=>go("ob-rule"));
@@ -1218,7 +1286,7 @@ function renderSettings(){
 $$("#notiList .toggle").forEach(t=>t.addEventListener("click",()=>{prefs[t.dataset.k]=!prefs[t.dataset.k];store.set("prefs",prefs);t.classList.toggle("on")}));
 function fillProfileEdit(){$("#nameIn2").value=me.name;const p=$("#avatarPick2");p.style.backgroundImage=me.photo?`url(${me.photo})`:"none";p.childNodes[0].textContent=me.photo?"":"사진 넣기"}
 let editAvatar;
-$("#avatarFile2").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;readImage(f,480,d=>{editAvatar=d;$("#avatarPick2").style.backgroundImage=`url(${d})`;$("#avatarPick2").childNodes[0].textContent=""})});
+$("#avatarFile2").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(!f)return;cropPhoto(f,d=>{editAvatar=d;$("#avatarPick2").style.backgroundImage=`url(${d})`;$("#avatarPick2").childNodes[0].textContent=""})});
 $("#avatarRemove").addEventListener("click",()=>{editAvatar="";$("#avatarPick2").style.backgroundImage="none";$("#avatarPick2").childNodes[0].textContent="사진 넣기"});
 $("#profileSave").addEventListener("click",async()=>{
   const n=$("#nameIn2").value.trim(); if(!n){toast("이름은 비울 수 없어요");return}
