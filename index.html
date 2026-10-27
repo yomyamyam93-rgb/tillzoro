@@ -527,7 +527,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1543</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1556</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1238,9 +1238,13 @@ function bubble(ms){
   }
   else if(m.type==="image"||m.type==="video"){
     el.classList.add("media"); if(m.pending) el.classList.add("pending");
-    el.innerHTML=(m.type==="image"?`<img src="${srcOf(m)}" alt="">`:`<video src="${srcOf(m)}" controls playsinline preload="metadata"></video>`)
+    el.innerHTML=(m.type==="image"?`<img src="${srcOf(m)}" alt=""${m.w&&m.h?` style="aspect-ratio:${m.w}/${m.h}"`:""}>`:`<video src="${srcOf(m)}" controls playsinline preload="metadata"></video>`)
       +(m.type==="image"||failed?`<span class="stamp">${failed?"다시 보내기":fmtT(m.ts)}</span>`:"");
     if(m.type==="image") el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
+    const md=el.firstElementChild;
+    md.addEventListener(m.type==="image"?"load":"loadedmetadata",()=>{
+      const d=$("#days"); if(d.scrollHeight-d.scrollTop-d.clientHeight<md.offsetHeight+160) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
+    },{once:true});
   }
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
@@ -1274,7 +1278,7 @@ function copyText(t){
 function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=id=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"");
-const srcOf=m=>m.media?mediaURL(m.media):m.src;
+const srcOf=m=>m.src||mediaURL(m.media);
 function fromServer(m,mine){
   const type=m.kind==="image"||m.kind==="video"?m.kind:"text";
   return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,ts:new Date(m.at).getTime(),ok:true};
@@ -1284,7 +1288,7 @@ function appendBubble(m){
   const d=$("#days"), near=d.scrollHeight-d.scrollTop-d.clientHeight<120;
   cur.msgs.push(m);
   renderMsgs(); saveMsgs();
-  if(m.who==="me"||near) d.scrollTop=d.scrollHeight;
+  if(m.who==="me"||near) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
   else $("#newPill").classList.add("on");
 }
 async function push(m){
@@ -1308,7 +1312,7 @@ function shrinkImage(f){
     const u=URL.createObjectURL(f), im=new Image();
     im.onload=()=>{ const k=Math.min(1,1600/Math.max(im.width,im.height)), c=document.createElement("canvas");
       c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext("2d").drawImage(im,0,0,c.width,c.height);
-      URL.revokeObjectURL(u); c.toBlob(b=>b?ok(b):no(new Error("사진을 열지 못했어요")),"image/jpeg",.82) };
+      URL.revokeObjectURL(u); c.toBlob(b=>{ if(!b) return no(new Error("사진을 열지 못했어요")); b.w=c.width; b.h=c.height; ok(b) },"image/jpeg",.82) };
     im.onerror=()=>{ URL.revokeObjectURL(u); no(new Error("사진을 열지 못했어요")) };
     im.src=u;
   });
@@ -1318,7 +1322,7 @@ async function sendFile(f){
   const video=f.type.startsWith("video/");
   if(video&&f.size>VIDEO_MAX){ toast("동영상은 60MB까지 보낼 수 있어요"); return }
   let blob; try{ blob=video?f:await shrinkImage(f) }catch(e){ toast(e.message); return }
-  const el={id:uid(),who:"me",type:video?"video":"image",blob,src:URL.createObjectURL(blob),ts:NOW(),ok:true,pending:true};
+  const el={id:uid(),who:"me",type:video?"video":"image",blob,src:URL.createObjectURL(blob),w:blob.w,h:blob.h,ts:NOW(),ok:true,pending:true};
   appendBubble(el); upload(el,cur.id);
 }
 async function upload(el,bondId){
