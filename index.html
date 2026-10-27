@@ -50,6 +50,10 @@
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
   .screen.base{transform:none;visibility:visible}
+  /* 번호 화면들은 화면 순서상 앞에 있어서, 번호 연결·번호 바꾸기로 Till·설정 위에 띄울 때 가려지지 않게 올린다.
+     약관 화면은 가입 중에도 열리므로 그보다 위 */
+  .screen.ob{z-index:8}
+  #s-doc{z-index:9}
   .screen.under{transform:translateX(-14%)}
   .screen.left{transform:translateX(-100%)}
   .screen.leaving{visibility:visible}
@@ -484,7 +488,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1411</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1426</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -596,7 +600,7 @@ function savePeople(){return true}   // 기록은 서버가 갖는다
 async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
-  if(d.sms&&!d.me.phone) setTimeout(askPhoneLink,0);
+  if(d.sms&&!d.me.phone){ if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
     id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null,
@@ -685,7 +689,7 @@ let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.ad
 function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("#confirmYes");y.textContent=o.ok||"확인";y.classList.toggle("danger",!o.safe);$("#confirm").classList.add("on");y.onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
 /* ---------- theme ---------- */
-let splashing=true;
+let splashing=true, linkAfterSplash=false;   // 시작 화면 중에 번호 연결이 필요해지면, 끝난 뒤에 띄운다
 function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":""; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
 $$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.dataset.th;store.set("prefs",prefs);applyTheme()}));
 
@@ -709,6 +713,7 @@ applyTheme();
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
     tryUrlCode(); connectWS(); loadToolStates(); syncPush();
+    if(linkAfterSplash) askPhoneLink();
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
 })();
