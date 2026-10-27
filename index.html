@@ -45,10 +45,12 @@
   .stage{min-height:100dvh;display:flex;flex-direction:column;align-items:center;background:var(--ground)}
   .note{font:12px/1.6 var(--font-body);color:var(--ink-3);text-align:center;max-width:440px}
   .note b{color:var(--ink-2);font-weight:500}
-  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;overflow:clip;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
+  /* 옆에 대기 중인 화면들 때문에 틀이 화면 두 배 넓이라, 입력칸에 초점이 갈 때 브라우저가 틀을 옆으로 스크롤해버린다.
+     clip 은 스크롤 자체가 안 되는 잘라내기다(아이폰 16 이상). 그 전 기기는 아래 scroll 되돌리기로 막는다 */
   .screen.base{transform:none;visibility:visible}
   /* 번호 화면들은 화면 순서상 앞에 있어서, 번호 연결·번호 바꾸기로 Till·설정 위에 띄울 때 가려지지 않게 올린다.
      약관 화면은 가입 중에도 열리므로 그보다 위 */
@@ -325,6 +327,20 @@
   .row2b{display:flex;gap:8px}
   .row2b .btn{flex:1}
   .linkbtn{align-self:center;font-size:13px;color:var(--ink-3);padding:6px 10px}
+  /* 휴대폰 인증 */
+  .phonefield{height:58px;font-size:22px;letter-spacing:.03em}
+  .otp{display:flex;flex-direction:column;gap:10px}
+  .otp[hidden]{display:none}
+  .otpbox{position:relative;display:flex;gap:8px}
+  .otpbox i{flex:1;height:58px;border-radius:14px;background:var(--card);display:grid;place-items:center;font:600 24px var(--font-body);font-style:normal;color:var(--ink);border:1.5px solid transparent;transition:border-color .15s}
+  .otpbox i.on{border-color:var(--ink)}
+  .otpbox input{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;color:transparent;caret-color:transparent;font-size:16px;outline:none}
+  .otpbox.shake{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  .otpmeta{display:flex;justify-content:space-between;align-items:center;padding:0 4px;font-size:14px;color:var(--ink-3)}
+  .otpmeta #otpTimer{font-variant-numeric:tabular-nums}
+  .otpmeta #otpTimer.over{color:var(--zero)}
+  .otpmeta .linkbtn{padding:6px 0}
   .agree{margin:0 0 12px;font-size:12px;line-height:1.6;color:var(--ink-3);text-align:center}
   .agree a{color:var(--ink-2);text-decoration:underline;cursor:pointer}
   #docFrame{flex:1;width:100%;border:0;background:var(--paper-2)}
@@ -351,17 +367,13 @@
   <!-- 1. onboarding -->
   <section class="screen ob" id="ob-phone"><div class="pad">
     <div class="bar" id="phBack" style="padding:0;margin-left:-6px;display:none"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
-    <h1 id="phTitle">휴대폰 번호</h1><p id="phHint">번호 하나에 계정 하나예요.</p>
-    <input class="field" id="phoneIn" type="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" autocomplete="tel">
+    <h1 id="phTitle">휴대폰 번호</h1>
+    <input class="field phonefield" id="phoneIn" type="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" autocomplete="tel">
+    <div class="otp" id="otpWrap" hidden>
+      <div class="otpbox" id="otpBox"><i></i><i></i><i></i><i></i><i></i><i></i><input id="codeIn" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" aria-label="인증번호"></div>
+      <div class="otpmeta"><span id="otpTimer">3:00</span><button class="linkbtn" id="codeResend" disabled>다시 받기</button></div>
+    </div>
     <div class="spacer"></div><button class="btn" id="phoneNext" disabled>인증번호 받기</button>
-  </div></section>
-
-  <section class="screen ob" id="ob-code"><div class="pad">
-    <div class="bar" style="padding:0;margin-left:-6px"><button class="icon" data-back="ob-phone"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
-    <h1>인증번호</h1><p id="codeHint"></p>
-    <input class="field" id="codeIn" type="text" inputmode="numeric" maxlength="6" placeholder="6자리" autocomplete="one-time-code" style="letter-spacing:.3em;text-align:center">
-    <button class="linkbtn" id="codeResend" disabled>다시 받기</button>
-    <div class="spacer"></div><button class="btn" id="codeNext" disabled>확인</button>
   </div></section>
 
   <section class="screen ob" id="ob-profile"><div class="pad">
@@ -373,15 +385,15 @@
     <div id="legacyWrap" style="display:none"><div class="lbl" style="margin:0 0 6px 6px">비밀번호</div><input class="field" id="legacyPw" type="password" maxlength="40" autocomplete="current-password"></div>
     <p id="dobWarn" style="color:var(--zero);display:none;margin:0">만 14세 이상만 가입할 수 있어요.</p>
     <div class="spacer"></div><button class="btn" id="profileNext" disabled>다음</button>
-    <button class="linkbtn" id="legacyToggle">닉네임·비밀번호로 쓰던 계정이 있어요</button>
+    <button class="linkbtn" id="legacyToggle">예전 계정 연결</button>
   </div></section>
 
   <section class="screen ob" id="ob-rule"><div class="pad">
     <div class="bar" style="padding:0;margin-left:-6px"><button class="icon" data-back="ob-profile"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
-    <div class="rule">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>남은 사람이 당신의 Till이에요. 그게 전부예요.</small></div>
+    <div class="rule">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.</div>
     <div class="spacer"></div>
-    <p class="agree">시작하면 <a id="agTerms">이용약관</a>과 <a id="agPrivacy">개인정보 처리방침</a>에 동의하는 것으로 봐요.</p>
-    <button class="btn" id="ruleNext">시작하기</button>
+    <p class="agree"><a id="agTerms">이용약관</a> · <a id="agPrivacy">개인정보 처리방침</a></p>
+    <button class="btn" id="ruleNext">동의하고 시작하기</button>
   </div></section>
 
   <!-- 2. Till -->
@@ -441,8 +453,8 @@
       </div>
       <div class="lbl" style="margin-top:10px">기록</div>
       <div class="list">
-        <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub">주고받은 사진</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
-        <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기<div class="sub">이 대화를 글로 저장해요</div></div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       </div>
       <div class="lbl" style="margin-top:10px" id="sChatSafeLbl">안전</div>
       <div class="list" id="sChatSafe">
@@ -463,7 +475,7 @@
     <div class="pad" style="gap:0;padding-top:6px">
       <div class="profile-card" data-go="s-profile"><div class="av" id="meAvatar"></div><div class="t"><div class="nm" id="meName">이름</div><div class="ph2" id="mePhone"></div><div class="tag"><i></i><span id="meTill">TILL 0</span></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       <div class="lbl sect">Invite</div>
-      <div class="list"><div class="item" data-go="s-invite"><div class="t">초대 코드<div class="sub" id="codeSub">내 코드 · 받은 코드</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div></div>
+      <div class="list"><div class="item" data-go="s-invite"><div class="t">초대 코드<div class="sub" id="codeSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div></div>
       <div class="lbl sect">Notifications</div>
       <div class="list" id="notiList">
         <div class="item"><div class="t">알림 받기<div class="sub" id="pushSub"></div></div><div class="toggle" id="pushToggle"></div></div>
@@ -488,7 +500,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1426</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1439</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -528,7 +540,7 @@
 
   <section class="screen" id="s-rule">
     <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Rules</h2></div>
-    <div class="pad"><div class="rule" style="margin-top:10px">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>서로 한 번씩 말하면 30으로 돌아와요. 한쪽만 보낸 건 세지 않아요. 0이 되면 대화도 함께 사라지고, 앱은 아무 말도 하지 않아요.</small></div></div>
+    <div class="pad"><div class="rule" style="margin-top:10px">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>서로 한 번씩 말하면 30으로 돌아와요. 한쪽만 보낸 건 세지 않아요. 0이 되면 대화도 함께 사라져요.</small></div></div>
   </section>
 
   <!-- overlays -->
@@ -539,7 +551,7 @@
   <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
   <div class="menu-bg" id="repBg"></div>
   <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
-  <div class="confirm" id="delBox"><p>계정을 지우면 모든 Bond와 대화, 도구 기록이 사라지고 되돌릴 수 없어요. 계속하려면 삭제라고 입력해주세요.</p><input class="field" id="delPw" type="text" placeholder="삭제" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
+  <div class="confirm" id="delBox"><p>계정을 삭제할까요? 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="text" placeholder="삭제 입력" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
   <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">내 화면에서 삭제</button></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
@@ -689,6 +701,7 @@ let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.ad
 function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("#confirmYes");y.textContent=o.ok||"확인";y.classList.toggle("danger",!o.safe);$("#confirm").classList.add("on");y.onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
 /* ---------- theme ---------- */
+$("#phone").addEventListener("scroll",e=>{ const ph=e.currentTarget; if(ph.scrollLeft||ph.scrollTop){ ph.scrollLeft=0; ph.scrollTop=0 } });
 let splashing=true, linkAfterSplash=false;   // 시작 화면 중에 번호 연결이 필요해지면, 끝난 뒤에 띄운다
 function applyTheme(){const t=prefs.theme; const dark = t==="system" ? matchMedia("(prefers-color-scheme: dark)").matches : t==="dark"; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":""; $$("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.th===t))}
 $$("#themeSeg button").forEach(b=>b.addEventListener("click",()=>{prefs.theme=b.dataset.th;store.set("prefs",prefs);applyTheme()}));
@@ -719,47 +732,63 @@ applyTheme();
 })();
 
 /* ---------- onboarding: 휴대폰 인증 (R-8.1) ----------
-   번호 → 인증번호 → 이 번호로 쓰던 계정이 있으면 바로 들어가고, 없으면 프로필 → 규칙 → 가입.
-   같은 화면으로, 이미 로그인한 옛 계정은 번호를 잇고(link), 설정에서는 번호를 바꾼다(change). */
-const phoneIn=$("#phoneIn");
-let ticket=null, phoneMode="signin", resendT=null, verifying=false;
+   한 화면에서 번호 → 인증번호. 이 번호로 쓰던 계정이 있으면 바로 들어가고, 없으면 프로필 → 규칙 → 가입.
+   같은 화면으로 옛 계정은 번호를 잇고(link), 설정에서는 번호를 바꾼다(change). */
+const phoneIn=$("#phoneIn"), codeIn=$("#codeIn"), phBtn=$("#phoneNext");
+let ticket=null, phoneMode="signin", sentTo="", resendAt=0, expireAt=0, otpT=null, verifying=false;
 const digits=v=>String(v||"").replace(/\D/g,"");
 const fmtPhone=v=>{ const d=digits(v).slice(0,11); return d.length<4?d:d.length<8?`${d.slice(0,3)}-${d.slice(3)}`:`${d.slice(0,3)}-${d.slice(3,d.length-4)}-${d.slice(-4)}` };
-phoneIn.addEventListener("input",()=>{ phoneIn.value=fmtPhone(phoneIn.value); $("#phoneNext").disabled=!/^01[016789]\d{7,8}$/.test(digits(phoneIn.value)) });
-function startResend(sec){
-  const rb=$("#codeResend"); let left=sec; clearInterval(resendT);
-  const tick=()=>{ rb.disabled=left>0; rb.textContent=left>0?`다시 받기 ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`:"다시 받기"; if(left--<=0) clearInterval(resendT) };
-  tick(); resendT=setInterval(tick,1000);
+const validPhone=v=>/^01[016789]\d{7,8}$/.test(digits(v));
+const otpOpen=()=>!$("#otpWrap").hidden;
+const syncBtn=()=>{ phBtn.disabled=otpOpen()?codeIn.value.length!==6:!validPhone(phoneIn.value) };
+function drawOtp(){ const v=codeIn.value, f=document.activeElement===codeIn; $$("#otpBox i").forEach((b,i)=>{ b.textContent=v[i]||""; b.classList.toggle("on",f&&i===Math.min(v.length,5)) }) }
+function tickOtp(){
+  const now=Date.now(), left=Math.max(0,Math.ceil((expireAt-now)/1000)), rs=Math.max(0,Math.ceil((resendAt-now)/1000));
+  const t=$("#otpTimer"); t.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`; t.classList.toggle("over",left===0);
+  const rb=$("#codeResend"); rb.disabled=rs>0; rb.textContent=rs>0?`다시 받기 ${rs}`:"다시 받기";
 }
+function closeOtp(){
+  $("#otpWrap").hidden=true; codeIn.value=""; drawOtp(); clearInterval(otpT); sentTo="";
+  $("#phTitle").textContent=phoneMode==="change"?"새 휴대폰 번호":"휴대폰 번호"; phBtn.textContent="인증번호 받기"; syncBtn();
+}
+// 누른 순간 인증번호 칸을 열고 초점을 옮긴다(아이폰은 누른 순간에만 키보드를 띄워준다). 보내기에 실패하면 닫는다
 async function sendCode(){
-  try{ const r=await api("/api/phone/send",{method:"POST",body:{phone:phoneIn.value}}); startResend(r.wait||60); return true }
-  catch(e){ toast(e.message); return false }
+  const again=otpOpen();
+  if(!again){ $("#otpWrap").hidden=false; $("#phTitle").textContent="인증번호"; phBtn.textContent="확인" }
+  codeIn.value=""; drawOtp(); codeIn.focus(); phBtn.disabled=true;
+  try{
+    const r=await api("/api/phone/send",{method:"POST",body:{phone:phoneIn.value}});
+    sentTo=digits(phoneIn.value); resendAt=Date.now()+(r.wait||60)*1000; expireAt=Date.now()+180000;
+    clearInterval(otpT); tickOtp(); otpT=setInterval(tickOtp,1000);
+  }catch(e){ toast(e.message); if(!again){ closeOtp(); phoneIn.focus() } }
+  syncBtn();
 }
-$("#phoneNext").addEventListener("click",async()=>{
-  const b=$("#phoneNext"); b.disabled=true;
-  const ok=await sendCode(); b.disabled=false; if(!ok) return;
-  $("#codeIn").value=""; $("#codeNext").disabled=true; $("#codeHint").textContent=`${phoneIn.value}로 보냈어요`;
-  go("ob-code"); setTimeout(()=>$("#codeIn").focus(),350);
-});
+phoneIn.addEventListener("input",()=>{ phoneIn.value=fmtPhone(phoneIn.value); if(otpOpen()&&digits(phoneIn.value)!==sentTo) closeOtp(); syncBtn() });
+phoneIn.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!phBtn.disabled) phBtn.click() });
+phBtn.addEventListener("click",()=>otpOpen()?verifyCode():sendCode());
 $("#codeResend").addEventListener("click",sendCode);
-$("#codeIn").addEventListener("input",e=>{ const v=digits(e.target.value).slice(0,6); e.target.value=v; $("#codeNext").disabled=v.length!==6; if(v.length===6) verifyCode() });
-$("#codeNext").addEventListener("click",verifyCode);
+codeIn.addEventListener("input",()=>{ codeIn.value=digits(codeIn.value).slice(0,6); drawOtp(); syncBtn(); if(codeIn.value.length===6) verifyCode() });
+codeIn.addEventListener("focus",drawOtp); codeIn.addEventListener("blur",drawOtp);
+function otpFail(msg){
+  toast(msg); codeIn.value=""; drawOtp(); syncBtn();
+  const b=$("#otpBox"); b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake"); codeIn.focus();
+}
 // 다른 계정으로 들어갈 때 이 기기에 남은 앞 계정의 기록을 지운다. 화면 설정만 남긴다
 function wipeDevice(){ const keep=localStorage.getItem("tz:prefs"); localStorage.clear(); if(keep) localStorage.setItem("tz:prefs",keep) }
 async function verifyCode(){
-  if(verifying) return; verifying=true; $("#codeNext").disabled=true;
+  if(verifying||codeIn.value.length!==6) return; verifying=true; phBtn.disabled=true;
   try{
-    const r=await api("/api/phone/verify",{method:"POST",body:{phone:phoneIn.value,code:$("#codeIn").value}});
-    ticket=r.ticket;
+    const r=await api("/api/phone/verify",{method:"POST",body:{phone:phoneIn.value,code:codeIn.value}});
+    ticket=r.ticket; clearInterval(otpT); codeIn.blur();
     if(phoneMode==="change"){
-      if(r.existing){ toast("이 번호는 다른 계정에 연결돼 있어요"); back("ob-phone"); return }
+      if(r.existing){ toast("이 번호는 다른 계정에 연결돼 있어요"); closeOtp(); return }
       const d=await api("/api/phone/link",{method:"POST",body:{ticket}});
       me.phone=d.phone; setPhoneMode("signin"); back("settings"); renderSettings(); toast("번호를 바꿨어요");
       return;
     }
     if(phoneMode==="link"){
       if(r.existing){
-        confirmBox("이 번호로 쓰던 계정이 있어요. 그 계정으로 들어갈까요?",async()=>{
+        confirmBox("이 번호로 쓰던 계정으로 들어갈까요?",async()=>{
           try{ const d=await api("/api/phone/login",{method:"POST",body:{ticket}}); wipeDevice(); setPhoneMode("signin"); await enter(d) }catch(e){ toast(e.message) }
         },{ok:"들어가기",safe:true});
         return;
@@ -770,24 +799,20 @@ async function verifyCode(){
     }
     if(r.existing){ await enter(await api("/api/phone/login",{method:"POST",body:{ticket}})); return }
     go("ob-profile"); setTimeout(()=>$("#nameIn").focus(),350);
-  }catch(e){ toast(e.message); $("#codeIn").value="" }
-  finally{ verifying=false; $("#codeNext").disabled=$("#codeIn").value.length!==6 }
+  }catch(e){ otpFail(e.message) }
+  finally{ verifying=false; syncBtn() }
 }
 // 이미 로그인한 옛 계정에 번호를 잇게 한다. 문자가 실제로 나갈 때만(서버가 sms:true 일 때)
 function askPhoneLink(){
   if(phoneMode!=="signin"||stack.includes("ob-phone")) return;
   setPhoneMode("link"); go("ob-phone");
 }
-// 번호 화면의 글과 뒤로 가기를 모드에 맞춘다
 function setPhoneMode(m){
-  phoneMode=m; phoneIn.value=""; $("#phoneNext").disabled=true;
+  phoneMode=m; phoneIn.value=""; closeOtp();
   $("#phBack").style.display=m==="change"?"":"none";
-  $("#phTitle").textContent=m==="change"?"새 휴대폰 번호":"휴대폰 번호";
-  $("#phHint").textContent=m==="link"?"계정 하나에 번호 하나예요. 한 번만 연결하면 돼요.":m==="change"?"새 번호로 인증하면 예전 번호는 계정에서 풀려요.":"번호 하나에 계정 하나예요.";
 }
 // 설정 → 휴대폰 번호. 번호를 해지하기 전에 바꿔두면, 그 번호를 나중에 받은 사람이 내 계정에 들어올 수 없다
 $("#phoneBtn").addEventListener("click",()=>{ setPhoneMode("change"); go("ob-phone"); setTimeout(()=>phoneIn.focus(),350) });
-// 번호 화면에서 뒤로 나가면 모드를 되돌린다
 $("#phBack").addEventListener("click",()=>setTimeout(()=>setPhoneMode("signin"),400));
 let draftAvatar=null, draftSrc=null;
 function readImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.78))};im.src=r.result};r.readAsDataURL(file)}
@@ -883,7 +908,7 @@ $("#legacyToggle").addEventListener("click",()=>{
   $("#pfTitle").textContent=legacy?"쓰던 계정":"프로필";
   nameIn.placeholder=legacy?"쓰던 닉네임":"친구에게 보이는 이름";
   $("#profileNext").textContent=legacy?"연결하기":"다음";
-  $("#legacyToggle").textContent=legacy?"새로 만들래요":"닉네임·비밀번호로 쓰던 계정이 있어요";
+  $("#legacyToggle").textContent=legacy?"새로 만들기":"예전 계정 연결";
   checkProfile();
 });
 // 인증 표가 지나면(30분) 번호부터 다시
@@ -898,14 +923,14 @@ $("#profileNext").addEventListener("click",async()=>{
 $("#ruleNext").addEventListener("click",async()=>{
   const b=$("#ruleNext"); b.disabled=true; b.textContent="만드는 중…";
   try{ await enter(await api("/api/signup",{method:"POST",body:{ticket,nickname:nameIn.value.trim(),dob:$("#dobIn").value}})) }
-  catch(e){ toast(e.message); b.disabled=false; b.textContent="시작하기"; ticketGone(e) }
+  catch(e){ toast(e.message); b.disabled=false; b.textContent="동의하고 시작하기"; ticketGone(e) }
 });
 
 async function enter(d){
   auth={token:d.token,me:d.me}; store.set("auth",auth);
   me={name:d.me.nickname,dob:d.me.dob,photo:draftAvatar||null,phone:d.me.phone||null,since:NOW()};
   store.set("me",{photo:me.photo,since:me.since});
-  ["ob-phone","ob-code","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
+  ["ob-phone","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
   $("#till").classList.add("base"); stack=["till"]; syncTabs();
   if(draftAvatar){ keepPhotoSrc(draftSrc,draftAvatar); try{ await api("/api/profile",{method:"POST",body:{photo:draftAvatar}}) }catch(e){} }
   await syncTill(); await tryUrlCode(); connectWS(); syncPush();
@@ -939,7 +964,7 @@ function renderTill(){
     const r=document.createElement("div"); r.className="row"; r.dataset.tier=tier(dday(p));
     r.innerHTML=`<div class="count"><span class="n">${dday(p)}</span><span class="k">d-day</span><span class="k2">${p.keep}</span><span class="k">keep</span></div>
       <div class="card ${p.photo?"":"text"}"><div class="photo" style="${p.photo?`background-image:url(${p.photo})`:""}"><span class="name">${esc(p.name)}</span></div>
-      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${last?preview(last):'<span class="dim">아직 대화가 없어요</span>'}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
+      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${last?preview(last):""}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
   fitRows(live.length);
@@ -1065,7 +1090,7 @@ function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())r
 function renderMsgs(){
   const days=$("#days"), top=days.scrollTop, stick=days.scrollHeight-days.scrollTop-days.clientHeight<40; days.innerHTML="";
   const items=cur.msgs.concat(toolEvents()).sort((a,b)=>a.ts-b.ts);
-  if(!items.length){days.innerHTML=`<div class="empty">아직 대화가 없어요</div>`;return}
+  if(!items.length) return;
   let lastDay="";
   let group=[];
   const flush=()=>{ if(group.length){ days.appendChild(bubble(group)); group=[] } };
@@ -1183,7 +1208,7 @@ const CHAT_SIZE={s:"12px",m:"14px",l:"16px",xl:"19px"};
 const CHAT_FONT={default:"var(--font-body)",gothic:'"Noto Sans KR",system-ui,sans-serif',system:"system-ui,-apple-system,sans-serif"};
 function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
-const NO_TABS=["splash","ob-phone","ob-code","ob-profile","ob-rule"];
+const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
   "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
@@ -1255,7 +1280,6 @@ $("#chatTools").addEventListener("click",openToolSheet);
    자리를 이렇게 묶어두면 어떤 도구가 들어와도 화면이 흐트러지지 않는다. */
 const TOOLS=[
   {id:"quest", name:"퀘스트", slot:"top",
-   desc:"할 일을 걸어두고, 해낸 사람이 점수를 가져가요",
    pv:`<div class="rt-row"><span class="rt-title">음식물 쓰레기 버려주기</span><span class="rt-pt">2P</span><span class="rt-btn">완료</span></div>
        <div class="rt-row rt-score"><span>나<b>0</b></span><span>상대<b>2</b></span></div>`,
    // 할 일은 한 번에 하나. 낸 사람은 고치거나 지우고, 상대가 완료해서 점수를 가져간다. 나와의 대화에서는 혼자 다 한다
@@ -1317,8 +1341,7 @@ function renderTools(q=""){
     const on=!!toolOn[t.id];
     el.classList.toggle("off",!on);
     el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
-      <div class="slide"><div class="roomtool on knob">${t.pv}</div></div>
-      <div style="margin:7px 0 0 2px;color:var(--ink-3);font-size:12px">${esc(t.desc)}</div>`;
+      <div class="slide"><div class="roomtool on knob">${t.pv}</div></div>`;
     slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
     list.appendChild(el);
   });
@@ -1370,7 +1393,7 @@ $("#chatMenu").addEventListener("click",()=>{
   $("#sChatTitle").textContent=cur.name;
   $("#sChatSafe").style.display=$("#sChatSafeLbl").style.display=cur.self?"none":"";
   const n=cur.msgs.filter(m=>m.type==="image").length;
-  $("#mMediaSub").textContent = n ? `사진 ${n}장` : "아직 사진이 없어요";
+  $("#mMediaSub").textContent = n ? `사진 ${n}장` : "";
   go("s-chat");
 });
 $("#mMedia").addEventListener("click",()=>{renderMedia();go("s-media")});
@@ -1379,7 +1402,7 @@ $("#mExport").addEventListener("click",exportChat);
 function renderMedia(){
   const g=$("#mediaGrid"); g.innerHTML="";
   const pics=(cur?.msgs||[]).filter(m=>m.type==="image");
-  if(!pics.length){ g.innerHTML=`<div class="none">아직 주고받은 사진이 없어요</div>`; return }
+  if(!pics.length){ g.innerHTML=`<div class="none">사진이 없어요</div>`; return }
   pics.forEach(m=>{
     const im=document.createElement("img"); im.src=m.src; im.alt="";
     im.addEventListener("click",()=>viewer(m));
@@ -1484,13 +1507,13 @@ const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notific
 const b64u=x=>{ const r=atob((x+"=".repeat((4-x.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(r,c=>c.charCodeAt(0)) };
 async function renderPush(){
   const t=$("#pushToggle"), sub=$("#pushSub");
-  if(!pushOK()){ pushOn=false; t.classList.remove("on"); sub.textContent="홈 화면에 추가한 앱에서 켤 수 있어요"; return }
+  if(!pushOK()){ pushOn=false; t.classList.remove("on"); sub.textContent="홈 화면 앱에서만 켤 수 있어요"; return }
   sub.textContent=Notification.permission==="denied"?"기기 설정에서 알림이 꺼져 있어요":"";
   try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription(); pushOn=!!s&&Notification.permission==="granted" }catch(e){ pushOn=false }
   t.classList.toggle("on",pushOn);
 }
 $("#pushToggle").addEventListener("click",async()=>{
-  if(!pushOK()){ toast("홈 화면에 추가한 앱에서 켤 수 있어요"); return }
+  if(!pushOK()){ toast("홈 화면 앱에서만 켤 수 있어요"); return }
   if(pushOn){
     try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription();
       if(s){ api("/api/push/unsub",{method:"POST",body:{endpoint:s.endpoint}}).catch(()=>{}); await s.unsubscribe() } }catch(e){}
@@ -1551,7 +1574,7 @@ $("#shareCode").addEventListener("click",async()=>{
   copyText(url);
 });
 $("#copyCode").addEventListener("click",()=>{ if(myCodeVal) copyText(myCodeVal) });
-$("#codeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꾸면 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
+$("#codeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꿀까요? 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
   try{ myCodeVal=(await api("/api/code/renew",{method:"POST"})).code; $("#codeOut").textContent=spaced(myCodeVal); toast("새 코드로 바꿨어요") }catch(e){ toast(e.message) }
 },{ok:"바꾸기",safe:true}));
 const cleanCode=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
@@ -1617,7 +1640,7 @@ $("#mReport").addEventListener("click",()=>{
   });
   box.classList.add("on"); bg.classList.add("on");
 });
-$("#mBlock").addEventListener("click",()=>{ if(cur) confirmBox(`${josa(cur.name,"을","를")} 차단할까요? 이 대화가 지금 사라지고, 상대에게는 0이 된 것과 똑같이 보여요.`,doBlock,{ok:"차단"}) });
+$("#mBlock").addEventListener("click",()=>{ if(cur) confirmBox(`${josa(cur.name,"을","를")} 차단할까요? 대화가 바로 사라져요.`,doBlock,{ok:"차단"}) });
 async function doBlock(){
   try{ await api("/api/block",{method:"POST",body:{bondId:cur.id}}) }catch(e){ toast(e.message); return }
   cur=null; back("till"); toast("차단했어요"); syncTill().catch(()=>{});
