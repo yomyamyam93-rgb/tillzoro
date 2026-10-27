@@ -23,10 +23,16 @@ create table if not exists sessions (
 );
 
 -- Bond는 두 사람 사이의 것이므로 (a_id < b_id)로 순서를 고정해 중복을 막는다.
+-- 방. 1:1(kind='pair')은 a_id·b_id 두 사람, 단체틸(kind='group')은 a_id·b_id 를 비우고 bond_members 에 참여자를 둔다
 create table if not exists bonds (
   id            bigserial primary key,
-  a_id          bigint not null references users(id) on delete cascade,
-  b_id          bigint not null references users(id) on delete cascade,
+  kind          text not null default 'pair',
+  name          text,          -- 단체틸 이름. 비우면 사람 이름 나열
+  code          text unique,   -- 방 코드 6자리. 새로 만들면 이전 코드는 무효
+  speakers      jsonb not null default '[]'::jsonb,   -- 마지막 Reset 이후 말한 사람(방). 두 명 이상이면 Reset
+  show_history  boolean not null default false,       -- 새로 들어온 사람에게 이전 대화 보이기
+  a_id          bigint references users(id) on delete cascade,
+  b_id          bigint references users(id) on delete cascade,
   keep          int    not null default 0,
   bond_at       timestamptz not null default now(),
   -- R-4.1: 남은 일수는 저장하지 않는다. 마지막 Reset 시각만 두고 볼 때마다 계산한다.
@@ -120,3 +126,13 @@ create table if not exists phone_codes (
 create table if not exists sms_sends (
   at timestamptz not null default now()
 );
+
+-- 단체틸 참여자. 각자 읽은 시각을 따로 갖는다
+create table if not exists bond_members (
+  bond_id   bigint not null references bonds(id) on delete cascade,
+  user_id   bigint not null references users(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  read_at   timestamptz not null default now(),
+  primary key (bond_id, user_id)
+);
+create index if not exists bond_members_user_idx on bond_members(user_id);

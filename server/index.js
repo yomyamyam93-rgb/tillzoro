@@ -80,7 +80,46 @@ async function auth(req, res, next) {
 const PHONE_FREE = new Set(["/api/till", "/api/phone/link", "/api/me/delete", "/api/push/unsub", "/api/kblog"]);
 
 // Bond 한 건을 "내 쪽에서 본" 모양으로 바꾼다.
+// 단체방의 참여자. 방 목록·메시지에서 이름과 안 읽음을 계산하는 데 쓴다
+async function withMembers(rows) {
+  const ids = rows.filter((r) => r.kind === "group").map((r) => r.id);
+  if (!ids.length) return rows;
+  const { rows: ms } = await pool.query(
+    `select m.bond_id, u.id, u.nickname, u.photo, m.read_at, m.joined_at from bond_members m join users u on u.id = m.user_id
+      where m.bond_id = any($1::bigint[]) order by m.joined_at`, [ids]);
+  for (const r of rows) if (r.kind === "group") r.members = ms.filter((m) => String(m.bond_id) === String(r.id));
+  return rows;
+}
+const memberIds = (b) => (b.kind === "group" ? (b.members || []).map((m) => String(m.id)) : [String(b.a_id), String(b.b_id)]);
+// 이름이 없는 단체방은 사람 이름을 나열한다(보는 사람 자신은 뺀다)
+const roomName = (b, meId) => b.name ||
+  (b.members || []).filter((m) => String(m.id) !== String(meId)).map((m) => m.nickname).slice(0, 4).join(", ") || "새 방";
+
+// 방(코드로 모이는 방). Count 는 방에 하나이고, 마지막 Reset 이후 두 사람 이상이 말하면 30 으로 돌아간다.
+// 두 명이면 상대 이름·사진으로 보인다. 이전 대화 보이기가 꺼져 있으면 들어오기 전 대화는 미리보기에서도 감춘다
+function shapeGroup(row, meId) {
+  const ms = row.members || [];
+  const mine = ms.find((m) => String(m.id) === String(meId));
+  const others = ms.filter((m) => String(m.id) !== String(meId));
+  const from = ms.find((m) => String(m.id) === String(row.last_sender));
+  const seen = !!row.last_at && (row.show_history || !mine || new Date(row.last_at) >= new Date(mine.joined_at));
+  const sp = (row.speakers || []).map(String);
+  return {
+    id: row.id, group: true, self: false,
+    name: row.name || others.map((m) => m.nickname).slice(0, 4).join(", ") || "새 방", named: !!row.name,
+    photo: others.length === 1 ? others[0].photo : null,
+    members: ms.map((m) => ({ id: m.id, name: m.nickname, photo: m.photo, joined: m.joined_at })),
+    history: !!row.show_history, created: row.bond_at,
+    dday: ddayOf(row.last_reset_at), keep: row.keep, days: daysOf(row.bond_at),
+    waiting: sp.length === 1 && sp[0] === String(meId),
+    lastMessage: seen ? row.last_body : null, lastAt: seen ? row.last_at : null,
+    lastFrom: seen && row.last_sender ? (String(row.last_sender) === String(meId) ? "나" : from?.nickname || "") : "",
+    unread: seen && String(row.last_sender) !== String(meId) && (!mine || new Date(row.last_at) > new Date(mine.read_at)),
+  };
+}
+
 function shape(row, meId) {
+  if (row.kind === "group") return shapeGroup(row, meId);
   const self = String(row.a_id) === String(row.b_id);
   const iAmA = row.a_id === meId;
   return {
@@ -113,8 +152,8 @@ const BOND_SELECT = `
          m.created_at as last_at,
          m.sender_id  as last_sender
     from bonds b
-    join users ua on ua.id = b.a_id
-    join users ub on ub.id = b.b_id
+    left join users ua on ua.id = b.a_id
+    left join users ub on ub.id = b.b_id
     left join lateral (
       select body, created_at, sender_id from messages
        where bond_id = b.id order by id desc limit 1
@@ -270,13 +309,11 @@ async function ensureSelfBond(userId) {
   );
 }
 
+const IN_ROOM = `(b.a_id = $1 or b.b_id = $1 or exists (select 1 from bond_members m where m.bond_id = b.id and m.user_id = $1))`;
 app.get("/api/till", auth, async (req, res) => {
   await ensureSelfBond(req.user.id);
-  const { rows } = await pool.query(
-    `${BOND_SELECT} where b.a_id = $1 or b.b_id = $1`,
-    [req.user.id]
-  );
-  const bonds = rows.map((r) => shape(r, req.user.id));
+  const { rows } = await pool.query(`${BOND_SELECT} where ${IN_ROOM}`, [req.user.id]);
+  const bonds = (await withMembers(rows)).map((r) => shape(r, req.user.id));
   // R-4.8: Count 높은 순, 같으면 마지막 대화가 최근인 순, 그다음 이름순
   bonds.sort(
     (x, y) =>
@@ -320,31 +357,33 @@ app.post("/api/profile", auth, async (req, res) => {
 
 /* ---------- Bond 맺기 ---------- */
 
-/* ---------- 초대: 내 코드 하나 ----------
-   R-3.10 (2026-10-27 정리): 초대 수단은 사람마다 코드 하나다. 링크는 그 코드를 담은 주소일 뿐이다.
-   코드를 받은 사람이 넣으면 요청이 가고, 내가 수락해야 Bond 가 된다(R-3.2).
-   새 코드를 만들면 이전 코드는 즉시 무효가 된다. 헷갈리는 글자(I·O·0·1)는 쓰지 않는다. */
+/* ---------- 방 코드 (2026-10-27) ----------
+   초대 수단은 방 코드 하나다. 방마다 코드가 있고, 코드를 넣고 "들어가기"를 누르면 그 방에 들어간다(누른 것이 곧 동의).
+   두 명이면 둘만의 방, 더 들어오면 단체방. 최대 10명. 방 안의 누구나 코드를 보내 사람을 부를 수 있고,
+   새 코드로 바꾸면 이전 코드와 보낸 링크는 즉시 무효가 된다. 헷갈리는 글자(I·O·0·1)는 쓰지 않는다.
+   차단 관계가 있는 사람이 있는 방에는 들어갈 수 없다. 나가면 나에게서만 사라지고, 둘보다 적어지면 방이 사라진다.
+   새로 들어온 사람은 들어온 뒤의 대화만 본다. 방 설정에서 "이전 대화 보이기"를 켜면 처음부터 본다. */
 const CODE_ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode = () => Array.from({ length: 6 }, () => CODE_ABC[crypto.randomInt(CODE_ABC.length)]).join("");
 const normCode = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-async function myCode(uid, renew) {
+const GROUP_MAX = 10;
+const cleanName = (n) => String(n || "").trim().slice(0, 20) || null;
+const pairOf = (x, y) => [x, y].sort((p, q) => p - q);
+async function bonded(x, y) {
+  const [a, b] = pairOf(x, y);
+  return (await pool.query("select 1 from bonds where kind = 'pair' and a_id = $1 and b_id = $2", [a, b])).rowCount > 0;
+}
+async function roomCode(bondId, renew) {
   if (!renew) {
-    const r = await pool.query("select code from users where id = $1", [uid]);
+    const r = await pool.query("select code from bonds where id = $1", [bondId]);
     if (r.rows[0]?.code) return r.rows[0].code;
   }
   for (let i = 0; i < 5; i++) {
-    try {
-      const c = newCode();
-      await pool.query("update users set code = $2 where id = $1", [uid, c]);
-      return c;
-    } catch (e) { if (e.code !== "23505") throw e; }   // 겹치면 다시 뽑는다
+    try { const c = newCode(); await pool.query("update bonds set code = $2 where id = $1", [bondId, c]); return c; }
+    catch (e) { if (e.code !== "23505") throw e; }   // 겹치면 다시 뽑는다
   }
   throw new Error("코드를 만들지 못했어요");
 }
-app.get("/api/code", auth, async (req, res) => res.json({ code: await myCode(req.user.id, false) }));
-app.post("/api/code/renew", auth, async (req, res) => res.json({ code: await myCode(req.user.id, true) }));
-
 // 남의 코드를 찍어 맞히지 못하게, 없는 코드를 10분에 10번 넘게 넣으면 잠시 막는다
 const misses = new Map(); // userId -> [시각]
 const tooMany = (uid) => {
@@ -352,85 +391,88 @@ const tooMany = (uid) => {
   misses.set(uid, a);
   return a.length >= 10;
 };
-async function codeOwner(req, res, code) {
+async function roomByCode(req, res, code) {
   const uid = req.user.id;
   if (tooMany(uid)) { res.status(429).json({ error: "잠시 뒤에 다시 해주세요" }); return null; }
-  const { rows } = await pool.query("select id, nickname, photo from users where code = $1", [normCode(code)]);
-  if (!rows[0]) { misses.get(uid).push(Date.now()); res.status(404).json({ error: "없는 코드예요" }); return null; }
-  if (String(rows[0].id) === String(uid)) { res.status(400).json({ error: "내 코드예요" }); return null; }
-  return rows[0];
+  const c = normCode(code);
+  const row = c.length === 6 && (await pool.query(`${BOND_SELECT} where b.kind = 'group' and b.code = $1`, [c])).rows[0];
+  if (!row) { misses.get(uid).push(Date.now()); res.status(404).json({ error: "없는 코드예요" }); return null; }
+  return (await withMembers([row]))[0];
 }
-const pairOf = (x, y) => [x, y].sort((p, q) => p - q);
-async function bonded(x, y) {
-  const [a, b] = pairOf(x, y);
-  return (await pool.query("select 1 from bonds where a_id = $1 and b_id = $2", [a, b])).rowCount > 0;
+async function blockedWithAny(uid, ids) {
+  if (!ids.length) return false;
+  return (await pool.query(
+    `select 1 from blocks where (blocker_id = $1 and blocked_id = any($2::bigint[])) or (blocked_id = $1 and blocker_id = any($2::bigint[]))`,
+    [uid, ids])).rowCount > 0;
 }
-async function makeBond(x, y) {
-  const [a, b] = pairOf(x, y);
-  const r = await pool.query(
-    "insert into bonds (a_id, b_id) values ($1, $2) on conflict (a_id, b_id) do nothing returning id", [a, b]);
-  notify([String(x), String(y)], { type: "till" });
-  return r.rows[0]?.id;
+async function groupOf(id, me) { const b = await myBond(id, me); return b && b.kind === "group" ? b : null; }
+// 나가기. 남은 사람이 둘보다 적으면 방을 지운다
+async function leaveGroup(bondId, uid) {
+  const before = (await pool.query("select user_id from bond_members where bond_id = $1", [bondId])).rows.map((r) => String(r.user_id));
+  await pool.query("delete from bond_members where bond_id = $1 and user_id = $2", [bondId, uid]);
+  if (before.filter((id) => id !== String(uid)).length < 2) await pool.query("delete from bonds where id = $1", [bondId]);
+  notify(before, { type: "till" });
 }
 
-// 코드 주인 미리 보기. 요청을 보내기 전에 누구인지 확인하게 한다
-app.get("/api/code/:code", auth, async (req, res) => {
-  const o = await codeOwner(req, res, req.params.code);
-  if (!o) return;
-  res.json({ name: o.nickname, photo: o.photo, already: await bonded(o.id, req.user.id) });
+// 새 방. 나 혼자 있는 방이 생기고 코드가 붙는다. 7일 안에 아무도 안 들어오면 저절로 사라진다
+app.post("/api/groups", auth, async (req, res) => {
+  const b = await pool.query("insert into bonds (kind, name) values ('group', $1) returning id", [cleanName(req.body?.name)]);
+  const id = b.rows[0].id;
+  await pool.query("insert into bond_members (bond_id, user_id) values ($1, $2)", [id, req.user.id]);
+  const code = await roomCode(id, false);
+  notify([String(req.user.id)], { type: "till" });
+  res.json({ bondId: id, code });
 });
-
-app.post("/api/request", auth, async (req, res) => {
-  const o = await codeOwner(req, res, req.body?.code);
-  if (!o) return;
-  const me = req.user.id;
-  if (await bonded(o.id, me)) return res.status(409).json({ error: "이미 Till에 있어요" });
-  // 내가 막은 사람과는 풀기 전까지 맺을 수 없다(R-8.5)
-  if ((await pool.query("select 1 from blocks where blocker_id = $1 and blocked_id = $2", [me, o.id])).rowCount)
-    return res.status(403).json({ error: "차단을 풀어야 맺을 수 있어요" });
-  // R-3.8: Zero 뒤 7일은 다시 맺을 수 없다
-  const [a, b] = pairOf(o.id, me);
-  const z = await pool.query(
-    `select zeroed_at from zeros where a_id = $1 and b_id = $2 and zeroed_at > now() - interval '7 days'
-      order by zeroed_at desc limit 1`, [a, b]);
-  if (z.rows[0]) {
-    const left = Math.max(1, Math.ceil((new Date(z.rows[0].zeroed_at).getTime() + 7 * DAY - Date.now()) / DAY));
-    return res.status(409).json({ error: `${left}일 뒤에 다시 맺을 수 있어요` });
-  }
-  // 상대가 나를 막았으면 아무 일도 일어나지 않는다. 막혔다는 걸 알 수 없게 보낸 것처럼 답한다(R-8.5)
-  if ((await pool.query("select 1 from blocks where blocker_id = $1 and blocked_id = $2", [o.id, me])).rowCount)
-    return res.json({ status: "sent" });
-  // 상대도 나에게 요청해 둔 상태면 서로 원한 것이니 바로 맺는다
-  if ((await pool.query("delete from requests where from_id = $1 and to_id = $2", [o.id, me])).rowCount)
-    return res.json({ status: "bonded", bondId: await makeBond(o.id, me) });
-  const ins = await pool.query(
-    "insert into requests (from_id, to_id) values ($1, $2) on conflict (from_id, to_id) do nothing", [me, o.id]);
-  if (ins.rowCount) {
-    notify([String(o.id)], { type: "req" });
-    push(o.id, "req", { title: "받은 요청", body: `${req.user.nickname}님이 Till에 함께하고 싶어해요` });
-  }
-  res.json({ status: "sent" });
+app.get("/api/groups/:id/code", auth, async (req, res) => {
+  const bond = await groupOf(req.params.id, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 방이에요" });
+  res.json({ code: await roomCode(bond.id, false) });
 });
-
-// 받은 요청. 7일이 지나면 저절로 사라진다(R-3.3)
-app.get("/api/requests", auth, async (req, res) => {
-  const { rows } = await pool.query(
-    `select u.id, u.nickname, u.photo, r.created_at from requests r join users u on u.id = r.from_id
-      where r.to_id = $1 and r.created_at > now() - interval '7 days' order by r.created_at desc`, [req.user.id]);
-  res.json({ requests: rows.map((r) => ({ id: r.id, name: r.nickname, photo: r.photo, at: r.created_at })) });
+app.post("/api/groups/:id/code/renew", auth, async (req, res) => {
+  const bond = await groupOf(req.params.id, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 방이에요" });
+  res.json({ code: await roomCode(bond.id, true) });
 });
-app.post("/api/requests/:id/accept", auth, async (req, res) => {
-  const del = await pool.query(
-    "delete from requests where from_id = $1 and to_id = $2 and created_at > now() - interval '7 days'",
-    [Number(req.params.id) || 0, req.user.id]);
-  if (!del.rowCount) return res.status(404).json({ error: "이 요청은 지났어요" });
-  const bondId = await makeBond(req.params.id, req.user.id);
-  push(req.params.id, "req", { title: req.user.nickname, body: "Till에 들어왔어요" });   // R-6.1 초대 수락
-  res.json({ bondId });
+// 코드로 방 미리 보기. 들어가기 전에 어떤 방인지 보여준다
+app.get("/api/join/:code", auth, async (req, res) => {
+  const b = await roomByCode(req, res, req.params.code);
+  if (!b) return;
+  const me = String(req.user.id);
+  res.json({ bondId: b.id, name: b.name || (b.members || []).map((m) => m.nickname).slice(0, 4).join(", "),
+    count: (b.members || []).length, already: memberIds(b).includes(me) });
 });
-// R-3.9: 거절해도 보낸 쪽에는 알리지 않는다
-app.post("/api/requests/:id/decline", auth, async (req, res) => {
-  await pool.query("delete from requests where from_id = $1 and to_id = $2", [Number(req.params.id) || 0, req.user.id]);
+app.post("/api/join", auth, async (req, res) => {
+  const b = await roomByCode(req, res, req.body?.code);
+  if (!b) return;
+  const me = String(req.user.id), members = memberIds(b);
+  if (members.includes(me)) return res.json({ bondId: b.id });
+  if (members.length >= GROUP_MAX) return res.status(409).json({ error: "방이 다 찼어요" });
+  // 차단 관계가 있는 사람이 있으면 들어갈 수 없다. 누구 때문인지는 말하지 않는다
+  if (await blockedWithAny(me, members)) return res.status(403).json({ error: "들어갈 수 없는 방이에요" });
+  await pool.query("insert into bond_members (bond_id, user_id) values ($1, $2) on conflict do nothing", [b.id, me]);
+  notify([...members, me], { type: "till" });
+  for (const id of members) push(id, "req", { title: roomName(b, id), body: `${req.user.nickname}님이 들어왔어요` });   // R-6.1
+  res.json({ bondId: b.id });
+});
+app.post("/api/groups/:id/leave", auth, async (req, res) => {
+  const bond = await groupOf(req.params.id, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 방이에요" });
+  await leaveGroup(bond.id, req.user.id);
+  res.json({ ok: true });
+});
+app.post("/api/groups/:id/name", auth, async (req, res) => {
+  const bond = await groupOf(req.params.id, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 방이에요" });
+  await pool.query("update bonds set name = $2 where id = $1", [bond.id, cleanName(req.body?.name)]);
+  notify(memberIds(bond), { type: "till" });
+  res.json({ ok: true });
+});
+// 이전 대화 보이기. 방 안의 누구나 바꿀 수 있고, 지금 있는 사람과 앞으로 올 사람 모두에게 적용된다
+app.post("/api/groups/:id/history", auth, async (req, res) => {
+  const bond = await groupOf(req.params.id, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 방이에요" });
+  await pool.query("update bonds set show_history = $2 where id = $1", [bond.id, !!req.body?.on]);
+  notify(memberIds(bond), { type: "till" });
   res.json({ ok: true });
 });
 
@@ -444,14 +486,30 @@ async function zeroBond(bond) {
 }
 const otherOf = (bond, me) => (String(bond.a_id) === String(me) ? bond.b_id : bond.a_id);
 
+// 1:1 방이면 bondId, 단체방의 한 사람이면 userId. 같은 방에 있는 사람만 차단할 수 있다.
+// 1:1 은 Zero 와 똑같이 사라지고(R-8.5), 그 사람과 함께 있는 단체방에서는 내가 조용히 빠진다(D-2).
 app.post("/api/block", auth, async (req, res) => {
-  const bond = await myBond(req.body?.bondId, req.user.id);
-  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  if (String(bond.a_id) === String(bond.b_id)) return res.status(400).json({ error: "나와의 대화는 차단할 수 없어요" });
-  const other = otherOf(bond, req.user.id);
-  await pool.query("insert into blocks (blocker_id, blocked_id) values ($1, $2) on conflict do nothing", [req.user.id, other]);
-  await pool.query("delete from requests where (from_id = $1 and to_id = $2) or (from_id = $2 and to_id = $1)", [req.user.id, other]);
-  await zeroBond(bond);
+  const me = String(req.user.id);
+  let other = null;
+  if (req.body?.bondId) {
+    const bond = await myBond(req.body.bondId, me);
+    if (!bond || bond.kind === "group") return res.status(404).json({ error: "없는 대화예요" });
+    if (String(bond.a_id) === String(bond.b_id)) return res.status(400).json({ error: "나와의 대화는 차단할 수 없어요" });
+    other = String(otherOf(bond, me));
+  } else {
+    other = String(Number(req.body?.userId) || "");
+    const shared = (await pool.query(
+      `select 1 from bond_members a join bond_members b on a.bond_id = b.bond_id where a.user_id = $1 and b.user_id = $2`, [me, other])).rowCount;
+    if (!other || other === me || (!shared && !(await bonded(me, other)))) return res.status(404).json({ error: "없는 사람이에요" });
+  }
+  await pool.query("insert into blocks (blocker_id, blocked_id) values ($1, $2) on conflict do nothing", [me, other]);
+  await pool.query("delete from requests where (from_id = $1 and to_id = $2) or (from_id = $2 and to_id = $1)", [me, other]);
+  const [a, b] = pairOf(me, other);
+  const pair = (await pool.query("select * from bonds where kind = 'pair' and a_id = $1 and b_id = $2", [a, b])).rows[0];
+  if (pair) await zeroBond(pair);
+  const shared = (await pool.query(
+    `select a.bond_id from bond_members a join bond_members b on a.bond_id = b.bond_id where a.user_id = $1 and b.user_id = $2`, [me, other])).rows;
+  for (const r of shared) await leaveGroup(r.bond_id, me);
   res.json({ ok: true });
 });
 app.get("/api/blocks", auth, async (req, res) => {
@@ -470,12 +528,13 @@ const REASONS = ["스팸·광고", "욕설·괴롭힘", "음란물", "사칭", "
 app.post("/api/report", auth, async (req, res) => {
   const bond = await myBond(req.body?.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  if (String(bond.a_id) === String(bond.b_id)) return res.status(400).json({ error: "나와의 대화는 신고할 수 없어요" });
+  if (String(bond.a_id) === String(bond.b_id) && bond.kind !== "group") return res.status(400).json({ error: "나와의 대화는 신고할 수 없어요" });
   const reason = REASONS.includes(req.body?.reason) ? req.body.reason : "기타";
+  // 단체방은 방 전체를 신고한다(대상 칸은 비운다)
   const { rows } = await pool.query(
     "select id, sender_id, body, created_at from messages where bond_id = $1 order by id desc limit 50", [bond.id]);
   await pool.query("insert into reports (reporter_id, target_id, reason, snapshot) values ($1, $2, $3, $4)",
-    [req.user.id, otherOf(bond, req.user.id), reason, JSON.stringify(rows.reverse())]);
+    [req.user.id, bond.kind === "group" ? null : otherOf(bond, req.user.id), reason, JSON.stringify(rows.reverse())]);
   res.json({ ok: true });
 });
 
@@ -486,6 +545,8 @@ app.post("/api/me/delete", auth, async (req, res) => {
   if (req.body?.confirm !== "삭제") return res.status(400).json({ error: "삭제라고 입력해주세요" });
   const partners = (await pool.query("select a_id, b_id from bonds where a_id = $1 or b_id = $1", [req.user.id])).rows
     .flatMap((r) => [String(r.a_id), String(r.b_id)]).filter((id) => id !== String(req.user.id));
+  const groups = (await pool.query("select bond_id from bond_members where user_id = $1", [req.user.id])).rows;
+  for (const g of groups) await leaveGroup(g.bond_id, req.user.id);
   await pool.query("delete from users where id = $1", [req.user.id]);
   notify(partners, { type: "till" });
   for (const w of sockets.get(String(req.user.id)) || []) w.close();
@@ -546,21 +607,25 @@ async function push(uid, kind, payload) {
 app.get("/api/messages/:bondId", auth, async (req, res) => {
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  const mine = bond.kind === "group" && (bond.members || []).find((m) => String(m.id) === String(req.user.id));
+  const since = mine && !bond.show_history ? mine.joined_at : new Date(0);
   const { rows } = await pool.query(
-    "select id, sender_id, body, created_at from messages where bond_id = $1 order by id",
-    [bond.id]
+    "select id, sender_id, body, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
+    [bond.id, since]
   );
   // 여는 순간 읽은 것으로 친다 (R-7.4에 따라 상대에게는 알리지 않는다)
-  const iAmA = String(bond.a_id) === String(req.user.id);
-  await pool.query(
-    `update bonds set ${iAmA ? "a_read_at" : "b_read_at"} = now() where id = $1`,
-    [bond.id]
-  );
+  if (bond.kind === "group") {
+    await pool.query("update bond_members set read_at = now() where bond_id = $1 and user_id = $2", [bond.id, req.user.id]);
+  } else {
+    const iAmA = String(bond.a_id) === String(req.user.id);
+    await pool.query(`update bonds set ${iAmA ? "a_read_at" : "b_read_at"} = now() where id = $1`, [bond.id]);
+  }
   res.json({
     bond: shape(bond, req.user.id),
     messages: rows.map((m) => ({
       id: m.id,
       mine: m.sender_id === req.user.id,
+      from: String(m.sender_id),
       body: m.body,
       at: m.created_at,
     })),
@@ -573,6 +638,7 @@ app.post("/api/messages", auth, async (req, res) => {
 
   const bond = await myBond(req.body?.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  if (bond.kind === "group") return groupMessage(req, res, bond, body);
   const isSelf = String(bond.a_id) === String(bond.b_id);
   // R-11: Zero 처리가 먼저면 메시지는 거부된다. 나와의 방은 Zero가 없다.
   if (!isSelf && ddayOf(bond.last_reset_at) <= 0)
@@ -601,18 +667,39 @@ app.post("/api/messages", auth, async (req, res) => {
     reset ? [bond.id] : [bond.id, aSent, bSent]
   );
 
-  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id };
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id) };
   notify([bond.a_id, bond.b_id], { type: "message", ...msg }, req.user.id);
   push(iAmA ? bond.b_id : bond.a_id, "msg", { title: req.user.nickname, body: body.slice(0, 120), tag: "bond-" + bond.id });
   res.json({ ...msg, reset });
 });
 
+// 방 메시지. 마지막 Reset 이후 두 사람 이상이 말하면 Count 가 30 으로 돌아가고 Keep 이 오른다.
+// 두 명 방에서는 R-4.2 그대로(둘 다 한 번씩). Reset 을 만든 메시지는 다음 회차에 세지 않는다(R-4.4)
+async function groupMessage(req, res, bond, body) {
+  if (ddayOf(bond.last_reset_at) <= 0) return res.status(410).json({ error: "이 대화는 끝났어요" });
+  const { rows } = await pool.query(
+    "insert into messages (bond_id, sender_id, body) values ($1, $2, $3) returning id, created_at", [bond.id, req.user.id, body]);
+  const sp = new Set((bond.speakers || []).map(String)); sp.add(String(req.user.id));
+  const reset = sp.size >= 2;
+  await pool.query(
+    reset ? "update bonds set last_reset_at = now(), keep = keep + 1, speakers = '[]'::jsonb, warned = null where id = $1"
+          : "update bonds set speakers = $2::jsonb where id = $1",
+    reset ? [bond.id] : [bond.id, JSON.stringify([...sp])]);
+  await pool.query("update bond_members set read_at = now() where bond_id = $1 and user_id = $2", [bond.id, req.user.id]);
+  const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id) };
+  const ids = memberIds(bond);
+  notify(ids, { type: "message", ...msg }, req.user.id);
+  for (const id of ids) if (id !== String(req.user.id))
+    push(id, "msg", { title: roomName(bond, id), body: `${req.user.nickname}: ${body}`.slice(0, 120), tag: "bond-" + bond.id });
+  res.json({ ...msg, reset });
+}
+
 async function myBond(bondId, meId) {
   const { rows } = await pool.query(
-    `${BOND_SELECT} where b.id = $1 and (b.a_id = $2 or b.b_id = $2)`,
-    [Number(bondId) || 0, meId]
+    `${BOND_SELECT} where b.id = $2 and ${IN_ROOM}`,
+    [meId, Number(bondId) || 0]
   );
-  return rows[0];
+  return (await withMembers(rows))[0];
 }
 
 /* ---------- 내가 설치한 도구 ----------
@@ -643,7 +730,7 @@ app.get("/api/rooms/:tool", auth, async (req, res) => {
   const { rows } = await pool.query(
     `select r.bond_id, r.data from room_state r
        join bonds b on b.id = r.bond_id
-      where r.tool = $2 and (b.a_id = $1 or b.b_id = $1)`,
+      where r.tool = $2 and ${IN_ROOM}`,
     [req.user.id, req.params.tool]
   );
   const rooms = {};
@@ -676,7 +763,7 @@ app.post("/api/room/:bondId/:tool", auth, async (req, res) => {
     [bond.id, req.params.tool, data]
   );
   // 상대에게 바뀐 것을 알린다
-  notify([bond.a_id, bond.b_id], { type: "room", bondId: bond.id, tool: req.params.tool }, req.user.id);
+  notify(memberIds(bond), { type: "room", bondId: bond.id, tool: req.params.tool }, req.user.id);
   res.json({ ok: true });
 });
 
@@ -726,21 +813,36 @@ app.post("/api/kblog", auth, (req, res) => {
 async function sweep() {
   // R-5.1 / R-5.6: Count 가 0 이 된 Bond 는 대화·도구 데이터와 함께 서버에서도 지운다. 알리지 않는다(R-5.3)
   const z = await pool.query(
-    "delete from bonds where a_id <> b_id and last_reset_at <= now() - interval '30 days' returning id, a_id, b_id");
+    "delete from bonds where kind = 'pair' and a_id <> b_id and last_reset_at <= now() - interval '30 days' returning id, a_id, b_id");
   for (const b of z.rows) {
     await pool.query("insert into zeros (a_id, b_id) values ($1, $2)", [b.a_id, b.b_id]);
     notify([String(b.a_id), String(b.b_id)], { type: "till" });
   }
+  // 30일 안에 두 사람 이상이 말하지 않은 방은 사라진다. 알리지 않는다
+  const gz = await withMembers((await pool.query(
+    `${BOND_SELECT} where b.kind = 'group' and b.last_reset_at <= now() - interval '30 days'`)).rows);
+  for (const b of gz) { await pool.query("delete from bonds where id = $1", [b.id]); notify(memberIds(b), { type: "till" }); }
+  // 만든 지 7일이 지나도록 아무도 들어오지 않은 방은 지운다
+  await pool.query(
+    `delete from bonds b where b.kind = 'group' and b.bond_at < now() - interval '7 days'
+       and (select count(*) from bond_members m where m.bond_id = b.id) < 2`);
   // R-6.2: 7일, 1일 남았을 때 한 번씩. Reset 되면 다시(R-6.3)
   const w = await pool.query(
     `select b.id, b.a_id, b.b_id, b.last_reset_at, b.warned, ua.nickname an, ub.nickname bn
-       from bonds b join users ua on ua.id = b.a_id join users ub on ub.id = b.b_id where b.a_id <> b.b_id`);
+       from bonds b join users ua on ua.id = b.a_id join users ub on ub.id = b.b_id where b.kind = 'pair' and b.a_id <> b.b_id`);
   for (const b of w.rows) {
     const d = ddayOf(b.last_reset_at), lvl = d <= 1 ? 1 : d <= 7 ? 7 : null;
     if (!lvl || (b.warned && b.warned <= lvl)) continue;
     await pool.query("update bonds set warned = $2 where id = $1", [b.id, lvl]);
     push(b.a_id, "dday", { title: "Till Zero", body: `${b.bn} · ${d}일 남았어요`, tag: "bond-" + b.id });
     push(b.b_id, "dday", { title: "Till Zero", body: `${b.an} · ${d}일 남았어요`, tag: "bond-" + b.id });
+  }
+  const gw = await withMembers((await pool.query(`${BOND_SELECT} where b.kind = 'group'`)).rows);
+  for (const b of gw) {
+    const d = ddayOf(b.last_reset_at), lvl = d <= 1 ? 1 : d <= 7 ? 7 : null;
+    if (!lvl || (b.warned && b.warned <= lvl)) continue;
+    await pool.query("update bonds set warned = $2 where id = $1", [b.id, lvl]);
+    for (const id of memberIds(b)) push(id, "dday", { title: "Till Zero", body: `${roomName(b, id)} · ${d}일 남았어요`, tag: "bond-" + b.id });
   }
   await pool.query("delete from requests where created_at < now() - interval '7 days'");
   await pool.query("delete from zeros where zeroed_at < now() - interval '90 days'");

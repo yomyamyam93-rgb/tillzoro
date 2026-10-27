@@ -145,6 +145,15 @@
   
   .card{background:var(--card);border-radius:var(--r-card);overflow:hidden;display:flex;flex-direction:column;position:relative}
   .photo{height:var(--photo-h);position:relative;background:var(--line) center/cover;display:flex;align-items:flex-end;padding:12px 14px}
+  /* 세 명 이상인 방: 얼굴 여러 개 */
+  .photo .tiles{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;gap:2px}
+  .photo .tiles i{background:var(--line) center/cover;display:grid;place-items:center;font:600 18px var(--font-body);font-style:normal;color:var(--ink-3)}
+  .add-slim{margin-top:4px;height:48px;border:1.5px dashed var(--line);border-radius:var(--r-card);display:grid;place-items:center;color:var(--ink-3);cursor:pointer}
+  .add-slim svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+  .fromname{flex:none;align-self:flex-start;margin:6px 0 1px 4px;font-size:12px;color:var(--ink-2)}
+  .roominvite{flex:none;margin:4px 16px 8px;display:flex;flex-direction:column;gap:8px}
+  .roominvite[hidden]{display:none}
+  .item input.rn{flex:1;min-width:0;border:0;background:transparent;font-size:16px;color:var(--ink);outline:none;text-align:right}
   .photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.38),transparent 55%);pointer-events:none}
   .photo .name{position:relative;z-index:1;font-weight:700;font-size:var(--text-name);color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.35)}
   .card.text .photo{background:#D9D9DC}
@@ -169,21 +178,8 @@
   .me-row .t small{display:block;font-size:11px;color:var(--ink-3);margin-top:2px;font-weight:400}
   .me-row .chev{width:16px;height:16px;color:var(--ink-3)}
   .me-row .chev svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-  .req{margin-top:4px;padding:10px 14px;border-radius:var(--r-card);font-size:14px;color:var(--ink);display:flex;gap:12px;align-items:center;cursor:pointer;background:var(--card)}
-  .req .plus{width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;flex:none}
-  .req .plus svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
-  .req .t{flex:1;font-weight:500}
   .fab{position:absolute;right:18px;bottom:36px;width:44px;height:44px;border-radius:50%;background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);display:grid;place-items:center;color:var(--ink);z-index:2}
   .fab svg{width:20px;height:20px;fill:currentColor}
-  .reqlist{display:flex;flex-direction:column;gap:8px;padding:6px 4px 0}
-  .reqitem{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--paper)}
-  .reqitem .av{width:44px;height:44px;border-radius:50%;background:var(--line) center/cover;flex:none}
-  .reqitem .t{flex:1;font-size:15px;font-weight:600}
-  .reqitem .t small{display:block;font-size:11px;color:var(--ink-3);font-weight:400;margin-top:2px}
-  .reqitem button{height:36px;padding:0 14px;border-radius:18px;font-size:13px;font-weight:600}
-  .reqitem .ok{background:var(--ink);color:var(--paper)}
-  .reqitem .no{background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
-  .sheet h3{margin:4px 6px 12px;font:600 16px var(--font-body)}
   .mediagrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:52vh;overflow:auto}
   .mediagrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block;cursor:pointer}
   .mediagrid .none{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:13px;padding:34px 0}
@@ -402,8 +398,6 @@
       <div class="total"><span class="l">TILL</span><span class="n" id="total">0</span></div>
     </div>
     <div class="rows" id="rows"></div>
-    <div class="scrim" id="scrim2"></div>
-    <div class="sheet" id="reqSheet"><h3>받은 요청</h3><div class="reqlist" id="reqList"></div></div>
   </section>
 
   <!-- 3. Chat -->
@@ -417,6 +411,7 @@
       <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
     <div class="roomtool" id="roomTool"></div>
+    <div class="roominvite" id="roomInvite" hidden><div class="codebox" id="riCode">· · · · · ·</div><div class="row2b"><button class="btn" id="riShare">링크 보내기</button><button class="btn ghost" id="riCopy">코드 복사</button></div></div>
     <div class="dayswrap"><div class="days" id="days"></div></div>
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
@@ -456,6 +451,18 @@
         <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       </div>
+      <div id="sChatRoom" style="display:flex;flex-direction:column;gap:14px">
+        <div class="lbl" style="margin-top:10px">방</div>
+        <div class="list">
+          <div class="item" style="cursor:default"><div class="t">이름</div><input class="rn" id="roomNameIn" maxlength="20" autocomplete="off"></div>
+          <div class="item" id="mCode"><div class="t">초대 코드</div><span class="val" id="mCodeVal"></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="item" id="mCodeRenew"><div class="t">새 코드로 바꾸기</div></div>
+          <div class="item" style="cursor:default;border-bottom:0"><div class="t">이전 대화 보이기</div><div class="toggle" id="mHistory"></div></div>
+        </div>
+        <div class="lbl">사람</div>
+        <div class="list" id="mMembers"></div>
+        <div class="list"><div class="item danger" id="mLeave" style="border-bottom:0"><div class="t">나가기</div></div></div>
+      </div>
       <div class="lbl" style="margin-top:10px" id="sChatSafeLbl">안전</div>
       <div class="list" id="sChatSafe">
         <div class="item danger" id="mReport"><div class="t">신고하기</div></div>
@@ -474,8 +481,6 @@
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2></div>
     <div class="pad" style="gap:0;padding-top:6px">
       <div class="profile-card" data-go="s-profile"><div class="av" id="meAvatar"></div><div class="t"><div class="nm" id="meName">이름</div><div class="ph2" id="mePhone"></div><div class="tag"><i></i><span id="meTill">TILL 0</span></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
-      <div class="lbl sect">Invite</div>
-      <div class="list"><div class="item" data-go="s-invite"><div class="t">초대 코드<div class="sub" id="codeSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div></div>
       <div class="lbl sect">Notifications</div>
       <div class="list" id="notiList">
         <div class="item"><div class="t">알림 받기<div class="sub" id="pushSub"></div></div><div class="toggle" id="pushToggle"></div></div>
@@ -500,7 +505,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1444</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1513</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -516,15 +521,11 @@
   </section>
 
   <section class="screen" id="s-invite">
-    <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Invite</h2></div>
+    <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Join</h2></div>
     <div class="pad">
-      <div class="lbl">내 코드</div>
-      <div class="codebox" id="codeOut">· · · · · ·</div>
-      <div class="row2b"><button class="btn" id="shareCode">링크 보내기</button><button class="btn ghost" id="copyCode">코드 복사</button></div>
-      <button class="linkbtn" id="codeRenew">새 코드로 바꾸기</button>
-      <div class="lbl" style="margin-top:14px">받은 코드</div>
-      <input class="field" id="joinIn" maxlength="6" placeholder="6자리" autocapitalize="characters" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:.24em;text-align:center">
-      <button class="btn ghost" id="joinBtn" disabled>요청 보내기</button>
+      <input class="field" id="joinIn" maxlength="6" placeholder="방 코드" autocapitalize="characters" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:.24em;text-align:center;height:58px;font-size:22px">
+      <div class="spacer"></div>
+      <button class="btn" id="joinBtn" disabled>들어가기</button>
     </div>
   </section>
 
@@ -549,6 +550,8 @@
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="menu-bg" id="msgMenuBg"></div>
   <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
+  <div class="menu-bg" id="addBg"></div>
+  <div class="menu" id="addMenu"><button id="amNew">새 방 만들기</button><button id="amJoin">코드로 들어가기</button><button id="amNo">취소</button></div>
   <div class="menu-bg" id="repBg"></div>
   <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
   <div class="confirm" id="delBox"><p>계정을 삭제할까요? 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="text" placeholder="삭제 입력" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
@@ -622,6 +625,8 @@ async function syncTill(){
     bondAt:NOW()-b.days*DAY,
     lastResetAt:NOW()-(30-b.dday)*DAY,
     mySent:b.waiting, unread:b.unread,
+    group:!!b.group, members:b.members||[], history:!!b.history, named:!!b.named, lastFrom:b.lastFrom||"",
+    created:b.created?new Date(b.created).getTime():0,
     msgs:b.lastMessage?[{id:"last",who:"you",type:"text",text:b.lastMessage,ts:new Date(b.lastAt).getTime(),ok:true}]:[]
   }));
   // 대화방이 열려 있을 때만 읽어둔 대화를 이어 쓴다. 닫혀 있으면 목록은 서버 것을 그대로 보여준다.
@@ -630,14 +635,14 @@ async function syncTill(){
   // 다음에 열 때 곧바로 보여주려고 목록을 기억해둔다.
   // bondAt·lastResetAt은 절대 시각이라 나중에 다시 계산해도 값이 맞는다.
   store.set("bonds", people.map(p=>({...p, msgs:p.msgs.slice(-1)})));
-  renderTill(); loadReqs();
+  renderTill();
 }
 
 /* 초대 링크(?code=…)를 열고 들어온 경우 */
 async function tryUrlCode(){
   const c=new URL(location).searchParams.get("code"); if(!c) return;
   history.replaceState(null,"",location.pathname);
-  askCode(c);
+  askJoin(c);
 }
 
 /* 상대가 보낸 메시지를 바로 받는다 */
@@ -650,12 +655,11 @@ function connectWS(){
   ws.onmessage=e=>{
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
-      appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
+      appendBubble({id:d.id,who:"you",from:String(d.from||""),type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
     }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
     }
-    if(d.type==="req"){ loadReqs(); return }
     syncTill().then(refreshChat).catch(requireLogin);
   };
   ws.onclose=()=>{ ws=null; setTimeout(connectWS,4000) };
@@ -699,7 +703,7 @@ function back(to){
   syncTabs();
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",()=>back(b.dataset.back)));
-$$("[data-go]").forEach(b=>b.addEventListener("click",()=>{go(b.dataset.go); if(b.dataset.go==="s-profile") fillProfileEdit(); if(b.dataset.go==="s-invite") renderInvite(); if(b.dataset.go==="s-blocked") renderBlocked();}));
+$$("[data-go]").forEach(b=>b.addEventListener("click",()=>{go(b.dataset.go); if(b.dataset.go==="s-profile") fillProfileEdit(); if(b.dataset.go==="s-blocked") renderBlocked();}));
 let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1800)}
 function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("#confirmYes");y.textContent=o.ok||"확인";y.classList.toggle("danger",!o.safe);$("#confirm").classList.add("on");y.onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
@@ -947,7 +951,9 @@ async function enter(d){
 function renderTill(){
   if(!me) return;              // 로그인 전에는 그릴 것이 없다
   const rows=$("#rows"); rows.innerHTML="";
-  const live=people.filter(p=>!p.self && dday(p)>0);
+  // Till 숫자는 방 수. 아직 아무도 안 들어온 방은 세지 않고 목록 맨 끝에 둔다
+  const live=people.filter(p=>!p.self && dday(p)>0 && (!p.group||p.members.length>=2));
+  const lone=people.filter(p=>p.group && p.members.length<2);
   $("#total").textContent=live.length; $("#tabCount").textContent=live.length;
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
@@ -961,22 +967,35 @@ function renderTill(){
   rows.appendChild(meRow);
   if(!live.length){
     const inv=document.createElement("div"); inv.className="row";
-    inv.innerHTML=`<div class="count"></div>
-      <div class="card add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>`;
-    inv.addEventListener("click",()=>{renderSettings();go("settings");renderInvite();go("s-invite")});
+    inv.innerHTML=`<div class="count"></div><div class="card add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>`;
+    inv.addEventListener("click",openAdd);
     rows.appendChild(inv);
   }
-  live.forEach(p=>{
-    const last=p.msgs[p.msgs.length-1];
+  live.concat(lone).forEach(p=>{
+    const last=p.msgs[p.msgs.length-1], many=p.group&&p.members.length>2;
+    const others=p.group?p.members.filter(m=>String(m.id)!==myId()):[];
+    const photo=many?`<div class="tiles">${others.slice(0,4).map(m=>`<i style="${m.photo?`background-image:url(${m.photo})`:""}">${m.photo?"":esc((m.name||"?").slice(0,1))}</i>`).join("")}</div>`:"";
+    const pre=last?(many&&p.lastFrom?esc(p.lastFrom)+": ":"")+preview(last):"";
     const r=document.createElement("div"); r.className="row"; r.dataset.tier=tier(dday(p));
     r.innerHTML=`<div class="count"><span class="n">${dday(p)}</span><span class="k">d-day</span><span class="k2">${p.keep}</span><span class="k">keep</span></div>
-      <div class="card ${p.photo?"":"text"}"><div class="photo" style="${p.photo?`background-image:url(${p.photo})`:""}"><span class="name">${esc(p.name)}</span></div>
-      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${last?preview(last):""}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
+      <div class="card ${p.photo||many?"":"text"}"><div class="photo" style="${p.photo?`background-image:url(${p.photo})`:""}">${photo}<span class="name">${esc(p.name)}</span></div>
+      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${pre}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
   fitRows(live.length);
-  if(reqs.length){const q=document.createElement("div");q.className="req";q.innerHTML=`<span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="t">받은 요청 ${reqs.length}</span>`;q.addEventListener("click",openReqs);rows.appendChild(q)}
-
+  if(live.length){
+    const add=document.createElement("div"); add.className="add-slim"; add.innerHTML=`<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+    add.addEventListener("click",openAdd); rows.appendChild(add);
+  }
+}
+/* ＋ : 새 방을 만들거나, 받은 코드로 들어간다. 코드는 방마다 하나 */
+function openAdd(){
+  const box=$("#addMenu"), bg=$("#addBg"), close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
+  bg.onclick=$("#amNo").onclick=close;
+  $("#amNew").onclick=async()=>{ close();
+    try{ const r=await api("/api/groups",{method:"POST",body:{}}); await syncTill(); openChat(String(r.bondId)) }catch(e){ toast(e.message) } };
+  $("#amJoin").onclick=()=>{ close(); $("#joinIn").value=""; $("#joinBtn").disabled=true; go("s-invite"); setTimeout(()=>$("#joinIn").focus(),350) };
+  box.classList.add("on"); bg.classList.add("on");
 }
 /* R-4.10 적을수록 크게.
    살아 있는 사람이 0~2명이면 카드(나 포함, 친구가 없으면 초대 칸 포함)가 한 화면을 나눠 채운다.
@@ -1003,13 +1022,18 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 
 /* ---------- Chat ---------- */
 let cur=null;
+// 머리말: 이름, 그 아래 작은 줄. 세 명 이상이면 인원도
+function headSub(p){ if(p.self) return "나와의 대화"; const n=p.group?p.members.length:2; return `${n>2?n+"명 · ":""}KEEP ${p.keep} · DAYS ${daysOf(p)}` }
+function headPhoto(p){ if(p.photo) return p.photo; const o=p.group&&p.members.find(m=>String(m.id)!==myId()&&m.photo); return o?o.photo:null }
+function drawHead(p){
+  $("#cname").innerHTML=`${esc(p.name)}<small>${headSub(p)}</small>`;
+  const ph=headPhoto(p); $("#cavatar").style.backgroundImage=ph?`url(${ph})`:"none";
+  const cc=$("#ccount"); cc.textContent=p.self?0:dday(p); cc.className="ccount"+(!p.self&&dday(p)<=3?" zero":"");
+}
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
   cur.unread=false; cur.msgs=store.get("msgs:"+id,[]);   // 지난번에 본 대화를 먼저 보여준다
-  $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
-    :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
-  $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
-  const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
+  drawHead(cur); showRoomInvite();
   roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   renderMsgs(); go("chat");
   loadRoomTools();
@@ -1017,18 +1041,35 @@ async function openChat(id){
     const d=await api("/api/messages/"+id);
     if(!cur||cur.id!==id) return;
     cur.keep=d.bond.keep;
+    if(d.bond.group){ cur.members=d.bond.members||cur.members; cur.history=!!d.bond.history; cur.name=d.bond.name; cur.named=!!d.bond.named }
     // 내 화면에서 지운 것은 다시 안 보이고, 못 보낸 것은 맨 아래에 남아 있다
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
-    cur.msgs=d.messages.map(m=>({id:m.id,who:m.mine?"me":"you",type:"text",text:m.body,ts:new Date(m.at).getTime(),ok:true}))
+    cur.msgs=d.messages.map(m=>({id:m.id,who:m.mine?"me":"you",from:String(m.from||""),type:"text",text:m.body,ts:new Date(m.at).getTime(),ok:true}))
       .filter(m=>!hidden.has(String(m.id))).concat(failed);
-    if(!cur.self){
-      $("#cname").innerHTML=`${esc(cur.name)}<small>KEEP ${d.bond.keep} · DAYS ${d.bond.days}</small>`;
-      cc.textContent=d.bond.dday; cc.className="ccount"+(d.bond.dday<=3?" zero":"");
-    }
-    renderMsgs(); saveMsgs();
+    if(!cur.self){ cur.lastResetAt=NOW()-(30-d.bond.dday)*DAY; drawHead(cur) }
+    showRoomInvite(); renderMsgs(); saveMsgs();
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
+// 아직 혼자인 방: 코드와 보내기 버튼이 대화 자리 위에 보인다
+const spaced=c=>c.split("").join(" ");
+const codeLink=c=>location.origin+location.pathname+"?code="+c;
+let curCode=null;
+async function roomCodeOf(p){ return (await api(`/api/groups/${p.id}/code`)).code }
+async function shareCode(){
+  if(!curCode) return;
+  const url=codeLink(curCode);
+  if(navigator.share){ try{ await navigator.share({title:"Till Zero",text:`Till Zero 방 코드 ${curCode}`,url}) }catch(e){} return }
+  copyText(url);
+}
+async function showRoomInvite(){
+  const box=$("#roomInvite"), lone=cur&&cur.group&&cur.members.length<2;
+  box.hidden=!lone; if(!lone) return;
+  const id=cur.id;
+  try{ const c=await roomCodeOf(cur); if(cur&&cur.id===id){ curCode=c; $("#riCode").textContent=spaced(c) } }catch(e){}
+}
+$("#riShare").addEventListener("click",shareCode);
+$("#riCopy").addEventListener("click",()=>{ if(curCode) copyText(curCode) });
 /* ---------- 대화방 도구 실행기 ----------
    도구 하나 = TOOLS 의 항목 하나(만드는 법: tools-guide.md). 실행기는 어떤 도구든 똑같이 다룬다.
    - 방마다 도구마다 데이터 한 덩어리(room_state)를 갖는다. Bond 가 사라지면 같이 사라진다.
@@ -1057,6 +1098,8 @@ function toolCtx(t){
   const data=roomData[t.id]||(roomData[t.id]={});
   return {
     data, me:myId(), self:!!cur.self,
+    // 방에 있는 사람들. 두 명 방이면 상대 한 명
+    members:(cur.group?cur.members:[]).map(m=>({id:String(m.id),name:m.name})),
     ui:toolUi[t.id]||(toolUi[t.id]={}),
     redraw:()=>renderRoomTool(),
     // 바꾼 데이터를 저장하고 상대 화면에도 반영한다. 글을 주면 대화에 기록으로 남는다
@@ -1082,25 +1125,36 @@ async function setRoomTool(t,on){
 // 대화 사이에 끼울 도구 기록
 function toolEvents(){
   const out=[];
-  TOOLS.forEach(t=>(roomData[t.id]?.log||[]).forEach(e=>out.push({type:"event",ts:e.at,text:e.text,who:String(e.by)===myId()?"나":cur.name})));
+  TOOLS.forEach(t=>(roomData[t.id]?.log||[]).forEach(e=>out.push({type:"event",ts:e.at,text:e.text,who:whoName(e.by)})));
   return out;
+}
+const nameOf=id=>{ const m=cur&&cur.group&&cur.members.find(x=>String(x.id)===String(id)); return m?m.name:(cur?cur.name:"") };
+const whoName=id=>String(id)===myId()?"나":nameOf(id);
+// 방에 들어온 기록. 방을 만든 사람은 빼고, 내가 볼 수 있는 때부터
+function memberEvents(){
+  if(!cur||!cur.group) return [];
+  const mine=cur.members.find(m=>String(m.id)===myId());
+  const since=cur.history||!mine?0:new Date(mine.joined).getTime();
+  return cur.members.filter(m=>m.joined&&new Date(m.joined).getTime()-cur.created>3000)
+    .map(m=>({type:"event",ts:new Date(m.joined).getTime(),who:whoName(m.id),text:"들어왔어요"}))
+    .filter(e=>e.ts>=since);
 }
 
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
-  $("#cname").innerHTML=cur.self?`${esc(cur.name)}<small>나와의 대화</small>`
-    :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
-  $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
-  const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
+  drawHead(cur); showRoomInvite();
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
 function renderMsgs(){
   const days=$("#days"), top=days.scrollTop, stick=days.scrollHeight-days.scrollTop-days.clientHeight<40; days.innerHTML="";
-  const items=cur.msgs.concat(toolEvents()).sort((a,b)=>a.ts-b.ts);
+  const items=cur.msgs.concat(toolEvents(),memberEvents()).sort((a,b)=>a.ts-b.ts);
   if(!items.length) return;
   let lastDay="";
   let group=[];
-  const flush=()=>{ if(group.length){ days.appendChild(bubble(group)); group=[] } };
+  const named=cur.group&&cur.members.length>2;
+  const flush=()=>{ if(group.length){
+    if(named&&group[0].who==="you") days.insertAdjacentHTML("beforeend",`<div class="fromname">${esc(nameOf(group[0].from))}</div>`);
+    days.appendChild(bubble(group)); group=[] } };
   items.forEach(m=>{
     const d=new Date(m.ts), key=d.toDateString();
     if(key!==lastDay){ flush(); lastDay=key; days.insertAdjacentHTML("beforeend",`<div class="sep">${sepLabel(d)}</div>`) }
@@ -1114,7 +1168,7 @@ function renderMsgs(){
 }
 // 같은 사람이 같은 분에 이어 보낸 것은 한 묶음으로 본다
 function sameGroup(a,b){
-  return a && b && a.who===b.who && Math.floor(a.ts/60000)===Math.floor(b.ts/60000)
+  return a && b && a.who===b.who && (a.from||"")===(b.from||"") && Math.floor(a.ts/60000)===Math.floor(b.ts/60000)
     && new Date(a.ts).toDateString()===new Date(b.ts).toDateString();
 }
 // 한 묶음(같은 사람이 같은 분에 이어 보낸 것)이 말풍선 하나가 된다
@@ -1217,7 +1271,7 @@ function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove(
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
+  "s-profile":"settings","s-invite":"till","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -1294,7 +1348,9 @@ const TOOLS=[
      const d=c.data; d.score=d.score||{};
      const pts=id=>Number(d.score[id]||0), q=d.quest;
      const other=Object.keys(d.score).find(k=>k!==c.me);
-     const score=`<div class="rt-row rt-score"><span>나<b>${pts(c.me)}</b></span>${c.self?"":`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
+     // 세 명 이상이면 점수 높은 두 사람을 이름과 함께
+     const top=c.members.length>2?c.members.filter(m=>m.id!==c.me).map(m=>({n:m.name,p:pts(m.id)})).sort((a,b)=>b.p-a.p).slice(0,2):null;
+     const score=`<div class="rt-row rt-score"><span>나<b>${pts(c.me)}</b></span>${c.self?"":top?top.map(t=>`<span>${esc(t.n)}<b>${t.p}</b></span>`).join(""):`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
      const $b=sel=>box.querySelector(sel);
      if(c.ui.edit){
        box.innerHTML=`<div class="rt-row">
@@ -1399,11 +1455,52 @@ $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
   $("#sChatSafe").style.display=$("#sChatSafeLbl").style.display=cur.self?"none":"";
+  $("#sChatRoom").style.display=cur.group?"flex":"none";
+  $("#mBlock").style.display=cur.group?"none":"";
+  if(cur.group) fillRoomSettings();
   const n=cur.msgs.filter(m=>m.type==="image").length;
   $("#mMediaSub").textContent = n ? `사진 ${n}장` : "";
   go("s-chat");
 });
 $("#mMedia").addEventListener("click",()=>{renderMedia();go("s-media")});
+/* 방 설정: 이름, 초대 코드, 이전 대화 보이기, 사람(눌러서 차단), 나가기 */
+function fillRoomSettings(){
+  const ni=$("#roomNameIn"); ni.value=cur.named?cur.name:"";
+  ni.placeholder=cur.members.filter(m=>String(m.id)!==myId()).map(m=>m.name).slice(0,4).join(", ")||"새 방";
+  $("#mHistory").classList.toggle("on",!!cur.history);
+  $("#mCodeVal").textContent=curCode&&cur.id===curBond?curCode:"";
+  const id=cur.id; roomCodeOf(cur).then(c=>{ if(cur&&cur.id===id){ curCode=c; curBond=id; $("#mCodeVal").textContent=c } }).catch(()=>{});
+  const l=$("#mMembers"); l.innerHTML="";
+  cur.members.forEach((m,i)=>{
+    const me_=String(m.id)===myId();
+    const it=document.createElement("div"); it.className="item"; if(i===cur.members.length-1) it.style.borderBottom="0";
+    if(me_) it.style.cursor="default";
+    it.innerHTML=`<div class="t">${esc(m.name)}</div>${me_?'<span class="val">나</span>':""}`;
+    if(!me_) it.addEventListener("click",()=>confirmBox(`${josa(m.name,"을","를")} 차단할까요? 이 방에서 나와요.`,async()=>{
+      try{ await api("/api/block",{method:"POST",body:{userId:m.id}}) }catch(e){ toast(e.message); return }
+      cur=null; back("till"); toast("차단했어요"); syncTill().catch(()=>{});
+    },{ok:"차단"}));
+    l.appendChild(it);
+  });
+}
+let curBond=null;
+$("#roomNameIn").addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur() });
+$("#roomNameIn").addEventListener("change",async e=>{
+  if(!cur) return;
+  try{ await api(`/api/groups/${cur.id}/name`,{method:"POST",body:{name:e.target.value}}); await syncTill(); if(cur){ $("#sChatTitle").textContent=cur.name; drawHead(cur) } }catch(err){ toast(err.message) }
+});
+$("#mCode").addEventListener("click",shareCode);
+$("#mCodeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꿀까요? 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
+  try{ curCode=(await api(`/api/groups/${cur.id}/code/renew`,{method:"POST"})).code; curBond=cur.id; $("#mCodeVal").textContent=curCode; toast("새 코드로 바꿨어요") }catch(e){ toast(e.message) }
+},{ok:"바꾸기",safe:true}));
+$("#mHistory").addEventListener("click",async()=>{
+  if(!cur) return; const on=!cur.history; cur.history=on; $("#mHistory").classList.toggle("on",on);
+  try{ await api(`/api/groups/${cur.id}/history`,{method:"POST",body:{on}}) }catch(e){ cur.history=!on; $("#mHistory").classList.toggle("on",!on); toast(e.message) }
+});
+$("#mLeave").addEventListener("click",()=>confirmBox("방에서 나갈까요?",async()=>{
+  try{ await api(`/api/groups/${cur.id}/leave`,{method:"POST"}) }catch(e){ toast(e.message); return }
+  cur=null; back("till"); syncTill().catch(()=>{});
+},{ok:"나가기"}));
 $("#mExport").addEventListener("click",exportChat);
 
 function renderMedia(){
@@ -1421,12 +1518,12 @@ function renderMedia(){
 function exportChat(){
   if(!cur) return;
   const two=n=>String(n).padStart(2,"0");
-  const out=[`${cur.name}와의 대화`,`KEEP ${cur.keep} · DAYS ${daysOf(cur)} · 남은 ${dday(cur)}일`];
+  const out=[cur.group?cur.name:`${cur.name}와의 대화`,`KEEP ${cur.keep} · DAYS ${daysOf(cur)} · 남은 ${dday(cur)}일`];
   let day="";
   cur.msgs.forEach(m=>{
     const d=new Date(m.ts), k=d.toDateString();
     if(k!==day){ day=k; out.push("",`── ${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())} ──`) }
-    out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":cur.name}  ${m.type==="text"?m.text:"(사진)"}`);
+    out.push(`${fmtT(m.ts)}  ${m.who==="me"?"나":nameOf(m.from)}  ${m.type==="text"?m.text:"(사진)"}`);
   });
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/plain;charset=utf-8"}));
@@ -1464,27 +1561,6 @@ $("#captureFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)r
 function viewer(m){$("#viewerBody").innerHTML=`<img src="${m.src}" alt="">`;$("#viewerSave").href=m.src;$("#viewer").classList.add("on")}
 $("#viewerClose").addEventListener("click",()=>$("#viewer").classList.remove("on"));
 
-/* 받은 요청. 코드를 넣은 사람이 보낸다. 수락해야 Bond 가 된다(R-3.2), 거절은 알리지 않는다(R-3.9) */
-let reqs=[];
-async function loadReqs(){
-  try{ reqs=(await api("/api/requests")).requests }catch(e){ return }
-  renderTill(); if($("#reqSheet").classList.contains("on")){ reqs.length?openReqs():closeReqs() }
-}
-function openReqs(){
-  const list=$("#reqList"); list.innerHTML="";
-  reqs.forEach(r=>{const el=document.createElement("div");el.className="reqitem";
-    el.innerHTML=`<div class="av" style="${r.photo?`background-image:url(${r.photo})`:""}"></div><div class="t">${esc(r.name)}</div><button class="no">거절</button><button class="ok">수락</button>`;
-    el.querySelector(".ok").addEventListener("click",()=>acceptReq(r)); el.querySelector(".no").addEventListener("click",()=>declineReq(r)); list.appendChild(el)});
-  $("#reqSheet").classList.add("on"); $("#scrim2").classList.add("on");
-}
-function closeReqs(){$("#reqSheet").classList.remove("on");$("#scrim2").classList.remove("on")}
-function dropReq(r){ reqs=reqs.filter(x=>x.id!==r.id); reqs.length?openReqs():closeReqs(); renderTill() }
-async function acceptReq(r){
-  try{ await api(`/api/requests/${r.id}/accept`,{method:"POST"}); toast(`${josa(r.name,"이","가")} Till에 들어왔어요`) }catch(e){ toast(e.message) }
-  dropReq(r); syncTill().catch(()=>{});
-}
-function declineReq(r){ api(`/api/requests/${r.id}/decline`,{method:"POST"}).catch(()=>{}); dropReq(r) }
-$("#scrim2").addEventListener("click",closeReqs);
 
 /* ---------- Settings ---------- */
 
@@ -1492,7 +1568,6 @@ $("#scrim2").addEventListener("click",closeReqs);
 function renderSettings(){
   $("#meName").textContent=me.name; $("#meTill").textContent="TILL "+people.filter(p=>!p.self&&dday(p)>0).length; $("#mePhone").textContent=me.phone||""; $("#phoneVal").textContent=me.phone||"연결 안 됨"; const a=$("#meAvatar"); a.style.backgroundImage=me.photo?`url(${me.photo})`:"none";
   $$("#notiList .toggle").forEach(t=>t.classList.toggle("on",!!prefs[t.dataset.k]));
-  if(myCodeVal) $("#codeSub").textContent=myCodeVal; else api("/api/code").then(d=>{ myCodeVal=d.code; $("#codeSub").textContent=d.code }).catch(()=>{});
   api("/api/blocks").then(d=>{ $("#blockSub").textContent=`${d.blocks.length}명` }).catch(()=>{});
   renderPush(); loadNoti();
   $("#storeInfo").textContent=`저장 사용량 ${(store.size()/1024).toFixed(0)} KB`;
@@ -1564,41 +1639,19 @@ $("#profileSave").addEventListener("click",async()=>{
   }catch(e){ if(!requireLogin()) toast(e.message) }
   btn.disabled=false;
 });
-/* 초대 코드는 사람마다 하나(R-3.10). 링크는 그 코드를 담은 주소다.
-   받은 코드를 넣으면 누구인지 먼저 보여주고, 요청을 보낸다. 상대가 수락하면 Bond 가 된다 */
-let myCodeVal=null;
-const spaced=c=>c.split("").join(" ");
-const codeLink=c=>location.origin+location.pathname+"?code="+c;
-async function renderInvite(){
-  $("#codeOut").textContent=myCodeVal?spaced(myCodeVal):"· · · · · ·";
-  $("#joinIn").value=""; $("#joinBtn").disabled=true;
-  try{ myCodeVal=(await api("/api/code")).code; $("#codeOut").textContent=spaced(myCodeVal) }catch(e){ if(!requireLogin()) toast(e.message) }
-}
-$("#shareCode").addEventListener("click",async()=>{
-  if(!myCodeVal) return;
-  const url=codeLink(myCodeVal);
-  if(navigator.share){ try{ await navigator.share({title:"Till Zero",text:`Till Zero 코드 ${myCodeVal}`,url}) }catch(e){} return }
-  copyText(url);
-});
-$("#copyCode").addEventListener("click",()=>{ if(myCodeVal) copyText(myCodeVal) });
-$("#codeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꿀까요? 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
-  try{ myCodeVal=(await api("/api/code/renew",{method:"POST"})).code; $("#codeOut").textContent=spaced(myCodeVal); toast("새 코드로 바꿨어요") }catch(e){ toast(e.message) }
-},{ok:"바꾸기",safe:true}));
+/* 코드로 들어가기. 코드는 방마다 하나. 어떤 방인지 먼저 보여주고, 들어가기를 누르면 들어간다 */
 const cleanCode=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
 $("#joinIn").addEventListener("input",()=>{ const v=cleanCode($("#joinIn").value).slice(0,6); $("#joinIn").value=v; $("#joinBtn").disabled=v.length!==6 });
-$("#joinBtn").addEventListener("click",()=>askCode($("#joinIn").value));
-async function askCode(raw){
+$("#joinIn").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!$("#joinBtn").disabled) $("#joinBtn").click() });
+$("#joinBtn").addEventListener("click",()=>askJoin($("#joinIn").value));
+async function askJoin(raw){
   const c=cleanCode(raw); if(c.length!==6){ toast("코드 6자리를 넣어주세요"); return }
-  let o; try{ o=await api("/api/code/"+c) }catch(e){ toast(e.message); return }
-  if(o.already){ toast(`${o.name}은(는) 이미 Till에 있어요`); return }
-  confirmBox(`${o.name}에게 요청을 보낼까요?`,async()=>{
-    try{
-      const r=await api("/api/request",{method:"POST",body:{code:c}});
-      $("#joinIn").value=""; $("#joinBtn").disabled=true;
-      if(r.status==="bonded"){ toast(`${josa(o.name,"이","가")} Till에 들어왔어요`); await syncTill() }
-      else toast("요청을 보냈어요");
-    }catch(e){ toast(e.message) }
-  },{ok:"보내기",safe:true});
+  let o; try{ o=await api("/api/join/"+c) }catch(e){ toast(e.message); return }
+  const open=async id=>{ $("#joinIn").value=""; $("#joinBtn").disabled=true; await syncTill(); if(stack.includes("s-invite")) back("till"); openChat(String(id)) };
+  if(o.already){ open(o.bondId); return }
+  confirmBox(`${o.name||"새 방"} · ${o.count}명`,async()=>{
+    try{ const r=await api("/api/join",{method:"POST",body:{code:c}}); await open(r.bondId) }catch(e){ toast(e.message) }
+  },{ok:"들어가기",safe:true});
 }
 async function renderBlocked(){
   let list=[]; try{ list=(await api("/api/blocks")).blocks }catch(e){ toast(e.message) }
