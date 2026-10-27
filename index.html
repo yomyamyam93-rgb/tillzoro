@@ -212,6 +212,7 @@
   .rt-in{flex:1;min-width:0;height:30px;border:0;background:var(--paper-2);border-radius:9px;padding:0 10px;font-size:16px;outline:none;color:var(--ink)}
   .days{flex:1;overflow:auto;padding:6px 12px 8px;display:flex;flex-direction:column;gap:3px;scrollbar-width:none}
   .days::-webkit-scrollbar{display:none}
+  .evt{flex:none;align-self:center;max-width:85%;margin:6px 0;padding:4px 11px;border-radius:11px;background:var(--line);font-size:12px;line-height:1.45;color:var(--ink-2);text-align:center}
   .sep{flex:none;align-self:center;margin:8px 0 5px;font:500 11px var(--font-body);letter-spacing:.06em;color:var(--ink-3)}
   .empty{margin:auto;font-size:13px;color:var(--ink-3)}
   .msg{flex:none;max-width:80%;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;padding:7px 11px 6px;border-radius:var(--r-bubble);border-bottom-left-radius:var(--r-bubble-tail);font-size:var(--chat-size,var(--text-body));font-family:var(--chat-font,var(--font-body));line-height:1.5;background:var(--card);color:var(--ink);position:relative;word-break:break-word;min-width:0;align-self:flex-start;display:flex;align-items:flex-end;gap:8px}
@@ -275,15 +276,18 @@
   .slot{font:500 10px var(--font-body);letter-spacing:.04em;padding:3px 7px;border-radius:6px;background:var(--paper-2);color:var(--ink-2);flex:none;white-space:nowrap}
   /* 도구 미리보기 — 실제로 놓일 자리의 모양 그대로 보여준다 */
   .tool{margin-top:16px}
-  .tool .nm{cursor:pointer}
   .tool.off .roomtool{opacity:.4}
   /* 켜고 끄는 스위치. 동그라미가 오른쪽이면 켜짐 */
-  .sw{width:46px;height:28px;border-radius:14px;background:var(--ink-3);position:relative;flex:none;transition:background .2s}
-  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s var(--ease)}
-  .sw.on{background:var(--ink)}
-  .sw.on::after{transform:translateX(18px)}
-  .tlist .trow{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px;cursor:pointer}
-  .tlist .trow+.trow{border-top:1px solid var(--line)}
+  .slide{--r:40px;position:relative;border-radius:var(--r-card);background:var(--line);touch-action:pan-y;cursor:pointer;transition:background .22s}
+  .slide.on{background:var(--ink)}
+  .slide::before{content:"";position:absolute;left:calc(var(--r) / 2 - 6px);top:50%;width:12px;height:7px;margin-top:-6px;border:solid var(--paper);border-width:0 0 2.2px 2.2px;transform:rotate(-45deg);opacity:0;transition:opacity .22s}
+  .slide.on::before{opacity:1}
+  .slide>.knob{position:relative;margin:0 var(--r) 0 0!important;transition:transform .22s var(--ease)}
+  .slide.on>.knob{transform:translateX(var(--r))}
+  .tlist .slide{border-radius:14px}
+  .tlist .slide+.slide{margin-top:8px}
+  .tlist .knob{display:flex;align-items:center;padding:15px 16px;border-radius:14px;background:var(--paper-2);font-size:15px}
+  .tlist .tnone{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px}
   .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
   /* 상자는 하나의 규격이다. 어떤 도구든 이 안에서 해결한다. */
   .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.45;color:var(--ink);
@@ -461,7 +465,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1318</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1324</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -604,8 +608,8 @@ function connectWS(){
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
       appendBubble({id:d.id,who:"you",type:"text",text:d.body,ts:new Date(d.at).getTime(),ok:true});
     }
-    if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)&&d.tool==="quest"){
-      loadQuest().then(renderQuest); return;
+    if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
+      loadRoomTools(); return;
     }
     syncTill().then(refreshChat).catch(requireLogin);
   };
@@ -868,9 +872,9 @@ async function openChat(id){
     :`${esc(cur.name)}<small>KEEP ${cur.keep} · DAYS ${daysOf(cur)}</small>`;
   $("#cavatar").style.backgroundImage=cur.photo?`url(${cur.photo})`:"none";
   const cc=$("#ccount"); cc.textContent=cur.self?0:dday(cur); cc.className="ccount"+(!cur.self&&dday(cur)<=3?" zero":"");
-  questEdit=false; quest=null; renderQuest(); $("#newPill").classList.remove("on");
+  roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   renderMsgs(); go("chat");
-  loadQuest().then(renderQuest);
+  loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
     if(!cur||cur.id!==id) return;
@@ -887,68 +891,60 @@ async function openChat(id){
     const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
-/* ---------- 대화방 상단 도구: 퀘스트 ----------
-   상자 하나 안에서 등록·수정·삭제·완료가 다 끝난다.
-   퀘스트는 한 번에 하나. 낸 사람은 고치거나 지우고, 상대는 완료해서 점수를 가져간다. */
-let quest=null, questEdit=false;
+/* ---------- 대화방 도구 실행기 ----------
+   도구 하나 = TOOLS 의 항목 하나(만드는 법: tools-guide.md). 실행기는 어떤 도구든 똑같이 다룬다.
+   - 방마다 도구마다 데이터 한 덩어리(room_state)를 갖는다. Bond 가 사라지면 같이 사라진다.
+   - 공통 칸: on = 이 방에 떠 있나, log = 대화 사이에 끼어 보이는 기록.
+   - 기록은 메시지가 아니다. 서버의 메시지에 들어가지 않으므로 Count(30일 규칙)에 영향을 주지 않는다. */
+let roomData={};       // 지금 방의 {도구id: data}
+const toolUi={};       // 도구별 화면 상태(입력 중인지 등). 방을 옮기면 비운다
 const myId=()=>String(auth?.me?.id||"");
-const emptyQuest=()=>({on:false,quest:null,score:{}});
+const josa=(w,a,b)=>{ const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172&&c%28?a:b) };
 
-async function loadQuest(){
-  if(!cur){ quest=null; return }
-  try{ const d=await api(`/api/room/${cur.id}/quest`); quest=d.data||emptyQuest() }
-  catch(e){ quest=null }
+async function loadRoomTools(){
+  const id=cur?.id; if(!id) return;
+  const got={};
+  await Promise.all(TOOLS.map(async t=>{ try{ got[t.id]=(await api(`/api/room/${id}/${t.id}`)).data||{} }catch(e){ got[t.id]={} } }));
+  if(cur?.id!==id) return;
+  roomData=got; renderRoomTool(); renderMsgs();
 }
-async function saveQuest(){
-  try{ await api(`/api/room/${cur.id}/quest`,{method:"POST",body:{data:quest}}) }
-  catch(e){ toast(e.message) }
+function addLog(d,text){ d.log=(d.log||[]).concat({at:Date.now(),by:myId(),text}).slice(-30) }
+async function saveTool(id){
+  const bid=cur.id;
+  try{ await api(`/api/room/${bid}/${id}`,{method:"POST",body:{data:roomData[id]}}) }catch(e){ toast(e.message) }
 }
-function pts(id){ return Number(quest?.score?.[id]||0) }
-
-function renderQuest(){
+// 도구가 받는 것. 도구는 이것만 쓰고, 화면의 다른 곳이나 Count 는 건드리지 못한다
+function toolCtx(t){
+  const data=roomData[t.id]||(roomData[t.id]={});
+  return {
+    data, me:myId(), self:!!cur.self,
+    ui:toolUi[t.id]||(toolUi[t.id]={}),
+    redraw:()=>renderRoomTool(),
+    // 바꾼 데이터를 저장하고 상대 화면에도 반영한다. 글을 주면 대화에 기록으로 남는다
+    save:async text=>{ if(text) addLog(data,text); renderRoomTool(); if(text) renderMsgs(); await saveTool(t.id) },
+    toast,
+  };
+}
+// 대화방 위 칸에는 한 번에 도구 하나
+function renderRoomTool(){
   const box=$("#roomTool");
-  if(!quest||!quest.on||!cur){ box.classList.remove("on"); box.innerHTML=""; return }
-  box.classList.add("on");
-  const q=quest.quest;
-  const other=Object.keys(quest.score||{}).find(k=>k!==myId());
-  const score=`<div class="rt-row rt-score"><span>나<b>${pts(myId())}</b></span>${cur.self?"":`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
-
-  if(questEdit){
-    box.innerHTML=`<div class="rt-row">
-        <input class="rt-in" id="qIn" maxlength="30" placeholder="할 일" value="${q?esc(q.title):""}">
-        <button class="rt-btn ghost" id="qPt">${q?q.pt:1}P</button>
-        <button class="rt-btn" id="qSave">${q?"수정":"등록"}</button>
-      </div>${q?`<div class="rt-row"><button class="rt-btn ghost" id="qDel">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" id="qCancel">취소</button></div>`:score}`;
-    const inp=$("#qIn"); inp.focus();
-    let pt=q?q.pt:1;
-    $("#qPt").addEventListener("click",()=>{ pt=pt%5+1; $("#qPt").textContent=pt+"P" });
-    $("#qSave").addEventListener("click",async()=>{
-      const t=inp.value.trim(); if(!t){ toast("할 일을 적어주세요"); return }
-      quest.quest={title:t,pt,by:myId()}; questEdit=false;
-      renderQuest(); await saveQuest();
-    });
-    $("#qDel")?.addEventListener("click",async()=>{ quest.quest=null; questEdit=false; renderQuest(); await saveQuest() });
-    $("#qCancel")?.addEventListener("click",()=>{ questEdit=false; renderQuest() });
-    return;
-  }
-
-  if(!q){
-    box.innerHTML=`<div class="rt-row"><span class="rt-title none">등록된 퀘스트가 없어요</span>
-        <button class="rt-btn" id="qNew">＋</button></div>${score}`;
-    $("#qNew").addEventListener("click",()=>{ questEdit=true; renderQuest() });
-    return;
-  }
-
-  const mine=String(q.by)===myId();
-  box.innerHTML=`<div class="rt-row">
-      <span class="rt-title" id="qTitle">${esc(q.title)}</span><span class="rt-pt">${q.pt}P</span>
-      ${mine?`<button class="rt-btn ghost" id="qEdit">수정</button>`:""}${!mine||cur.self?`<button class="rt-btn" id="qDone">완료</button>`:""}
-    </div>${score}`;
-  if(mine) $("#qEdit").addEventListener("click",()=>{ questEdit=true; renderQuest() });
-  $("#qDone")?.addEventListener("click",async()=>{
-    quest.score=quest.score||{}; quest.score[myId()]=pts(myId())+Number(q.pt||0);
-    quest.quest=null; renderQuest(); await saveQuest(); toast(`+${q.pt}P`);
-  });
+  const t=cur&&TOOLS.find(x=>x.slot==="top"&&roomData[x.id]?.on);
+  if(!t){ box.classList.remove("on"); box.innerHTML=""; return }
+  box.classList.add("on"); t.render(box,toolCtx(t));
+}
+// 이 방에 띄우기/내리기. 설치 안 한 도구는 띄우는 순간 설치된다. 같은 자리에 있던 도구는 내려간다
+async function setRoomTool(t,on){
+  if(on&&!toolOn[t.id]) setToolOn(t,true,false);
+  if(on) TOOLS.forEach(o=>{ if(o!==t&&o.slot===t.slot&&roomData[o.id]?.on){ roomData[o.id].on=false; addLog(roomData[o.id],josa(o.name,"을","를")+" 내렸어요"); saveTool(o.id) } });
+  const d=roomData[t.id]||(roomData[t.id]={});
+  d.on=on; addLog(d,josa(t.name,"을","를")+(on?" 띄웠어요":" 내렸어요"));
+  renderRoomTool(); renderMsgs(); await saveTool(t.id);
+}
+// 대화 사이에 끼울 도구 기록
+function toolEvents(){
+  const out=[];
+  TOOLS.forEach(t=>(roomData[t.id]?.log||[]).forEach(e=>out.push({type:"event",ts:e.at,text:e.text,who:String(e.by)===myId()?"나":cur.name})));
+  return out;
 }
 
 function refreshChat(){
@@ -960,20 +956,22 @@ function refreshChat(){
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
 function renderMsgs(){
-  const days=$("#days"), top=days.scrollTop; days.innerHTML="";
-  if(!cur.msgs.length){days.innerHTML=`<div class="empty">아직 대화가 없어요</div>`;return}
+  const days=$("#days"), top=days.scrollTop, stick=days.scrollHeight-days.scrollTop-days.clientHeight<40; days.innerHTML="";
+  const items=cur.msgs.concat(toolEvents()).sort((a,b)=>a.ts-b.ts);
+  if(!items.length){days.innerHTML=`<div class="empty">아직 대화가 없어요</div>`;return}
   let lastDay="";
   let group=[];
   const flush=()=>{ if(group.length){ days.appendChild(bubble(group)); group=[] } };
-  cur.msgs.forEach(m=>{
+  items.forEach(m=>{
     const d=new Date(m.ts), key=d.toDateString();
     if(key!==lastDay){ flush(); lastDay=key; days.insertAdjacentHTML("beforeend",`<div class="sep">${sepLabel(d)}</div>`) }
+    if(m.type==="event"){ flush(); days.insertAdjacentHTML("beforeend",`<div class="evt">${esc(m.who)} · ${esc(m.text)}</div>`); return }
     if(m.type!=="text"){ flush(); days.appendChild(bubble([m])); return }
     if(group.length&&!sameGroup(group[group.length-1],m)) flush();
     group.push(m);
   });
   flush();
-  days.scrollTop=top;
+  days.scrollTop=stick?days.scrollHeight:top;
 }
 // 같은 사람이 같은 분에 이어 보낸 것은 한 묶음으로 본다
 function sameGroup(a,b){
@@ -1133,21 +1131,10 @@ $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab
 /* 대화방 머리말의 도구 버튼. 설치한 도구를 이 방에 띄우거나 내린다. 설치한 게 없으면 도구 탭으로 안내한다 */
 function openToolSheet(){
   const l=$("#toolSheetList"); l.innerHTML="";
-  const mine=TOOLS.filter(t=>toolOn[t.id]);
-  if(!mine.length){
-    l.innerHTML=`<div class="trow"><span style="flex:1;color:var(--ink-3)">설치한 도구가 없어요</span><button class="rt-btn" id="tsGo">도구 보기</button></div>`;
-    $("#tsGo").addEventListener("click",()=>{ closeSheets(); goTab("s-tools") });
-  }
-  mine.forEach(t=>{
-    const r=document.createElement("div"); r.className="trow";
-    r.innerHTML=`<span style="flex:1">${esc(t.name)}</span><button class="sw ${quest?.on?"on":""}" aria-label="${esc(t.name)} 띄우기"></button>`;
-    r.addEventListener("click",async()=>{
-      const on=!quest?.on;
-      quest={...(quest||emptyQuest()),on};
-      r.querySelector(".sw").classList.toggle("on",on);
-      renderQuest(); setTimeout(closeSheets,220);
-      await saveQuest();
-    });
+  TOOLS.forEach(t=>{
+    const r=document.createElement("div"); r.className="slide";
+    r.innerHTML=`<div class="knob"><span style="flex:1">${esc(t.name)}</span><span class="slot">${SLOT[t.slot]}</span></div>`;
+    slideToggle(r,!!roomData[t.id]?.on,on=>{ setTimeout(closeSheets,260); setRoomTool(t,on) });
     l.appendChild(r);
   });
   $("#toolSheet").classList.add("on"); scrim.classList.add("on");
@@ -1163,7 +1150,50 @@ const TOOLS=[
   {id:"quest", name:"퀘스트", slot:"top",
    desc:"할 일을 걸어두고, 해낸 사람이 점수를 가져가요",
    pv:`<div class="rt-row"><span class="rt-title">음식물 쓰레기 버려주기</span><span class="rt-pt">2P</span><span class="rt-btn">완료</span></div>
-       <div class="rt-row rt-score"><span>나<b>0</b></span><span>상대<b>2</b></span></div>`},
+       <div class="rt-row rt-score"><span>나<b>0</b></span><span>상대<b>2</b></span></div>`,
+   // 할 일은 한 번에 하나. 낸 사람은 고치거나 지우고, 상대가 완료해서 점수를 가져간다. 나와의 대화에서는 혼자 다 한다
+   render(box,c){
+     const d=c.data; d.score=d.score||{};
+     const pts=id=>Number(d.score[id]||0), q=d.quest;
+     const other=Object.keys(d.score).find(k=>k!==c.me);
+     const score=`<div class="rt-row rt-score"><span>나<b>${pts(c.me)}</b></span>${c.self?"":`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
+     const $b=sel=>box.querySelector(sel);
+     if(c.ui.edit){
+       box.innerHTML=`<div class="rt-row">
+           <input class="rt-in" maxlength="30" placeholder="할 일" value="${q?esc(q.title):""}">
+           <button class="rt-btn ghost" data-k="pt">${q?q.pt:1}P</button>
+           <button class="rt-btn" data-k="ok">${q?"수정":"등록"}</button>
+         </div>${q?`<div class="rt-row"><button class="rt-btn ghost" data-k="del">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`:score}`;
+       const inp=$b(".rt-in"); inp.focus();
+       let pt=q?q.pt:1;
+       $b('[data-k="pt"]').onclick=()=>{ pt=pt%5+1; $b('[data-k="pt"]').textContent=pt+"P" };
+       $b('[data-k="ok"]').onclick=()=>{
+         const t=inp.value.trim(); if(!t){ c.toast("할 일을 적어주세요"); return }
+         const was=!!q; d.quest={title:t,pt,by:c.me}; c.ui.edit=false;
+         c.save(`${was?"퀘스트 수정":"퀘스트"} '${t}' ${pt}P`);
+       };
+       if(q){
+         $b('[data-k="del"]').onclick=()=>{ d.quest=null; c.ui.edit=false; c.save(`퀘스트 '${q.title}' 지움`) };
+         $b('[data-k="no"]').onclick=()=>{ c.ui.edit=false; c.redraw() };
+       }
+       return;
+     }
+     if(!q){
+       box.innerHTML=`<div class="rt-row"><span class="rt-title none">등록된 퀘스트가 없어요</span><button class="rt-btn" data-k="new">＋</button></div>${score}`;
+       $b('[data-k="new"]').onclick=()=>{ c.ui.edit=true; c.redraw() };
+       return;
+     }
+     const mine=String(q.by)===c.me;
+     box.innerHTML=`<div class="rt-row">
+         <span class="rt-title">${esc(q.title)}</span><span class="rt-pt">${q.pt}P</span>
+         ${mine?`<button class="rt-btn ghost" data-k="edit">수정</button>`:""}${!mine||c.self?`<button class="rt-btn" data-k="done">완료</button>`:""}
+       </div>${score}`;
+     if(mine) $b('[data-k="edit"]').onclick=()=>{ c.ui.edit=true; c.redraw() };
+     if($b('[data-k="done"]')) $b('[data-k="done"]').onclick=()=>{
+       d.score[c.me]=pts(c.me)+Number(q.pt||0); d.quest=null;
+       c.save(`'${q.title}' 완료 +${q.pt}P`); c.toast(`+${q.pt}P`);
+     };
+   }},
 ];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
 
@@ -1179,11 +1209,10 @@ function renderTools(q=""){
     const el=document.createElement("div"); el.className="tool";
     const on=!!toolOn[t.id];
     el.classList.toggle("off",!on);
-    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span>
-        <span style="flex:1"></span><button class="sw ${on?"on":""}" aria-label="${esc(t.name)} 설치"></button></div>
-      <div class="roomtool on" style="margin:0">${t.pv}</div>
+    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
+      <div class="slide"><div class="roomtool on knob">${t.pv}</div></div>
       <div style="margin:7px 0 0 2px;color:var(--ink-3);font-size:12px">${esc(t.desc)}</div>`;
-    el.querySelector(".nm").addEventListener("click",()=>setToolOn(t,!toolOn[t.id]));   // 이름 줄 어디를 눌러도 스위치가 바뀐다
+    slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
     list.appendChild(el);
   });
 }
@@ -1195,11 +1224,38 @@ async function loadToolStates(){
   catch(e){}
   renderTools($("#toolSearch")?.value||"");
 }
-async function setToolOn(t,on){
+async function setToolOn(t,on,redraw=true){
   if(!!toolOn[t.id]===on) return;
-  toolOn[t.id]=on; renderTools($("#toolSearch").value||"");
+  toolOn[t.id]=on; if(redraw) renderTools($("#toolSearch").value||"");
   try{ await api("/api/me/tools",{method:"POST",body:{id:t.id,on}}); toast(on?"설치했어요":"내렸어요") }
   catch(e){ toolOn[t.id]=!on; renderTools(); toast(e.message) }
+}
+/* 카드 자체가 스위치다. 오른쪽으로 밀면 켜져서 그 자리에 머물고, 왼쪽으로 밀면 꺼진다. 탭해도 바뀐다.
+   세로로 긁으면 스크롤로 넘긴다. */
+function slideToggle(tr,on,cb){
+  const k=tr.querySelector(".knob");
+  tr.classList.toggle("on",on);
+  let x0=null,y0=0,drag=false,base=0,R=40;
+  tr.addEventListener("pointerdown",e=>{ x0=e.clientX; y0=e.clientY; drag=false; R=parseFloat(getComputedStyle(tr).getPropertyValue("--r"))||40; base=tr.classList.contains("on")?R:0 });
+  tr.addEventListener("pointermove",e=>{
+    if(x0===null) return;
+    const dx=e.clientX-x0, dy=e.clientY-y0;
+    if(!drag){
+      if(Math.abs(dx)<8&&Math.abs(dy)<8) return;
+      if(Math.abs(dy)>Math.abs(dx)){ x0=null; return }
+      drag=true; k.style.transition="none"; try{ tr.setPointerCapture(e.pointerId) }catch(err){}
+    }
+    k.style.transform=`translateX(${Math.max(0,Math.min(R,base+dx))}px)`;
+  });
+  const end=e=>{
+    if(x0===null) return;
+    const dx=e.clientX-x0; x0=null;
+    k.style.transition=""; k.style.transform="";
+    const was=tr.classList.contains("on"), next=drag?base+dx>R/2:!was;
+    if(next!==was){ tr.classList.toggle("on",next); cb(next) }
+  };
+  tr.addEventListener("pointerup",end);
+  tr.addEventListener("pointercancel",()=>{ x0=null; k.style.transition=""; k.style.transform="" });
 }
 $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
