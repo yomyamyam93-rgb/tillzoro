@@ -535,7 +535,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1724</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1731</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1297,7 +1297,7 @@ function copyText(t){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
 // 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,...m})=>m).slice(-200))) }catch(e){} }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"")+(small?"&s=t":"");
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
@@ -1326,8 +1326,9 @@ async function send(el,bondId){
     syncTill().then(refreshChat).catch(()=>{});
   }catch(e){ el.ok=false; renderMsgs(); saveMsgs(); if(!requireLogin()) toast(e.message) }
 }
-/* 사진·동영상 보내기. 사진은 긴 쪽 1600px JPEG 로 줄이고(움직이는 GIF 는 그대로), 동영상은 500MB 까지 그대로.
-   올리는 동안 말풍선은 흐리게 먼저 보이고 옆에 몇 % 올라갔는지 나온다. 실패하면 "다시 보내기"를 누르면 다시 올린다 */
+/* 사진·동영상 보내기. 사진은 긴 쪽 1600px JPEG 로 줄이고(움직이는 GIF 는 그대로),
+   동영상은 카톡처럼 짧은 쪽 720px·약 2.5Mbps 로 줄여서 보낸다(줄인 뒤 500MB 까지).
+   말풍선은 흐리게 먼저 보이고 옆에 % 가 나온다(줄이기 0~50, 올리기 50~100). 실패하면 "다시 보내기"를 누르면 다시 올린다 */
 const VIDEO_MAX=500*1024*1024;
 const pctOf=new WeakMap();   // 올리는 중인 메시지 → 옆의 시간 자리(여기에 % 를 쓴다)
 // 사진: 원본(긴 쪽 1600px)과 미리보기(480px)를 같이 만든다. 움직이는 GIF 는 원본 그대로
@@ -1351,6 +1352,27 @@ function shrinkImage(f){
     im.src=u;
   });
 }
+// 동영상 줄이기: 기기에 들어 있는 변환기(WebCodecs)를 mediabunny 로 쓴다. 보낼 때 처음 한 번만 불러온다.
+// 변환기가 없거나, 소리·화면 중 하나라도 못 옮기거나, 줄인 게 더 크면 원본을 보낸다
+const MB_URL="https://cdn.jsdelivr.net/npm/mediabunny@1.61.2/dist/bundles/mediabunny.min.mjs";
+async function squeezeVideo(f,onp){
+  try{
+    if(typeof VideoEncoder==="undefined") return f;
+    const MB=await import(MB_URL);
+    const input=new MB.Input({source:new MB.BlobSource(f),formats:MB.ALL_FORMATS});
+    const output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:"in-memory"}),target:new MB.BufferTarget()});
+    const conv=await MB.Conversion.init({input,output,showWarnings:false,
+      video:async t=>{
+        const w=await t.getDisplayWidth(), h=await t.getDisplayHeight(), k=Math.min(1,720/Math.min(w,h));
+        return {width:Math.round(w*k/2)*2,height:Math.round(h*k/2)*2,fit:"fill",codec:"avc",quality:new MB.Quality({bitrate:2500000})};
+      }});
+    if(!conv.isValid||conv.discardedTracks.some(d=>d.track.isVideoTrack()||d.track.isAudioTrack())) return f;
+    conv.onProgress=p=>onp(p);
+    await conv.execute();
+    const out=new Blob([output.target.buffer],{type:"video/mp4"});
+    return out.size&&out.size<f.size?out:f;
+  }catch(e){ return f }
+}
 // 동영상: 가로·세로와 첫 장면(미리보기). 3초 안에 못 읽으면 없이 보낸다
 function videoInfo(f){
   return new Promise(ok=>{
@@ -1367,7 +1389,6 @@ function videoInfo(f){
 async function sendFile(f){
   if(!cur) return;
   const video=f.type.startsWith("video/");
-  if(video&&f.size>VIDEO_MAX){ toast("동영상은 500MB까지 보낼 수 있어요"); return }
   let blob, thumb, w, h;
   try{
     if(video){ const d=await videoInfo(f); blob=f; thumb=d.thumb; w=d.w; h=d.h }
@@ -1375,10 +1396,20 @@ async function sendFile(f){
   }catch(e){ toast(e.message); return }
   const src=URL.createObjectURL(blob);
   const el={id:uid(),who:"me",type:video?"video":"image",blob,thumb,src,thumbSrc:thumb?URL.createObjectURL(thumb):(video?null:src),w,h,ts:NOW(),ok:true,pending:true};
-  appendBubble(el); upload(el,cur.id);
+  appendBubble(el);
+  const bondId=cur.id;
+  if(video){
+    el.pct=0;
+    const setP=v=>{ el.pct=v; const t=pctOf.get(el); if(t) t.textContent=v+"%" };
+    el.blob=await squeezeVideo(f,p=>setP(Math.min(50,Math.floor(p*50))));
+    el.base=50; setP(50);
+    if(el.blob.size>VIDEO_MAX){ el.pending=false; el.ok=false; renderMsgs(); toast("동영상은 500MB까지 보낼 수 있어요"); return }
+  }
+  upload(el,bondId);
 }
 async function upload(el,bondId){
-  el.pending=true; el.pct=0; renderMsgs();
+  const base=el.base||0; el.base=0;   // 줄이기가 앞에 있었으면 50% 부터
+  el.pending=true; el.pct=base; renderMsgs();
   try{
     const q=el.w&&el.h?`&w=${el.w}&h=${el.h}`:"";
     // 큰 동영상은 오래 걸리므로 올라가는 만큼 보여준다(fetch 는 진행률을 못 주니 XHR)
@@ -1387,7 +1418,7 @@ async function upload(el,bondId){
       x.open("POST",API+"/api/messages/media?bondId="+encodeURIComponent(bondId)+q);
       x.setRequestHeader("authorization","Bearer "+auth.token);
       x.setRequestHeader("content-type",el.blob.type||(el.type==="video"?"video/mp4":"image/jpeg"));
-      x.upload.onprogress=e=>{ if(!e.lengthComputable) return; el.pct=Math.min(99,Math.floor(e.loaded/e.total*100)); const t=pctOf.get(el); if(t) t.textContent=el.pct+"%" };
+      x.upload.onprogress=e=>{ if(!e.lengthComputable) return; el.pct=Math.min(99,base+Math.floor(e.loaded/e.total*(100-base))); const t=pctOf.get(el); if(t) t.textContent=el.pct+"%" };
       x.onload=()=>{ let d={}; try{ d=JSON.parse(x.responseText) }catch(e){} ok({ok:x.status>=200&&x.status<300,d}) };
       x.onerror=x.ontimeout=()=>no(new Error("보내지 못했어요"));
       x.send(el.blob);
