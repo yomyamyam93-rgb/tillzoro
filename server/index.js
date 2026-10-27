@@ -677,6 +677,17 @@ app.post("/api/messages/media", auth, express.raw({ type: () => true, limit: "60
   sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size: buf.length, w: dim(req.query.w), h: dim(req.query.h) });
 });
 
+// 미리보기 올리기: 보낸 사람이 원본을 올린 뒤 곧바로 보낸다. 파일 이름은 원본이름.t.jpg
+app.post("/api/media/:id/thumb", auth, express.raw({ type: () => true, limit: "2mb" }), async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^[a-f0-9]{32}\.[a-z0-9]{2,5}$/.test(id) || !Buffer.isBuffer(req.body) || !req.body.length) return res.sendStatus(400);
+  const own = (await pool.query("select 1 from messages where media = $1 and sender_id = $2", [id, req.user.id])).rowCount;
+  if (!own) return res.sendStatus(404);
+  fs.writeFileSync(path.join(MEDIA_DIR, id + ".t.jpg"), req.body);
+  mediaBytes += req.body.length;
+  res.json({ ok: true });
+});
+
 app.get("/api/media/:id", async (req, res) => {
   const id = String(req.params.id || "");
   if (!/^[a-f0-9]{32}\.[a-z0-9]{2,5}$/.test(id)) return res.sendStatus(404);
@@ -687,7 +698,11 @@ app.get("/api/media/:id", async (req, res) => {
       where m.media = $1 and (b.a_id = $2 or b.b_id = $2 or exists (select 1 from bond_members x where x.bond_id = b.id and x.user_id = $2))`,
     [id, s.user_id])).rows[0];
   if (!m) return res.sendStatus(404);
-  res.sendFile(path.join(MEDIA_DIR, id), { headers: { "Content-Type": m.mime, "Cache-Control": "private, max-age=604800" } }, (e) => { if (e && !res.headersSent) res.sendStatus(404); });
+  // ?s=t 이면 미리보기. 아직 없으면(올리는 중) 원본을 준다
+  const thumb = req.query.s === "t" && fs.existsSync(path.join(MEDIA_DIR, id + ".t.jpg"));
+  res.sendFile(path.join(MEDIA_DIR, thumb ? id + ".t.jpg" : id),
+    { headers: { "Content-Type": thumb ? "image/jpeg" : m.mime, "Cache-Control": "private, max-age=2592000, immutable" } },
+    (e) => { if (e && !res.headersSent) res.sendStatus(404); });
 });
 
 // 글·사진·동영상 공통: 메시지를 남기고 Count 규칙을 적용하고 알린다
@@ -908,7 +923,7 @@ async function sweep() {
   const used = new Set((await pool.query("select media from messages where media is not null")).rows.map((r) => r.media));
   for (const f of fs.readdirSync(MEDIA_DIR)) {
     const fp = path.join(MEDIA_DIR, f), st = fs.statSync(fp);
-    if (!used.has(f) && Date.now() - st.mtimeMs > 3600000) { fs.unlinkSync(fp); mediaBytes = Math.max(0, mediaBytes - st.size); }
+    if (!used.has(f.replace(/\.t\.jpg$/, "")) && Date.now() - st.mtimeMs > 3600000) { fs.unlinkSync(fp); mediaBytes = Math.max(0, mediaBytes - st.size); }
   }
   // 인증 문자 기록은 하루만
   await pool.query("delete from sms_sends where at < now() - interval '1 day'");
