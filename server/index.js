@@ -9,6 +9,8 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { Transform } = require("stream");
+const { pipeline } = require("stream/promises");
 const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
@@ -646,35 +648,47 @@ app.post("/api/messages", auth, async (req, res) => {
 });
 
 /* ---------- 사진·동영상 ----------
-   사진은 앱이 1600px 로 줄여서 보내고(약 0.3MB), 동영상은 60MB 까지 그대로 받는다.
+   사진은 앱이 1600px 로 줄여서 보내고(약 0.3MB), 동영상은 500MB 까지 그대로 받는다.
+   메모리에 통째로 올리지 않고 받는 대로 디스크에 쓴다.
    파일은 서버 디스크(MEDIA_DIR)에 두고, 방이 사라지거나 메시지가 지워지면 한 시간 안에 함께 지운다.
-   같은 서버에 다른 서비스가 돌고 있으므로, 미디어 전체가 10GB 를 넘거나 디스크 여유가 8GB 아래면 받지 않는다.
+   같은 서버에 다른 서비스가 돌고 있으므로, 미디어 전체가 15GB 를 넘거나 디스크 여유가 8GB 아래면 받지 않는다.
    보기는 그 방에 있는 사람만 된다(로그인 토큰을 주소에 붙여 확인). 동영상은 구간 요청(Range)을 받아 바로 재생된다. */
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(__dirname, "media");
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
-const MEDIA_CAP = 10 * 1024 ** 3, DISK_FLOOR = 8 * 1024 ** 3;
+const MEDIA_CAP = 15 * 1024 ** 3, DISK_FLOOR = 8 * 1024 ** 3;
+const VIDEO_MAX = 500 * 1024 ** 2, IMAGE_MAX = 10 * 1024 ** 2;
 const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 let mediaBytes = 0;
 try { for (const f of fs.readdirSync(MEDIA_DIR)) mediaBytes += fs.statSync(path.join(MEDIA_DIR, f)).size; } catch (e) {}
 const diskFree = () => { try { const st = fs.statfsSync(MEDIA_DIR); return st.bavail * st.bsize; } catch (e) { return Infinity; } };
 
-app.post("/api/messages/media", auth, express.raw({ type: () => true, limit: "60mb" }), async (req, res) => {
+app.post("/api/messages/media", auth, async (req, res) => {
   const mime = String(req.get("content-type") || "").split(";")[0].trim().toLowerCase();
   const ext = EXT[mime];
   const kind = mime.startsWith("video/") ? "video" : "image";
-  const buf = req.body;
-  if (!ext || !Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ error: "보낼 수 없는 파일이에요" });
-  if (kind === "image" && buf.length > 10 * 1024 ** 2) return res.status(413).json({ error: "사진이 너무 커요" });
-  if (mediaBytes + buf.length > MEDIA_CAP || diskFree() - buf.length < DISK_FLOOR)
+  const max = kind === "video" ? VIDEO_MAX : IMAGE_MAX, big = kind === "video" ? "동영상이 너무 커요" : "사진이 너무 커요";
+  const len = Number(req.get("content-length")) || 0;
+  if (!ext) return res.status(400).json({ error: "보낼 수 없는 파일이에요" });
+  if (len > max) return res.status(413).json({ error: big });
+  if (mediaBytes + len > MEDIA_CAP || diskFree() - len < DISK_FLOOR)
     return res.status(507).json({ error: "지금은 사진·동영상을 보낼 수 없어요" });
   const bond = await myBond(req.query.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  const id = crypto.randomBytes(16).toString("hex") + "." + ext;
-  fs.writeFileSync(path.join(MEDIA_DIR, id), buf);
-  mediaBytes += buf.length;
+  const id = crypto.randomBytes(16).toString("hex") + "." + ext, fp = path.join(MEDIA_DIR, id);
+  // 받는 대로 파일에 쓴다. 한도를 넘거나 중간에 끊기면 쓰던 파일을 지운다
+  let size = 0;
+  const cap = new Transform({ transform(c, e, cb) { size += c.length; cb(size > max ? Object.assign(new Error(big), { big: true }) : null, c); } });
+  try { await pipeline(req, cap, fs.createWriteStream(fp)); }
+  catch (e) {
+    fs.rm(fp, { force: true }, () => {});
+    if (!res.headersSent && !res.destroyed) res.status(e.big ? 413 : 400).json({ error: e.big ? big : "보내지 못했어요" });
+    return;
+  }
+  if (!size) { fs.rm(fp, { force: true }, () => {}); return res.status(400).json({ error: "보낼 수 없는 파일이에요" }); }
+  mediaBytes += size;
   const dim = (v) => Math.max(0, Math.min(20000, Number(v) || 0)) || null;
-  sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size: buf.length, w: dim(req.query.w), h: dim(req.query.h) });
+  sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size, w: dim(req.query.w), h: dim(req.query.h) });
 });
 
 // 미리보기 올리기: 보낸 사람이 원본을 올린 뒤 곧바로 보낸다. 파일 이름은 원본이름.t.jpg
@@ -854,6 +868,7 @@ function notify(userIds, payload, exceptUserId) {
 }
 
 const server = http.createServer(app);
+server.requestTimeout = 30 * 60 * 1000;   // 큰 동영상은 느린 망에서 몇 분씩 걸린다(기본 5분이면 중간에 끊긴다)
 const wss = new WebSocketServer({ server, path: "/ws" });
 
 wss.on("connection", async (ws, req) => {
