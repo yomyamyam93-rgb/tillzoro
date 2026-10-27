@@ -126,8 +126,10 @@
   .tabs.show{display:flex}
   /* 탭바에 가리지 않도록 아래를 비워둔다 */
   #till .rows,#s-tools .pad,#settings .pad,
-  #s-profile .pad,#s-invite .pad,#s-blocked .pad,#s-rule .pad,
+  #s-profile .pad,#s-blocked .pad,#s-rule .pad,
   #s-tool .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  /* 목록 안에서 무언가를 보이게 내릴 때도 탭바 위까지 */
+  #till .rows{scroll-padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .tabs button{width:80px;height:44px;display:grid;place-items:center;color:var(--ink-3)}
   .tabs button.on{color:var(--ink)}
   .tabs svg{width:22px;height:22px;fill:currentColor;stroke:none}
@@ -148,8 +150,30 @@
   /* 세 명 이상인 방: 얼굴 여러 개 */
   .photo .tiles{position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;gap:2px}
   .photo .tiles i{background:var(--line) center/cover;display:grid;place-items:center;font:600 18px var(--font-body);font-style:normal;color:var(--ink-3)}
-  .add-slim{margin-top:4px;height:48px;border:1.5px dashed var(--line);border-radius:var(--r-card);display:grid;place-items:center;color:var(--ink-3);cursor:pointer}
-  .add-slim svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+  /* ＋ 칸: 누르면 그 자리에서 코드 공유(진한 칸) · 코드 입력(옅은 칸)으로 갈라진다 */
+  .addpick .two{display:none;grid-template-columns:1fr 1fr;gap:8px;width:100%;height:100%}
+  .card.add.addpick.open,.add-slim.addpick.open{border-color:transparent;background:transparent;padding:0;cursor:default}
+  .addpick.open .plusic{display:none}
+  .addpick.open .two{display:grid}
+  .addpick .joinrow{display:none;width:100%;gap:8px;align-items:center}
+  .addpick.join{border-color:transparent;background:transparent;padding:0}
+  .addpick.join .plusic,.addpick.join .two{display:none}
+  .addpick.join .joinrow{display:flex}
+  .addpick .joinrow input{flex:1;min-width:0;height:52px;text-align:center;font-size:20px;letter-spacing:.24em;text-transform:uppercase}
+  .addpick .joinrow .btn{width:auto;flex:none;height:52px;padding:0 20px}
+  .add-slim.addpick.join{height:52px}
+  .addpick .tile{border-radius:16px;background:var(--card);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;padding:14px;text-align:left;transition:transform .12s;animation:pickin .18s var(--ease)}
+  .addpick .tile:active{transform:scale(.97)}
+  .addpick .tile.dark{background:var(--ink);color:var(--paper)}
+  .addpick .tile .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);color:var(--ink)}
+  .addpick .tile.dark .ic{background:var(--paper);color:var(--ink)}
+  .addpick .tile svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .addpick .tile b{display:block;font:600 16px var(--font-body)}
+  @keyframes pickin{from{opacity:0;transform:scale(.96)}}
+  .add-slim.addpick.open{height:112px}
+  .add-slim.addpick .tile{flex-direction:row;align-items:center;justify-content:flex-start;gap:10px}
+  .add-slim{margin-top:4px;height:48px;transition:height .2s var(--ease);border:1.5px dashed var(--line);border-radius:var(--r-card);display:grid;place-items:center;color:var(--ink-3);cursor:pointer}
+  .add-slim .plusic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
   .fromname{flex:none;align-self:flex-start;margin:6px 0 1px 4px;font-size:12px;color:var(--ink-2)}
   .roominvite{flex:none;margin:4px 16px 8px;display:flex;flex-direction:column;gap:8px}
   .roominvite[hidden]{display:none}
@@ -158,7 +182,7 @@
   .photo .name{position:relative;z-index:1;font-weight:700;font-size:var(--text-name);color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.35)}
   .card.text .photo{background:#D9D9DC}
   .card.add{background:transparent;border:1.5px dashed var(--line);min-height:calc(var(--photo-h) + 42px);display:grid;place-items:center}
-  .card.add svg{width:26px;height:26px;stroke:var(--ink-3);fill:none;stroke-width:1.8;stroke-linecap:round}
+  .card.add .plusic{width:26px;height:26px;stroke:var(--ink-3);fill:none;stroke-width:1.8;stroke-linecap:round}
   :root[data-theme="dark"] .card.text .photo{background:#2A2A2F}
   .card.text .photo::after{display:none}
   .card.text .name{color:var(--ink);text-shadow:none}
@@ -195,7 +219,8 @@
   .chead .av{width:44px;height:44px;border-radius:50%;background:var(--line) center/cover;flex:none}
   .chead .who{flex:1;min-width:0}
   .cname{font:500 15px/1.1 var(--font-num);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cname small{display:block;font:500 11px/1 var(--font-body);letter-spacing:.04em;color:var(--ink-3);margin-top:5px}
+  @media (max-width:360px){ .chead{gap:6px} .chead .av{width:36px;height:36px} .ccount{font-size:22px} .chead .sq{width:34px} }
+  .cname small{display:block;font:500 11px/1 var(--font-body);letter-spacing:.04em;color:var(--ink-3);margin-top:5px;overflow:hidden;text-overflow:ellipsis}
   .ccount{font:500 28px/1 var(--font-num);color:var(--ink);flex:none}
   .chead #chatMenu svg{width:21px;height:21px;fill:currentColor;stroke:none}
   .ccount.zero{color:var(--zero)}
@@ -237,6 +262,7 @@
   #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
+  .compose .icon[hidden]{display:none}
   .compose .icon svg{width:20px;height:20px;stroke-width:2.2}
   .compose .field2{flex:1;min-width:0;position:relative;display:flex;align-items:flex-end}
   .compose textarea{flex:1;min-width:0;min-height:36px;max-height:100px;border-radius:18px;border:0;background:var(--card);padding:8px 14px;resize:none;outline:none;font-size:16px;line-height:1.45;color:var(--ink)}
@@ -271,6 +297,7 @@
   /* settings */
     .list{display:flex;flex-direction:column;background:var(--card);border-radius:var(--r-list);overflow:hidden}
   .item{display:flex;align-items:center;gap:16px;padding:0 16px 0 18px;border-bottom:1px solid var(--line);font-size:15px;min-height:var(--row-h);cursor:pointer}
+  .item[hidden]{display:none}
   .item .ic{width:var(--row-icon);height:var(--row-icon);flex:none;color:var(--ink)}
   .item .ic svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .item .val{font-size:13px;color:var(--ink-3);margin-right:2px}
@@ -416,7 +443,7 @@
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
       <div class="bar2">
-        <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="icon" id="plusBtn" aria-label="첨부" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
         <button class="icon send off" id="sendBtn" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button>
       </div>
@@ -441,29 +468,29 @@
   <section class="screen" id="s-chat">
     <div class="bar big"><button class="icon" data-back="chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="sChatTitle">Room</h2></div>
     <div class="pad">
-      <div class="lbl">보기</div>
-      <div class="list">
-        <div class="item" style="cursor:default"><div class="t">글자 크기</div><div class="seg" id="segSize" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button><button data-v="xl">아주 크게</button></div></div>
-        <div class="item" style="cursor:default;border-bottom:0"><div class="t">글꼴</div><div class="seg" id="segFont" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="default">기본</button><button data-v="gothic">고딕</button><button data-v="system">시스템</button></div></div>
-      </div>
-      <div class="lbl" style="margin-top:10px">기록</div>
-      <div class="list">
-        <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
-        <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
-      </div>
       <div id="sChatRoom" style="display:flex;flex-direction:column;gap:14px">
-        <div class="lbl" style="margin-top:10px">방</div>
+        <div class="lbl">Room</div>
         <div class="list">
           <div class="item" style="cursor:default"><div class="t">이름</div><input class="rn" id="roomNameIn" maxlength="20" autocomplete="off"></div>
           <div class="item" id="mCode"><div class="t">초대 코드</div><span class="val" id="mCodeVal"></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
           <div class="item" id="mCodeRenew"><div class="t">새 코드로 바꾸기</div></div>
           <div class="item" style="cursor:default;border-bottom:0"><div class="t">이전 대화 보이기</div><div class="toggle" id="mHistory"></div></div>
         </div>
-        <div class="lbl">사람</div>
+        <div class="lbl">People</div>
         <div class="list" id="mMembers"></div>
-        <div class="list"><div class="item danger" id="mLeave" style="border-bottom:0"><div class="t">나가기</div></div></div>
       </div>
-      <div class="lbl" style="margin-top:10px" id="sChatSafeLbl">안전</div>
+      <div class="lbl" style="margin-top:10px">Display</div>
+      <div class="list">
+        <div class="item" style="cursor:default"><div class="t">글자 크기</div><div class="seg" id="segSize" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button><button data-v="xl">아주 크게</button></div></div>
+        <div class="item" style="cursor:default;border-bottom:0"><div class="t">글꼴</div><div class="seg" id="segFont" style="border:0;background:var(--paper-2);border-radius:10px;padding:3px;gap:2px"><button data-v="default">기본</button><button data-v="gothic">고딕</button><button data-v="system">시스템</button></div></div>
+      </div>
+      <div class="lbl" style="margin-top:10px">Export</div>
+      <div class="list">
+        <div class="item" id="mMedia" hidden><div class="t">사진 모아보기<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기</div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+      </div>
+      <div class="list" id="sChatLeave" style="margin-top:10px"><div class="item danger" id="mLeave" style="border-bottom:0"><div class="t">나가기</div></div></div>
+      <div class="lbl" style="margin-top:10px" id="sChatSafeLbl">Safety</div>
       <div class="list" id="sChatSafe">
         <div class="item danger" id="mReport"><div class="t">신고하기</div></div>
         <div class="item danger" id="mBlock" style="border-bottom:0"><div class="t">차단하기</div></div>
@@ -485,7 +512,7 @@
       <div class="list" id="notiList">
         <div class="item"><div class="t">알림 받기<div class="sub" id="pushSub"></div></div><div class="toggle" id="pushToggle"></div></div>
         <div class="item"><div class="t">메시지</div><div class="toggle on" data-k="n_msg"></div></div>
-        <div class="item"><div class="t">받은 요청</div><div class="toggle on" data-k="n_req"></div></div>
+        <div class="item"><div class="t">들어온 사람</div><div class="toggle on" data-k="n_req"></div></div>
         <div class="item"><div class="t">D-DAY 7일 · 1일</div><div class="toggle on" data-k="n_dday"></div></div>
         <div class="item"><div class="t">방해 금지<div class="sub">23:00 – 08:00</div></div><div class="toggle" data-k="n_dnd"></div></div>
       </div>
@@ -505,7 +532,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1519</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1533</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -520,14 +547,6 @@
     </div>
   </section>
 
-  <section class="screen" id="s-invite">
-    <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Join</h2></div>
-    <div class="pad">
-      <input class="field" id="joinIn" maxlength="6" placeholder="방 코드" autocapitalize="characters" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:.24em;text-align:center;height:58px;font-size:22px">
-      <div class="spacer"></div>
-      <button class="btn" id="joinBtn" disabled>들어가기</button>
-    </div>
-  </section>
 
   <section class="screen" id="s-doc">
     <div class="bar big"><button class="icon" data-back=""><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="docTitle">Terms</h2></div>
@@ -541,7 +560,7 @@
 
   <section class="screen" id="s-rule">
     <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Rules</h2></div>
-    <div class="pad"><div class="rule" style="margin-top:10px">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>서로 한 번씩 말하면 30으로 돌아와요. 한쪽만 보낸 건 세지 않아요. 0이 되면 대화도 함께 사라져요.</small></div></div>
+    <div class="pad"><div class="rule" style="margin-top:10px">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>두 사람 이상이 말하면 30으로 돌아와요. 혼자 보낸 건 세지 않아요. 0이 되면 대화도 함께 사라져요.</small></div></div>
   </section>
 
   <!-- overlays -->
@@ -550,8 +569,6 @@
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="menu-bg" id="msgMenuBg"></div>
   <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
-  <div class="menu-bg" id="addBg"></div>
-  <div class="menu" id="addMenu"><button id="amNew">코드 공유</button><button id="amJoin">코드 입력</button><button id="amNo">취소</button></div>
   <div class="menu-bg" id="repBg"></div>
   <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
   <div class="confirm" id="delBox"><p>계정을 삭제할까요? 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="text" placeholder="삭제 입력" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
@@ -954,21 +971,20 @@ function renderTill(){
   // Till 숫자는 방 수. 아직 아무도 안 들어온 방은 세지 않고 목록 맨 끝에 둔다
   const live=people.filter(p=>!p.self && dday(p)>0 && (!p.group||p.members.length>=2));
   const lone=people.filter(p=>p.group && p.members.length<2);
-  $("#total").textContent=live.length; $("#tabCount").textContent=live.length;
+  $("#total").textContent=live.length; $("#tabCount").textContent=live.length; fitHero();
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
   const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/DAY):0;
   const meRow=document.createElement("div"); meRow.className="row me";
   meRow.innerHTML=`<div class="count"><span class="n">0</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
     <div class="card ${me.photo?"":"text"}"><div class="photo" style="${me.photo?`background-image:url(${me.photo})`:""}"><span class="name">${esc(me.name)}</span></div>
-    <div class="last"><span class="txt dim">설정 · 초대 · 프로필</span><span class="t">ME</span></div></div>`;
+    <div class="last"><span class="txt dim">${selfLast()}</span><span class="t">ME</span></div></div>`;
   const selfBond=people.find(p=>p.self);
   meRow.addEventListener("click",()=>{ selfBond ? openChat(selfBond.id) : (renderSettings(),go("settings")) });
   rows.appendChild(meRow);
   if(!live.length){
     const inv=document.createElement("div"); inv.className="row";
-    inv.innerHTML=`<div class="count"></div><div class="card add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>`;
-    inv.addEventListener("click",openAdd);
+    inv.innerHTML=`<div class="count"></div>`; inv.appendChild(addPicker("card add"));
     rows.appendChild(inv);
   }
   live.concat(lone).forEach(p=>{
@@ -984,23 +1000,61 @@ function renderTill(){
   });
   fitRows(live.length);
   if(live.length){
-    const add=document.createElement("div"); add.className="add-slim"; add.innerHTML=`<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
-    add.addEventListener("click",openAdd); rows.appendChild(add);
+    rows.appendChild(addPicker("add-slim"));
   }
 }
-/* ＋ : 방이 생기는 길은 둘. 내 코드를 공유하거나(새 방이 생기고 공유 창이 바로 뜬다), 받은 코드를 넣거나 */
-function openAdd(){
-  const box=$("#addMenu"), bg=$("#addBg"), close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
-  bg.onclick=$("#amNo").onclick=close;
-  $("#amNew").onclick=async()=>{ close();
-    try{
-      const r=await api("/api/groups",{method:"POST",body:{}});
-      // 누른 직후라 휴대폰은 공유 창을 띄울 수 있다. 공유 창이 없는 기기는 방 안의 코드와 버튼으로
-      curCode=r.code; if(navigator.share) shareCode();
-      await syncTill(); openChat(String(r.bondId));
-    }catch(e){ toast(e.message) } };
-  $("#amJoin").onclick=()=>{ close(); $("#joinIn").value=""; $("#joinBtn").disabled=true; go("s-invite"); setTimeout(()=>$("#joinIn").focus(),350) };
-  box.classList.add("on"); bg.classList.add("on");
+// TILL 과 숫자가 한 줄에 사이를 두고 들어가게, 좁은 폰이나 두 자리 수에서는 글자를 줄인다
+function fitHero(){
+  const box=document.querySelector(".total"), els=[...box.children]; if(!box.clientWidth) return;
+  let px=84; els.forEach(e=>e.style.fontSize="");
+  const need=()=>els.reduce((a,e)=>a+e.scrollWidth,0)+24;
+  while(need()>box.clientWidth&&px>40){ px-=4; els.forEach(e=>e.style.fontSize=px+"px") }
+}
+window.addEventListener("resize",()=>{ if($("#till").classList.contains("on")||$("#till").classList.contains("base")) fitHero() });
+// 내 카드 아래 줄 = 나와의 대화의 마지막 글
+function selfLast(){ const sb=people.find(p=>p.self), m=sb&&sb.msgs[sb.msgs.length-1]; return m?preview(m):"나와의 대화" }
+/* ＋ : 방이 생기는 길은 둘. 새 방의 코드를 공유하거나(링크가 바로 복사된다), 받은 방 코드를 넣거나. 사람에게 붙는 코드는 없다.
+   ＋ 칸을 누르면 그 자리에서 두 칸으로 갈라지고, 다른 곳을 누르면 다시 접힌다 */
+const SHARE_IC='<svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
+const ENTER_IC='<svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M21 4v16"/></svg>';
+function addPicker(cls){
+  const el=document.createElement("div"); el.className=cls+" addpick";
+  el.innerHTML=`<svg class="plusic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    <div class="two"><button class="tile dark" data-a="share"><span class="ic">${SHARE_IC}</span><b>코드 공유</b></button>
+    <button class="tile" data-a="join"><span class="ic">${ENTER_IC}</span><b>코드 입력</b></button></div>
+    <div class="joinrow"><input class="field" maxlength="6" placeholder="방 코드" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn" disabled>들어가기</button></div>`;
+  const inp=el.querySelector(".joinrow input"), go_=el.querySelector(".joinrow .btn");
+  // 목록 맨 아래에서 펼치면 아래 탭에 가리지 않게, 커지는 동안 끝까지 보이도록 내린다
+  const reveal=()=>{ const t0=performance.now(); (function f(){ el.scrollIntoView({block:"nearest"}); if(performance.now()-t0<260) requestAnimationFrame(f) })() };
+  const close=e=>{ if(e&&el.contains(e.target)) return; el.classList.remove("open","join"); inp.value=""; go_.disabled=true; inp.blur(); document.removeEventListener("pointerdown",close,true) };
+  el.addEventListener("click",e=>{
+    if(el.classList.contains("join")) return;
+    if(!el.classList.contains("open")){ el.classList.add("open"); reveal(); setTimeout(()=>document.addEventListener("pointerdown",close,true),0); return }
+    const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return;
+    if(a==="share"){ close(); shareNewRoom(); return }
+    el.classList.remove("open"); el.classList.add("join"); inp.focus({preventScroll:true}); reveal();   // 누른 순간 초점 → 휴대폰 키보드가 뜬다
+  });
+  inp.addEventListener("input",()=>{ const v=cleanCode(inp.value).slice(0,6); inp.value=v; go_.disabled=v.length!==6 });
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!go_.disabled) go_.click() });
+  go_.addEventListener("click",()=>askJoin(inp.value,()=>close()));
+  return el;
+}
+// 코드 공유: 새 방을 만들고 그 링크를 바로 복사한다. 방은 Till 목록에 "새 방"으로 생긴다.
+// 복사는 누른 순간에만 허락되므로, 방을 만드는 동안 기다리는 복사(ClipboardItem)로 건다
+async function shareNewRoom(){
+  let made=null;
+  const link=api("/api/groups",{method:"POST",body:{}}).then(r=>{ made=r; return codeLink(r.code) });
+  try{
+    if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write)
+      await navigator.clipboard.write([new ClipboardItem({"text/plain":link.then(t=>new Blob([t],{type:"text/plain"}))})]);
+    else await navigator.clipboard.writeText(await link);
+    toast("링크를 복사했어요");
+  }catch(e){
+    try{ await link }catch(err){ toast(err.message); return }
+    // 복사가 막힌 기기: 새 방을 열어 코드와 링크 보내기 버튼을 보여준다
+    await syncTill().catch(()=>{}); openChat(String(made.bondId)); return;
+  }
+  syncTill().catch(()=>{});
 }
 /* R-4.10 적을수록 크게.
    살아 있는 사람이 0~2명이면 카드(나 포함, 친구가 없으면 초대 칸 포함)가 한 화면을 나눠 채운다.
@@ -1148,6 +1202,7 @@ function memberEvents(){
 function refreshChat(){
   if(!cur||!$("#chat").classList.contains("on")) return;
   drawHead(cur); showRoomInvite();
+  if(cur.group) renderMsgs();
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
 function renderMsgs(){
@@ -1276,7 +1331,7 @@ function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove(
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-invite":"till","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
+  "s-profile":"settings","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -1460,7 +1515,7 @@ $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
   $("#sChatSafe").style.display=$("#sChatSafeLbl").style.display=cur.self?"none":"";
-  $("#sChatRoom").style.display=cur.group?"flex":"none";
+  $("#sChatRoom").style.display=cur.group?"flex":"none"; $("#sChatLeave").style.display=cur.group?"":"none";
   $("#mBlock").style.display=cur.group?"none":"";
   if(cur.group) fillRoomSettings();
   const n=cur.msgs.filter(m=>m.type==="image").length;
@@ -1494,7 +1549,7 @@ $("#roomNameIn").addEventListener("change",async e=>{
   if(!cur) return;
   try{ await api(`/api/groups/${cur.id}/name`,{method:"POST",body:{name:e.target.value}}); await syncTill(); if(cur){ $("#sChatTitle").textContent=cur.name; drawHead(cur) } }catch(err){ toast(err.message) }
 });
-$("#mCode").addEventListener("click",shareCode);
+$("#mCode").addEventListener("click",()=>{ if(curCode) copyText(codeLink(curCode)) });   // 코드 공유 = 링크 복사
 $("#mCodeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꿀까요? 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
   try{ curCode=(await api(`/api/groups/${cur.id}/code/renew`,{method:"POST"})).code; curBond=cur.id; $("#mCodeVal").textContent=curCode; toast("새 코드로 바꿨어요") }catch(e){ toast(e.message) }
 },{ok:"바꾸기",safe:true}));
@@ -1646,13 +1701,10 @@ $("#profileSave").addEventListener("click",async()=>{
 });
 /* 코드로 들어가기. 코드는 방마다 하나. 어떤 방인지 먼저 보여주고, 들어가기를 누르면 들어간다 */
 const cleanCode=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
-$("#joinIn").addEventListener("input",()=>{ const v=cleanCode($("#joinIn").value).slice(0,6); $("#joinIn").value=v; $("#joinBtn").disabled=v.length!==6 });
-$("#joinIn").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!$("#joinBtn").disabled) $("#joinBtn").click() });
-$("#joinBtn").addEventListener("click",()=>askJoin($("#joinIn").value));
-async function askJoin(raw){
+async function askJoin(raw,done){
   const c=cleanCode(raw); if(c.length!==6){ toast("코드 6자리를 넣어주세요"); return }
   let o; try{ o=await api("/api/join/"+c) }catch(e){ toast(e.message); return }
-  const open=async id=>{ $("#joinIn").value=""; $("#joinBtn").disabled=true; await syncTill(); if(stack.includes("s-invite")) back("till"); openChat(String(id)) };
+  const open=async id=>{ done&&done(); await syncTill(); openChat(String(id)) };
   if(o.already){ open(o.bondId); return }
   confirmBox(`${o.name||"새 방"} · ${o.count}명`,async()=>{
     try{ const r=await api("/api/join",{method:"POST",body:{code:c}}); await open(r.bondId) }catch(e){ toast(e.message) }
