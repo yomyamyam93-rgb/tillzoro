@@ -8,7 +8,7 @@
  * 화면(HTML)은 언제나 새것을 먼저 받아온다. 캐시를 우선하면
  * 고친 것이 폰에 안 보이는 일이 생긴다.
  */
-const VERSION = "tz-1027-1324";
+const VERSION = "tz-1027-1347";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -16,6 +16,8 @@ const ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png",
+  "./terms.html",
+  "./privacy.html",
 ];
 
 self.addEventListener("install", (e) => {
@@ -78,6 +80,7 @@ self.addEventListener("push", (e) => {
       body: d.body || "",
       icon: "./icon-192.png",
       badge: "./icon-192.png",
+      tag: d.tag,
       data: d,
     })
   );

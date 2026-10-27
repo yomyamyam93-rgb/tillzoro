@@ -250,7 +250,6 @@
   .sheet .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .sheet .grid button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px;border-radius:14px;background:var(--paper);font-size:12px;color:var(--ink-2)}
   .sheet .grid svg{width:24px;height:24px;fill:var(--ink);stroke:none}
-  .sheet .grid button[data-act="block"] svg,.sheet .grid button[data-act="report"] svg{fill:var(--zero)}
   .scrim{position:absolute;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:4}
   .scrim.on{opacity:1;pointer-events:auto}
   .toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--paper);font-size:13px;padding:10px 16px;border-radius:20px;opacity:0;transition:.2s;z-index:30;white-space:nowrap;pointer-events:none}
@@ -319,6 +318,12 @@
   .item .seg button{padding:6px 10px;font-size:12px;border-radius:8px;white-space:nowrap;flex:none}
   .item .seg button.on{background:var(--ink);color:var(--paper)}
   .seg button.on{background:var(--ink);color:var(--paper)}
+  .row2b{display:flex;gap:8px}
+  .row2b .btn{flex:1}
+  .linkbtn{align-self:center;font-size:13px;color:var(--ink-3);padding:6px 10px}
+  .agree{margin:0 0 12px;font-size:12px;line-height:1.6;color:var(--ink-3);text-align:center}
+  .agree a{color:var(--ink-2);text-decoration:underline;cursor:pointer}
+  #docFrame{flex:1;width:100%;border:0;background:var(--paper-2)}
   .codebox{font:500 26px var(--font-num);letter-spacing:.2em;text-align:center;padding:22px;background:var(--card);border-radius:var(--r-list)}
   .confirm{position:absolute;left:24px;right:24px;bottom:60px;background:var(--card);border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:28;display:none;flex-direction:column;gap:12px}
   .confirm.on{display:flex}
@@ -366,7 +371,9 @@
   <section class="screen ob" id="ob-rule"><div class="pad">
     <div class="bar" style="padding:0;margin-left:-6px"><button class="icon" data-back="ob-profile"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
     <div class="rule">30일 동안 서로 말이 없으면,<br>서로에게서 사라져요.<small>남은 사람이 당신의 Till이에요. 그게 전부예요.</small></div>
-    <div class="spacer"></div><button class="btn" id="ruleNext">시작하기</button>
+    <div class="spacer"></div>
+    <p class="agree">시작하면 <a id="agTerms">이용약관</a>과 <a id="agPrivacy">개인정보 처리방침</a>에 동의하는 것으로 봐요.</p>
+    <button class="btn" id="ruleNext">시작하기</button>
   </div></section>
 
   <!-- 2. Till -->
@@ -402,7 +409,7 @@
     <div class="scrim" id="scrim"></div>
 
     <div class="sheet" id="toolSheet"><div class="tlist" id="toolSheetList"></div></div>
-    <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button><button data-act="block"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-6.4 6.9A7.5 7.5 0 0 0 15.1 18.4zm12.8 6.2A7.5 7.5 0 0 0 8.9 5.6z"/></svg>차단</button><button data-act="report"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm1 15h-2v-2h2zm0-4h-2V9h2z"/></svg>신고</button></div></div>
+    <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button></div></div>
     <input type="file" id="albumFile" accept="image/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*" capture="environment" hidden>
   </section>
@@ -429,6 +436,11 @@
         <div class="item" id="mMedia"><div class="t">사진 모아보기<div class="sub" id="mMediaSub">주고받은 사진</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="mExport" style="border-bottom:0"><div class="t">대화 내보내기<div class="sub">이 대화를 글로 저장해요</div></div><span class="val">TXT</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       </div>
+      <div class="lbl" style="margin-top:10px" id="sChatSafeLbl">안전</div>
+      <div class="list" id="sChatSafe">
+        <div class="item danger" id="mReport"><div class="t">신고하기</div></div>
+        <div class="item danger" id="mBlock" style="border-bottom:0"><div class="t">차단하기</div></div>
+      </div>
     </div>
   </section>
 
@@ -443,9 +455,10 @@
     <div class="pad" style="gap:0;padding-top:6px">
       <div class="profile-card" data-go="s-profile"><div class="av" id="meAvatar"></div><div class="t"><div class="nm" id="meName">이름</div><div class="ph2" id="mePhone"></div><div class="tag"><i></i><span id="meTill">TILL 0</span></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       <div class="lbl sect">Invite</div>
-      <div class="list"><div class="item" data-go="s-invite"><div class="t">초대 링크와 내 코드<div class="sub" id="codeSub">코드 꺼짐</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div></div>
+      <div class="list"><div class="item" data-go="s-invite"><div class="t">초대 코드<div class="sub" id="codeSub">내 코드 · 받은 코드</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div></div>
       <div class="lbl sect">Notifications</div>
       <div class="list" id="notiList">
+        <div class="item"><div class="t">알림 받기<div class="sub" id="pushSub"></div></div><div class="toggle" id="pushToggle"></div></div>
         <div class="item"><div class="t">메시지</div><div class="toggle on" data-k="n_msg"></div></div>
         <div class="item"><div class="t">받은 요청</div><div class="toggle on" data-k="n_req"></div></div>
         <div class="item"><div class="t">D-DAY 7일 · 1일</div><div class="toggle on" data-k="n_dday"></div></div>
@@ -458,14 +471,15 @@
         <div class="item" data-go="s-blocked"><div class="t">차단 목록</div><span class="val" id="blockSub">0명</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="exportBtn"><div class="t">내 데이터 내려받기</div><span class="val">JSON</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" data-go="s-rule"><div class="t">규칙 다시 보기</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
-        <div class="item" style="cursor:default"><div class="t">이용약관 · 개인정보 처리방침</div><span class="val">준비 중</span></div>
+        <div class="item" id="docTerms"><div class="t">이용약관</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        <div class="item" id="docPrivacy"><div class="t">개인정보 처리방침</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
       </div>
       <div class="lbl sect">Account</div>
       <div class="list">
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1324</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1347</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -483,17 +497,19 @@
   <section class="screen" id="s-invite">
     <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Invite</h2></div>
     <div class="pad">
-      <div class="lbl">1회용 링크 · 7일 뒤 만료</div>
-      <button class="btn ghost" id="mkLink">초대 링크 만들기</button>
-      <div id="linkOut" class="codebox" style="display:none;font-size:13px;letter-spacing:0;word-break:break-all"></div>
-      <div class="lbl" style="margin-top:10px">내 코드 · 프로필에 걸어두는 용도</div>
-      <div class="list"><div class="item"><div class="t">코드 켜기<div class="sub">끄면 즉시 무효가 돼요</div></div><div class="toggle" id="codeToggle"></div></div></div>
-      <div class="codebox" id="codeOut">— — — —</div>
-      <button class="btn ghost" id="codeRenew">새 코드 만들기</button>
-      <div class="lbl" style="margin-top:10px">받은 코드 넣기</div>
-      <input class="field" id="joinIn" maxlength="8" placeholder="상대 코드 8자리" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
-      <button class="btn ghost" id="joinBtn">Till에 넣기</button>
+      <div class="lbl">내 코드</div>
+      <div class="codebox" id="codeOut">· · · · · ·</div>
+      <div class="row2b"><button class="btn" id="shareCode">링크 보내기</button><button class="btn ghost" id="copyCode">코드 복사</button></div>
+      <button class="linkbtn" id="codeRenew">새 코드로 바꾸기</button>
+      <div class="lbl" style="margin-top:14px">받은 코드</div>
+      <input class="field" id="joinIn" maxlength="6" placeholder="6자리" autocapitalize="characters" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:.24em;text-align:center">
+      <button class="btn ghost" id="joinBtn" disabled>요청 보내기</button>
     </div>
+  </section>
+
+  <section class="screen" id="s-doc">
+    <div class="bar big"><button class="icon" data-back=""><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="docTitle">Terms</h2></div>
+    <iframe id="docFrame" title="문서"></iframe>
   </section>
 
   <section class="screen" id="s-blocked">
@@ -512,6 +528,9 @@
   <div class="confirm" id="confirm"><p id="confirmText"></p><div class="row2"><button class="btn ghost" id="confirmNo">취소</button><button class="btn danger" id="confirmYes">확인</button></div></div>
   <div class="menu-bg" id="msgMenuBg"></div>
   <div class="crop" id="crop"><div class="cbar"><button id="cropNo">취소</button><button id="cropOk">완료</button></div><div class="cstage" id="cropStage"><img id="cropImg" alt=""><div class="cframe" id="cropFrame"></div></div></div>
+  <div class="menu-bg" id="repBg"></div>
+  <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
+  <div class="confirm" id="delBox"><p>계정을 지우면 모든 Bond와 대화, 도구 기록이 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="password" placeholder="비밀번호" autocomplete="current-password"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
   <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">내 화면에서 삭제</button></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
@@ -560,7 +579,7 @@ function requireLogin(){
 
 let me = null;
 let people = [];
-let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false,theme:"light",code:null,codeOn:false,blocked:[]});
+let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false,theme:"light"});
 
 function uid(){return Math.random().toString(36).slice(2,10)}
 function dday(p){return Math.max(0,30-Math.floor((NOW()-p.lastResetAt)/DAY))}
@@ -581,20 +600,19 @@ async function syncTill(){
     msgs:b.lastMessage?[{id:"last",who:"you",type:"text",text:b.lastMessage,ts:new Date(b.lastAt).getTime(),ok:true}]:[]
   }));
   // 대화방이 열려 있을 때만 읽어둔 대화를 이어 쓴다. 닫혀 있으면 목록은 서버 것을 그대로 보여준다.
-  if(prev&&chatOpen){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } }
+  if(prev&&chatOpen){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } else { cur=null; back("till") } }
   else if(!chatOpen) cur=null;
   // 다음에 열 때 곧바로 보여주려고 목록을 기억해둔다.
   // bondAt·lastResetAt은 절대 시각이라 나중에 다시 계산해도 값이 맞는다.
   store.set("bonds", people.map(p=>({...p, msgs:p.msgs.slice(-1)})));
-  renderTill();
+  renderTill(); loadReqs();
 }
 
 /* 초대 링크(?code=…)를 열고 들어온 경우 */
 async function tryUrlCode(){
   const c=new URL(location).searchParams.get("code"); if(!c) return;
   history.replaceState(null,"",location.pathname);
-  try{ await api("/api/invite/accept",{method:"POST",body:{code:c}}); toast("Till에 추가했어요"); await syncTill() }
-  catch(e){ toast(e.message) }
+  askCode(c);
 }
 
 /* 상대가 보낸 메시지를 바로 받는다 */
@@ -603,6 +621,7 @@ function connectWS(){
   if(!auth) return;
   if(ws&&ws.readyState<=1) return;
   try{ ws=new WebSocket(API.replace("https://","wss://")+"/ws?token="+encodeURIComponent(auth.token)) }catch(e){ return }
+  ws.onopen=sendVis;
   ws.onmessage=e=>{
     let d; try{ d=JSON.parse(e.data) }catch(err){ return }
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
@@ -611,10 +630,14 @@ function connectWS(){
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
     }
+    if(d.type==="req"){ loadReqs(); return }
     syncTill().then(refreshChat).catch(requireLogin);
   };
   ws.onclose=()=>{ ws=null; setTimeout(connectWS,4000) };
 }
+
+function sendVis(){ if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:"vis",v:document.visibilityState==="visible"})) }
+document.addEventListener("visibilitychange",sendVis);
 
 /* 폰은 수시로 앱을 뒤로 보낸다. 돌아왔을 때, 그리고 인터넷이 다시 붙었을 때 새로 받아온다. */
 function catchUp(){
@@ -653,7 +676,7 @@ function back(to){
 $$("[data-back]").forEach(b=>b.addEventListener("click",()=>back(b.dataset.back)));
 $$("[data-go]").forEach(b=>b.addEventListener("click",()=>{go(b.dataset.go); if(b.dataset.go==="s-profile") fillProfileEdit(); if(b.dataset.go==="s-invite") renderInvite(); if(b.dataset.go==="s-blocked") renderBlocked();}));
 let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1800)}
-function confirmBox(text,cb){$("#confirmText").textContent=text;$("#confirm").classList.add("on");$("#confirmYes").onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
+function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("#confirmYes");y.textContent=o.ok||"확인";y.classList.toggle("danger",!o.safe);$("#confirm").classList.add("on");y.onclick=()=>{$("#confirm").classList.remove("on");cb()};$("#confirmNo").onclick=()=>$("#confirm").classList.remove("on")}
 
 /* ---------- theme ---------- */
 let splashing=true;
@@ -679,7 +702,7 @@ applyTheme();
   if(auth){
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
-    tryUrlCode(); connectWS(); loadToolStates();
+    tryUrlCode(); connectWS(); loadToolStates(); syncPush();
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
 })();
@@ -802,14 +825,14 @@ async function enter(d){
   ["ob-phone","ob-code","ob-profile","ob-rule"].forEach(i=>{$("#"+i).classList.remove("on","under","base")});
   $("#till").classList.add("base"); stack=["till"]; syncTabs();
   if(draftAvatar){ keepPhotoSrc(draftSrc,draftAvatar); try{ await api("/api/profile",{method:"POST",body:{photo:draftAvatar}}) }catch(e){} }
-  await syncTill(); await tryUrlCode(); connectWS();
+  await syncTill(); await tryUrlCode(); connectWS(); syncPush();
 }
 
 /* ---------- Till ---------- */
 function renderTill(){
   if(!me) return;              // 로그인 전에는 그릴 것이 없다
   const rows=$("#rows"); rows.innerHTML="";
-  const live=people.filter(p=>!p.self && dday(p)>0 && !prefs.blocked.includes(p.id));
+  const live=people.filter(p=>!p.self && dday(p)>0);
   $("#total").textContent=live.length; $("#tabCount").textContent=live.length;
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
   live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
@@ -837,7 +860,7 @@ function renderTill(){
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
   fitRows(live.length);
-  const reqs=store.get("reqs",[]); if(reqs.length){const q=document.createElement("div");q.className="req";q.innerHTML=`<span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="t">받은 요청 ${reqs.length}</span>`;q.addEventListener("click",openReqs);rows.appendChild(q)}
+  if(reqs.length){const q=document.createElement("div");q.className="req";q.innerHTML=`<span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="t">받은 요청 ${reqs.length}</span>`;q.addEventListener("click",openReqs);rows.appendChild(q)}
 
 }
 /* R-4.10 적을수록 크게.
@@ -899,7 +922,8 @@ async function openChat(id){
 let roomData={};       // 지금 방의 {도구id: data}
 const toolUi={};       // 도구별 화면 상태(입력 중인지 등). 방을 옮기면 비운다
 const myId=()=>String(auth?.me?.id||"");
-const josa=(w,a,b)=>{ const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172&&c%28?a:b) };
+// 받침에 맞는 조사. 한글이 아닌 글자로 끝나면 둘 다 적는다(zt24680을(를))
+const josa=(w,a,b)=>{ const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172?(c%28?a:b):`${a}(${b})`) };
 
 async function loadRoomTools(){
   const id=cur?.id; if(!id) return;
@@ -1078,7 +1102,7 @@ function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove(
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-code","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings"};
+  "s-profile":"settings","s-invite":"settings","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -1261,6 +1285,7 @@ $("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
+  $("#sChatSafe").style.display=$("#sChatSafeLbl").style.display=cur.self?"none":"";
   const n=cur.msgs.filter(m=>m.type==="image").length;
   $("#mMediaSub").textContent = n ? `사진 ${n}장` : "아직 사진이 없어요";
   go("s-chat");
@@ -1307,7 +1332,7 @@ function applyChat(){
 $$("#segSize button").forEach(b=>b.addEventListener("click",()=>{prefs.chatSize=b.dataset.v;store.set("prefs",prefs);applyChat()}));
 $$("#segFont button").forEach(b=>b.addEventListener("click",()=>{prefs.chatFont=b.dataset.v;store.set("prefs",prefs);applyChat()}));
 applyChat();
-$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam,block:blockCur,report:()=>toast("신고를 접수했어요")})[b.dataset.act]()}));
+$$("#sheet [data-act]").forEach(b=>b.addEventListener("click",()=>{sheetOpen(false);({album:()=>$("#albumFile").click(),camera:openCam})[b.dataset.act]()}));
 $("#albumFile").addEventListener("change",e=>{[...e.target.files].forEach(f=>readImage(f,1280,d=>push({type:"image",src:d}))); e.target.value=""});
 
 /* camera */
@@ -1326,36 +1351,82 @@ $("#captureFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)r
 function viewer(m){$("#viewerBody").innerHTML=`<img src="${m.src}" alt="">`;$("#viewerSave").href=m.src;$("#viewer").classList.add("on")}
 $("#viewerClose").addEventListener("click",()=>$("#viewer").classList.remove("on"));
 
-/* requests */
+/* 받은 요청. 코드를 넣은 사람이 보낸다. 수락해야 Bond 가 된다(R-3.2), 거절은 알리지 않는다(R-3.9) */
+let reqs=[];
+async function loadReqs(){
+  try{ reqs=(await api("/api/requests")).requests }catch(e){ return }
+  renderTill(); if($("#reqSheet").classList.contains("on")){ reqs.length?openReqs():closeReqs() }
+}
 function openReqs(){
   const list=$("#reqList"); list.innerHTML="";
-  const reqs=store.get("reqs",[]);
   reqs.forEach(r=>{const el=document.createElement("div");el.className="reqitem";
-    el.innerHTML=`<div class="av" style="${r.photo?`background-image:url(${r.photo})`:""}"></div><div class="t">${esc(r.name)}<small>${r.via}로 온 요청</small></div><button class="no">거절</button><button class="ok">수락</button>`;
-    el.querySelector(".ok").addEventListener("click",()=>{acceptReq(r)}); el.querySelector(".no").addEventListener("click",()=>{declineReq(r)}); list.appendChild(el)});
+    el.innerHTML=`<div class="av" style="${r.photo?`background-image:url(${r.photo})`:""}"></div><div class="t">${esc(r.name)}</div><button class="no">거절</button><button class="ok">수락</button>`;
+    el.querySelector(".ok").addEventListener("click",()=>acceptReq(r)); el.querySelector(".no").addEventListener("click",()=>declineReq(r)); list.appendChild(el)});
   $("#reqSheet").classList.add("on"); $("#scrim2").classList.add("on");
 }
 function closeReqs(){$("#reqSheet").classList.remove("on");$("#scrim2").classList.remove("on")}
-function acceptReq(r){
-  const reqs=store.get("reqs",[]).filter(x=>x.id!==r.id); store.set("reqs",reqs);
-  people.push({id:"p"+uid(),name:r.name,keep:0,photo:r.photo,bondAt:NOW(),lastResetAt:NOW(),mySent:false,unread:false,msgs:[]}); savePeople();
-  toast(`${r.name}이(가) Till에 들어왔어요`); if(!reqs.length) closeReqs(); else openReqs(); renderTill();
+function dropReq(r){ reqs=reqs.filter(x=>x.id!==r.id); reqs.length?openReqs():closeReqs(); renderTill() }
+async function acceptReq(r){
+  try{ await api(`/api/requests/${r.id}/accept`,{method:"POST"}); toast(`${josa(r.name,"이","가")} Till에 들어왔어요`) }catch(e){ toast(e.message) }
+  dropReq(r); syncTill().catch(()=>{});
 }
-function declineReq(r){const reqs=store.get("reqs",[]).filter(x=>x.id!==r.id); store.set("reqs",reqs); if(!reqs.length) closeReqs(); else openReqs(); renderTill();}
+function declineReq(r){ api(`/api/requests/${r.id}/decline`,{method:"POST"}).catch(()=>{}); dropReq(r) }
 $("#scrim2").addEventListener("click",closeReqs);
 
 /* ---------- Settings ---------- */
 
 
 function renderSettings(){
-  $("#meName").textContent=me.name; $("#meTill").textContent="TILL "+people.filter(p=>dday(p)>0&&!prefs.blocked.includes(p.id)).length; $("#mePhone").textContent=(me.phone||"").replace(/(\d{3})-(\d{4})-(\d{4})/,"$1-****-$3"); const a=$("#meAvatar"); a.style.backgroundImage=me.photo?`url(${me.photo})`:"none";
+  $("#meName").textContent=me.name; $("#meTill").textContent="TILL "+people.filter(p=>!p.self&&dday(p)>0).length; $("#mePhone").textContent=(me.phone||"").replace(/(\d{3})-(\d{4})-(\d{4})/,"$1-****-$3"); const a=$("#meAvatar"); a.style.backgroundImage=me.photo?`url(${me.photo})`:"none";
   $$("#notiList .toggle").forEach(t=>t.classList.toggle("on",!!prefs[t.dataset.k]));
-  $("#codeSub").textContent=prefs.codeOn&&prefs.code?`코드 켜짐 · ${prefs.code}`:"코드 꺼짐";
-  $("#blockSub").textContent=`${prefs.blocked.length}명`;
+  if(myCodeVal) $("#codeSub").textContent=myCodeVal; else api("/api/code").then(d=>{ myCodeVal=d.code; $("#codeSub").textContent=d.code }).catch(()=>{});
+  api("/api/blocks").then(d=>{ $("#blockSub").textContent=`${d.blocks.length}명` }).catch(()=>{});
+  renderPush(); loadNoti();
   $("#storeInfo").textContent=`저장 사용량 ${(store.size()/1024).toFixed(0)} KB`;
   applyTheme();
 }
-$$("#notiList .toggle").forEach(t=>t.addEventListener("click",()=>{prefs[t.dataset.k]=!prefs[t.dataset.k];store.set("prefs",prefs);t.classList.toggle("on")}));
+const NOTI_MAP={n_msg:"msg",n_req:"req",n_dday:"dday",n_dnd:"dnd"};
+$$("#notiList .toggle[data-k]").forEach(t=>t.addEventListener("click",()=>{
+  const k=t.dataset.k; prefs[k]=!prefs[k]; store.set("prefs",prefs); t.classList.toggle("on",prefs[k]);
+  api("/api/me/noti",{method:"POST",body:{[NOTI_MAP[k]]:prefs[k]}}).catch(()=>{});
+}));
+async function loadNoti(){
+  try{ const n=(await api("/api/me/noti")).noti; for(const k in NOTI_MAP) prefs[k]=!!n[NOTI_MAP[k]]; store.set("prefs",prefs) }catch(e){ return }
+  $$("#notiList .toggle[data-k]").forEach(t=>t.classList.toggle("on",!!prefs[t.dataset.k]));
+}
+/* 알림 받기(웹 푸시). 아이폰은 홈 화면에 추가한 앱에서만 된다.
+   권한 요청은 누른 순간 바로 해야 아이폰이 받아준다 — 그래서 켜져 있는지는 미리 pushOn 에 들고 있는다 */
+let pushOn=false;
+const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+const b64u=x=>{ const r=atob((x+"=".repeat((4-x.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(r,c=>c.charCodeAt(0)) };
+async function renderPush(){
+  const t=$("#pushToggle"), sub=$("#pushSub");
+  if(!pushOK()){ pushOn=false; t.classList.remove("on"); sub.textContent="홈 화면에 추가한 앱에서 켤 수 있어요"; return }
+  sub.textContent=Notification.permission==="denied"?"기기 설정에서 알림이 꺼져 있어요":"";
+  try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription(); pushOn=!!s&&Notification.permission==="granted" }catch(e){ pushOn=false }
+  t.classList.toggle("on",pushOn);
+}
+$("#pushToggle").addEventListener("click",async()=>{
+  if(!pushOK()){ toast("홈 화면에 추가한 앱에서 켤 수 있어요"); return }
+  if(pushOn){
+    try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      if(s){ api("/api/push/unsub",{method:"POST",body:{endpoint:s.endpoint}}).catch(()=>{}); await s.unsubscribe() } }catch(e){}
+    renderPush(); return;
+  }
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted"){ renderPush(); return }
+  try{
+    const {key}=await api("/api/push/key"); if(!key){ toast("알림을 켜지 못했어요"); return }
+    const sub=await (await navigator.serviceWorker.ready).pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(key)});
+    await api("/api/push/sub",{method:"POST",body:{sub:sub.toJSON()}}); toast("알림을 켰어요");
+  }catch(e){ toast("알림을 켜지 못했어요") }
+  renderPush();
+});
+// 앱을 열 때마다 이 기기의 알림을 지금 로그인한 계정에 다시 묶는다
+async function syncPush(){
+  if(!pushOK()||Notification.permission!=="granted") return;
+  try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription(); if(s) api("/api/push/sub",{method:"POST",body:{sub:s.toJSON()}}).catch(()=>{}) }catch(e){}
+}
 function fillProfileEdit(){$("#nameIn2").value=me.name;editAvatar=undefined;editSrc=null;showEditPhoto(me.photo)}
 let editAvatar, editSrc;
 const showEditPhoto=d=>{ const p=$("#avatarPick2"); p.style.backgroundImage=d?`url(${d})`:"none"; p.childNodes[0].textContent=d?"":"사진 넣기"; $("#avatarAdjust").style.display=d?"":"none" };
@@ -1380,31 +1451,94 @@ $("#profileSave").addEventListener("click",async()=>{
   }catch(e){ if(!requireLogin()) toast(e.message) }
   btn.disabled=false;
 });
-function genCode(){return Array.from({length:4},()=>"ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*31)]).join("")}
-function renderInvite(){$("#codeToggle").classList.toggle("on",prefs.codeOn);$("#codeOut").textContent=prefs.codeOn&&prefs.code?prefs.code.split("").join(" "):"— — — —";$("#linkOut").style.display="none"}
-$("#codeToggle").addEventListener("click",()=>{prefs.codeOn=!prefs.codeOn;if(prefs.codeOn&&!prefs.code)prefs.code=genCode();store.set("prefs",prefs);renderInvite()});
-$("#codeRenew").addEventListener("click",async()=>{
-  try{ const d=await api("/api/invite",{method:"POST"}); $("#codeOut").textContent=d.code; toast("코드를 만들었어요") }catch(e){ toast(e.message) }
+/* 초대 코드는 사람마다 하나(R-3.10). 링크는 그 코드를 담은 주소다.
+   받은 코드를 넣으면 누구인지 먼저 보여주고, 요청을 보낸다. 상대가 수락하면 Bond 가 된다 */
+let myCodeVal=null;
+const spaced=c=>c.split("").join(" ");
+const codeLink=c=>location.origin+location.pathname+"?code="+c;
+async function renderInvite(){
+  $("#codeOut").textContent=myCodeVal?spaced(myCodeVal):"· · · · · ·";
+  $("#joinIn").value=""; $("#joinBtn").disabled=true;
+  try{ myCodeVal=(await api("/api/code")).code; $("#codeOut").textContent=spaced(myCodeVal) }catch(e){ if(!requireLogin()) toast(e.message) }
+}
+$("#shareCode").addEventListener("click",async()=>{
+  if(!myCodeVal) return;
+  const url=codeLink(myCodeVal);
+  if(navigator.share){ try{ await navigator.share({title:"Till Zero",text:`Till Zero 코드 ${myCodeVal}`,url}) }catch(e){} return }
+  copyText(url);
 });
-$("#joinBtn").addEventListener("click",async()=>{
-  const c=$("#joinIn").value.trim().toUpperCase(); if(!c){ toast("코드를 넣어주세요"); return }
-  const b=$("#joinBtn"); b.disabled=true;
-  try{ await api("/api/invite/accept",{method:"POST",body:{code:c}}); $("#joinIn").value=""; toast("Till에 넣었어요"); await syncTill(); back("till") }
-  catch(e){ toast(e.message) }
-  b.disabled=false;
-});
-$("#mkLink").addEventListener("click",async()=>{let l;
-  try{ const d=await api("/api/invite",{method:"POST"}); l=location.origin+location.pathname+"?code="+d.code; $("#codeOut").textContent=d.code }
-  catch(e){ toast(e.message); return }const o=$("#linkOut");o.textContent=l;o.style.display="block";try{await navigator.clipboard.writeText(l);toast("링크를 복사했어요 · 7일 뒤 만료")}catch(e){toast("7일 뒤 만료")}});
-function renderBlocked(){const l=$("#blockList");l.innerHTML="";const bl=people.filter(p=>prefs.blocked.includes(p.id));$("#blockEmpty").style.display=bl.length?"none":"block";bl.forEach(p=>{const it=document.createElement("div");it.className="item";it.innerHTML=`<div class="t">${esc(p.name)}</div><button style="color:var(--ink-2);font-size:13px">차단 해제</button>`;it.querySelector("button").addEventListener("click",()=>{prefs.blocked=prefs.blocked.filter(x=>x!==p.id);store.set("prefs",prefs);renderBlocked()});l.appendChild(it)})}
+$("#copyCode").addEventListener("click",()=>{ if(myCodeVal) copyText(myCodeVal) });
+$("#codeRenew").addEventListener("click",()=>confirmBox("새 코드로 바꾸면 지금 코드와 보낸 링크는 더 이상 안 돼요.",async()=>{
+  try{ myCodeVal=(await api("/api/code/renew",{method:"POST"})).code; $("#codeOut").textContent=spaced(myCodeVal); toast("새 코드로 바꿨어요") }catch(e){ toast(e.message) }
+},{ok:"바꾸기",safe:true}));
+const cleanCode=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+$("#joinIn").addEventListener("input",()=>{ const v=cleanCode($("#joinIn").value).slice(0,6); $("#joinIn").value=v; $("#joinBtn").disabled=v.length!==6 });
+$("#joinBtn").addEventListener("click",()=>askCode($("#joinIn").value));
+async function askCode(raw){
+  const c=cleanCode(raw); if(c.length!==6){ toast("코드 6자리를 넣어주세요"); return }
+  let o; try{ o=await api("/api/code/"+c) }catch(e){ toast(e.message); return }
+  if(o.already){ toast(`${o.name}은(는) 이미 Till에 있어요`); return }
+  confirmBox(`${o.name}에게 요청을 보낼까요?`,async()=>{
+    try{
+      const r=await api("/api/request",{method:"POST",body:{code:c}});
+      $("#joinIn").value=""; $("#joinBtn").disabled=true;
+      if(r.status==="bonded"){ toast(`${josa(o.name,"이","가")} Till에 들어왔어요`); await syncTill() }
+      else toast("요청을 보냈어요");
+    }catch(e){ toast(e.message) }
+  },{ok:"보내기",safe:true});
+}
+async function renderBlocked(){
+  let list=[]; try{ list=(await api("/api/blocks")).blocks }catch(e){ toast(e.message) }
+  const l=$("#blockList"); l.innerHTML=""; $("#blockEmpty").style.display=list.length?"none":"block";
+  list.forEach(p=>{ const it=document.createElement("div"); it.className="item";
+    it.innerHTML=`<div class="t">${esc(p.name)}</div><button style="color:var(--ink-2);font-size:13px">차단 해제</button>`;
+    it.querySelector("button").addEventListener("click",()=>confirmBox(`${p.name} 차단을 풀까요?`,async()=>{
+      try{ await api(`/api/blocks/${p.id}/remove`,{method:"POST"}) }catch(e){ toast(e.message) } renderBlocked();
+    },{ok:"풀기",safe:true}));
+    l.appendChild(it) });
+}
 $("#exportBtn").addEventListener("click",()=>{const data={me,prefs,people:people.map(p=>({...p,msgs:p.msgs.map(m=>({...m,src:m.src?"(media)":null}))}))};const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tillzero-export.json";a.click();toast("내려받기 시작")});
-$("#logoutBtn").addEventListener("click",()=>confirmBox("로그아웃할까요?",()=>{store.del("auth");location.reload()}));
-$("#deleteBtn").addEventListener("click",()=>confirmBox("계정을 삭제하면 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.",()=>{store.clear();location.reload()}));
+$("#logoutBtn").addEventListener("click",()=>confirmBox("로그아웃할까요?",async()=>{
+  try{ if(pushOK()){ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription(); if(s){ await api("/api/push/unsub",{method:"POST",body:{endpoint:s.endpoint}}).catch(()=>{}); await s.unsubscribe() } } }catch(e){}
+  // 이 기기에 남은 대화·목록·사진 원본도 지운다. 테마 같은 화면 설정만 남긴다
+  const keep=localStorage.getItem("tz:prefs"); localStorage.clear(); if(keep) localStorage.setItem("tz:prefs",keep);
+  location.reload();
+},{ok:"로그아웃",safe:true}));
+$("#deleteBtn").addEventListener("click",()=>{ $("#delPw").value=""; $("#delYes").disabled=false; $("#delBox").classList.add("on") });
+$("#delNo").addEventListener("click",()=>$("#delBox").classList.remove("on"));
+$("#delYes").addEventListener("click",async()=>{
+  const pw=$("#delPw").value; if(!pw){ toast("비밀번호를 넣어주세요"); return }
+  const b=$("#delYes"); b.disabled=true;
+  try{ await api("/api/me/delete",{method:"POST",body:{password:pw}}); localStorage.clear(); location.replace(location.pathname) }
+  catch(e){ toast(e.message); b.disabled=false }
+});
+/* 이용약관·개인정보 처리방침. 스토어에 걸 주소와 같은 파일을 앱 안에서 연다 */
+function openDoc(which){
+  $("#docTitle").textContent=which==="terms"?"Terms":"Privacy";
+  $("#docFrame").src=`${which}.html?theme=${document.documentElement.dataset.theme||"light"}`;
+  go("s-doc");
+}
+$("#docTerms").addEventListener("click",()=>openDoc("terms"));
+$("#docPrivacy").addEventListener("click",()=>openDoc("privacy"));
+$("#agTerms").addEventListener("click",()=>openDoc("terms"));
+$("#agPrivacy").addEventListener("click",()=>openDoc("privacy"));
 
-/* more menu → block */
-let avT; $("#cavatar").addEventListener("pointerdown",()=>{avT=setTimeout(()=>blockCur(),700)}); ["pointerup","pointerleave","pointercancel"].forEach(e=>$("#cavatar").addEventListener(e,()=>clearTimeout(avT)));
-function blockCur(){confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")})}
-$("#moreBtn")?.addEventListener("click",()=>confirmBox(`${cur.name}을(를) 차단할까요? 상대에게는 0이 된 것과 똑같이 보여요.`,()=>{prefs.blocked.push(cur.id);store.set("prefs",prefs);back("till")}));
+/* 신고·차단(R-8.5). 대화방 설정 맨 아래에 있다. 나와의 대화에는 없다 */
+$("#mReport").addEventListener("click",()=>{
+  const box=$("#repMenu"), bg=$("#repBg"), close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
+  bg.onclick=close;
+  box.querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    close(); const reason=b.dataset.r; if(!reason||!cur) return;
+    try{ await api("/api/report",{method:"POST",body:{bondId:cur.id,reason}}) }catch(e){ toast(e.message); return }
+    confirmBox(`신고했어요. ${josa(cur.name,"을","를")} 차단할까요?`,doBlock,{ok:"차단"});
+  });
+  box.classList.add("on"); bg.classList.add("on");
+});
+$("#mBlock").addEventListener("click",()=>{ if(cur) confirmBox(`${josa(cur.name,"을","를")} 차단할까요? 이 대화가 지금 사라지고, 상대에게는 0이 된 것과 똑같이 보여요.`,doBlock,{ok:"차단"}) });
+async function doBlock(){
+  try{ await api("/api/block",{method:"POST",body:{bondId:cur.id}}) }catch(e){ toast(e.message); return }
+  cur=null; back("till"); toast("차단했어요"); syncTill().catch(()=>{});
+}
 /* 앱이 꺼져 있을 때 알림을 받을 준비 */
 if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 

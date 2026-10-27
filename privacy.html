@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Till Zero 개인정보 처리방침</title>
+<style>
+  :root{--bg:#F2F2F4;--card:#FFFFFF;--ink:#131416;--ink-2:#5C5F66;--ink-3:#9A9DA4;--line:#E3E3E0}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111114;--card:#1A1A1E;--ink:#F2F2EF;--ink-2:#A3A5AB;--ink-3:#6B6E75;--line:#232327}}
+  :root[data-theme="dark"]{--bg:#111114;--card:#1A1A1E;--ink:#F2F2EF;--ink-2:#A3A5AB;--ink-3:#6B6E75;--line:#232327}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  main{max-width:680px;margin:0 auto;padding:24px 16px 56px}
+  h1{font-size:22px;margin:0 0 4px}
+  .meta{color:var(--ink-3);font-size:13px;margin:0 0 24px}
+  h2{font-size:16px;margin:28px 0 8px}
+  p,li{color:var(--ink-2)}
+  ul{padding-left:20px;margin:6px 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;font-size:14px;margin:8px 0}
+  th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink);font-weight:600;width:34%}
+  td{color:var(--ink-2)}
+  tr:last-child th,tr:last-child td{border-bottom:0}
+  .todo{color:#E5232E}
+</style>
+<script>try{var t=new URLSearchParams(location.search).get("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<main>
+<h1>개인정보 처리방침</h1>
+<p class="meta">Till Zero · 시행일 2026년 10월 27일</p>
+
+<p>Till Zero(이하 "서비스")는 대화에 꼭 필요한 정보만 받고, 관계가 끝나면 그 대화를 지웁니다. 이 문서는 어떤 정보를 왜 받고, 언제 지우는지 적은 것입니다.</p>
+
+<h2>1. 받는 정보와 쓰는 곳</h2>
+<table>
+  <tr><th>닉네임, 비밀번호</th><td>가입과 로그인. 비밀번호는 되돌릴 수 없는 방식(bcrypt)으로 바꿔서 저장하며, 운영자도 원래 비밀번호를 알 수 없습니다.</td></tr>
+  <tr><th>생년월일</th><td>만 14세 미만 가입을 막기 위해, 그리고 내 카드에 지금까지 산 날 수를 보여주기 위해.</td></tr>
+  <tr><th>프로필 사진 (선택)</th><td>나와 Bond를 맺은 사람에게 보여주기 위해.</td></tr>
+  <tr><th>대화 내용</th><td>1:1 대화를 전달하고 보관하기 위해.</td></tr>
+  <tr><th>도구 데이터</th><td>대화방 도구(예: 퀘스트)의 내용과 기록을 두 사람에게 보여주기 위해.</td></tr>
+  <tr><th>초대 코드, 받은 요청, 차단 목록</th><td>Bond를 맺고, 원하지 않는 사람과 다시 맺이지 않게 하기 위해.</td></tr>
+  <tr><th>Zero 기록</th><td>누구와 언제 Zero가 되었는지만. Zero 뒤 7일 동안 다시 맺을 수 없게 하는 규칙과, 괴롭힘 신고를 확인하기 위해. 대화 내용은 들어 있지 않습니다.</td></tr>
+  <tr><th>신고 기록</th><td>신고 사유와 신고 시점의 최근 대화 50개. 운영자만 보고, 괴롭힘·불법 행위를 확인하는 데만 씁니다.</td></tr>
+  <tr><th>알림 구독 정보</th><td>알림을 켠 경우, 그 기기로 알림을 보내기 위한 주소. 알림 설정(종류별 켜기·끄기, 방해 금지)도 함께 저장합니다.</td></tr>
+</table>
+<p>주소록, 위치, 전화번호, 광고 식별자는 받지 않습니다. 서비스는 접속 기록(IP 주소 등)을 따로 저장하지 않습니다.</p>
+
+<h2>2. 보관 기간과 지우는 때</h2>
+<table>
+  <tr><th>대화 내용, 도구 데이터</th><td>그 Bond가 사라질 때 서버에서 바로 지웁니다. Bond는 30일 동안 서로 대화가 없을 때(Zero), 어느 한쪽이 차단할 때, 어느 한쪽이 계정을 지울 때 사라집니다. 지운 대화는 되돌릴 수 없습니다.</td></tr>
+  <tr><th>계정 정보</th><td>계정을 지우면 바로 지웁니다.</td></tr>
+  <tr><th>받은 요청</th><td>7일 뒤 지웁니다.</td></tr>
+  <tr><th>Zero 기록</th><td>90일 뒤 지웁니다.</td></tr>
+  <tr><th>신고 기록</th><td>90일 뒤 지웁니다. 신고한 사람이 계정을 지우면 신고한 사람 칸은 바로 비웁니다.</td></tr>
+  <tr><th>알림 구독 정보</th><td>알림을 끄거나, 로그아웃하거나, 계정을 지울 때 지웁니다.</td></tr>
+</table>
+<p>지울 때는 데이터베이스에서 복구할 수 없게 삭제합니다.</p>
+
+<h2>3. 기기에 저장하는 것</h2>
+<p>빠르게 열리도록 휴대폰(브라우저) 안에 로그인 정보, 최근 대화, 화면 설정, 프로필 사진 원본(자리 조정용)을 저장합니다. 이 정보는 그 기기에만 있고 서버로 보내지 않습니다. 로그아웃하거나 앱(웹사이트 데이터)을 지우면 사라집니다. 광고나 추적용 쿠키는 쓰지 않습니다.</p>
+
+<h2>4. 다른 곳에 맡기거나 보내는 정보</h2>
+<p>서비스는 개인정보를 팔거나 광고에 쓰지 않으며, 법에 따른 요청이 있는 경우를 빼고 다른 사람에게 주지 않습니다. 다만 서비스를 운영하기 위해 아래 업체를 씁니다.</p>
+<table>
+  <tr><th>Hetzner Online GmbH<br>(독일)</th><td><b>국외 이전.</b> 위 1번의 모든 정보를 독일 뉘른베르크의 서버에 저장합니다. 서비스를 쓰는 동안 인터넷으로 전송되며, 위 2번의 기간 동안 보관합니다.</td></tr>
+  <tr><th>GitHub, Inc.<br>(미국)</th><td>앱 화면 파일을 전송합니다. 이 과정에서 접속 IP 주소가 GitHub에 처리될 수 있습니다. 대화나 계정 정보는 보내지 않습니다.</td></tr>
+  <tr><th>Apple, Google 등<br>기기 알림 서비스</th><td>알림을 켠 경우에만, 알림 내용(보낸 사람 닉네임과 메시지 앞부분)을 그 기기로 전달하기 위해 보냅니다.</td></tr>
+</table>
+<p>국외 이전을 원하지 않으면 계정을 지우면 됩니다. 다만 서버가 국외에 있어 이전 없이는 서비스를 쓸 수 없습니다.</p>
+
+<h2>5. 내 권리와 행사 방법</h2>
+<ul>
+  <li><b>보기·고치기</b>: 앱의 설정 → 프로필에서 닉네임과 사진을 바로 고칠 수 있습니다.</li>
+  <li><b>내려받기</b>: 설정 → 내 데이터 내려받기, 대화방 설정 → 대화 내보내기.</li>
+  <li><b>지우기</b>: 메시지는 길게 눌러 내 화면에서 지울 수 있고, 계정은 설정 → 계정 삭제로 바로 지울 수 있습니다.</li>
+  <li><b>알림 끄기</b>: 설정 → 알림.</li>
+  <li>그 밖의 요청은 아래 문의처로 보내주시면 지체 없이 처리합니다.</li>
+</ul>
+
+<h2>6. 만 14세 미만</h2>
+<p>만 14세 미만은 가입할 수 없습니다. 가입할 때 받은 생년월일로 확인합니다.</p>
+
+<h2>7. 안전하게 지키는 방법</h2>
+<ul>
+  <li>모든 통신은 암호화(HTTPS)합니다.</li>
+  <li>비밀번호는 되돌릴 수 없는 방식으로만 저장합니다.</li>
+  <li>서버 접속은 열쇠 파일로만 할 수 있고, 방화벽으로 필요한 문만 엽니다.</li>
+  <li>남의 초대 코드를 찍어 맞히지 못하게, 틀린 코드를 짧은 시간에 여러 번 넣으면 잠시 막습니다.</li>
+</ul>
+
+<h2>8. 개인정보 보호책임자와 문의처</h2>
+<table>
+  <tr><th>운영자</th><td class="todo">[출시 전 기재]</td></tr>
+  <tr><th>문의</th><td class="todo">[출시 전 기재]</td></tr>
+</table>
+
+<h2>9. 도움을 받을 수 있는 곳</h2>
+<ul>
+  <li>개인정보분쟁조정위원회 1833-6972 (www.kopico.go.kr)</li>
+  <li>개인정보침해신고센터 118 (privacy.kisa.or.kr)</li>
+  <li>대검찰청 1301 (www.spo.go.kr)</li>
+  <li>경찰청 182 (ecrm.police.go.kr)</li>
+</ul>
+
+<h2>10. 바뀔 때</h2>
+<p>이 방침이 바뀌면 시행 7일 전에 앱 안에서 알립니다. 받는 정보가 늘어나는 등 중요한 변경은 30일 전에 알립니다.</p>
+</main>
+</body>
+</html>

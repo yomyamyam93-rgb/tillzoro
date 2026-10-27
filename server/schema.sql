@@ -8,6 +8,8 @@ create table if not exists users (
   pass_hash  text not null,
   photo      text,          -- 프로필 사진 (data URL). 상대 Till에도 보이므로 서버가 갖는다.
   tools      jsonb  not null default '[]'::jsonb,   -- 설치한 도구 id 목록 (계정 단위)
+  code       text unique,  -- 내 초대 코드 6자리. 새로 만들면 이전 코드는 무효
+  noti       jsonb  not null default '{}'::jsonb,   -- 알림 설정 {msg, req, dday, dnd}
 
   created_at timestamptz not null default now()
 );
@@ -33,6 +35,8 @@ create table if not exists bonds (
   -- 각자 이 Bond를 마지막으로 읽은 시각. 안 읽은 표시(동그라미)에 쓴다.
   a_read_at     timestamptz not null default now(),
   b_read_at     timestamptz not null default now(),
+  -- 마지막으로 보낸 Count 경고(7 또는 1). Reset 되면 비운다(R-6.3)
+  warned        int,
   -- a_id = b_id 이면 "나와의 대화방". 그 밖에는 순서를 고정해 중복을 막는다.
   check (a_id <= b_id),
   unique (a_id, b_id)
@@ -47,12 +51,46 @@ create table if not exists messages (
 );
 create index if not exists messages_bond_idx on messages(bond_id, id);
 
-create table if not exists invites (
-  code       text primary key,
-  inviter_id bigint not null references users(id) on delete cascade,
+-- 받은 요청. 코드를 넣으면 생기고, 받은 사람이 수락하면 Bond 가 된다. 7일 뒤 사라진다
+create table if not exists requests (
+  from_id    bigint not null references users(id) on delete cascade,
+  to_id      bigint not null references users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null,
-  used_by    bigint references users(id)
+  primary key (from_id, to_id)
+);
+
+-- 차단. 풀기 전까지 다시 맺을 수 없다(R-8.5)
+create table if not exists blocks (
+  blocker_id bigint not null references users(id) on delete cascade,
+  blocked_id bigint not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id)
+);
+
+-- Zero 기록. 누구와 언제였는지만. 7일 대기(R-3.8)와 신고 대응(R-8.6)용, 90일 뒤 삭제
+create table if not exists zeros (
+  a_id      bigint not null references users(id) on delete cascade,
+  b_id      bigint not null references users(id) on delete cascade,
+  zeroed_at timestamptz not null default now()
+);
+create index if not exists zeros_pair_idx on zeros(a_id, b_id);
+
+-- 신고. 최근 대화 50개를 함께 남긴다. 운영자만 보고 90일 뒤 삭제
+create table if not exists reports (
+  id          bigserial primary key,
+  reporter_id bigint references users(id) on delete set null,
+  target_id   bigint references users(id) on delete set null,
+  reason      text not null,
+  snapshot    jsonb not null default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+-- 웹 푸시 구독. 기기(브라우저)마다 하나
+create table if not exists push_subs (
+  endpoint   text primary key,
+  user_id    bigint not null references users(id) on delete cascade,
+  data       jsonb not null,
+  created_at timestamptz not null default now()
 );
 
 -- 도구가 쓰는 방 저장소. 도구 하나가 방 하나에 데이터 한 덩어리를 갖는다.
