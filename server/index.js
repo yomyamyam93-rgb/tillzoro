@@ -71,8 +71,13 @@ async function auth(req, res, next) {
   );
   if (!rows[0]) return res.status(401).json({ error: "로그인이 필요해요" });
   req.user = rows[0];
+  // R-8.1: 휴대폰 인증을 마치지 않은 계정은 아무것도 할 수 없다. 번호 잇기, 내 상태 보기, 계정 삭제·알림 끊기만 된다.
+  // 문자가 실제로 나갈 때만 막는다(준비 전에는 연결할 방법이 없으므로)
+  if (sms && !rows[0].phone_tail && !PHONE_FREE.has(req.path))
+    return res.status(403).json({ error: "휴대폰 인증이 필요해요", need: "phone" });
   next();
 }
+const PHONE_FREE = new Set(["/api/till", "/api/phone/link", "/api/me/delete", "/api/push/unsub", "/api/kblog"]);
 
 // Bond 한 건을 "내 쪽에서 본" 모양으로 바꾼다.
 function shape(row, meId) {
@@ -694,8 +699,10 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 
 wss.on("connection", async (ws, req) => {
   const t = new URL(req.url, "http://x").searchParams.get("token") || "";
-  const { rows } = await pool.query("select user_id from sessions where token = $1", [t]);
+  const { rows } = await pool.query(
+    "select s.user_id, u.phone_tail from sessions s join users u on u.id = s.user_id where s.token = $1", [t]);
   if (!rows[0]) return ws.close(4001, "unauthorized");
+  if (sms && !rows[0].phone_tail) return ws.close(4003, "phone required");   // R-8.1
 
   const uid = String(rows[0].user_id);
   if (!sockets.has(uid)) sockets.set(uid, new Set());
