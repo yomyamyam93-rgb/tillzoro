@@ -500,7 +500,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1439</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1442</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -612,7 +612,8 @@ function savePeople(){return true}   // 기록은 서버가 갖는다
 async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
-  if(d.sms&&!d.me.phone){ if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
+  if(d.sms&&!d.me.phone){ store.set("needPhone",1); if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
+  else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
     id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null,
@@ -726,7 +727,7 @@ applyTheme();
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
     tryUrlCode(); connectWS(); loadToolStates(); syncPush();
-    if(linkAfterSplash) askPhoneLink();
+    if(linkAfterSplash||store.get("needPhone",0)) askPhoneLink(true);
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
 })();
@@ -794,7 +795,7 @@ async function verifyCode(){
         return;
       }
       const d=await api("/api/phone/link",{method:"POST",body:{ticket}});
-      me.phone=d.phone; setPhoneMode("signin"); back("till"); toast("번호를 연결했어요");
+      me.phone=d.phone; store.del("needPhone"); setPhoneMode("signin"); back("till"); toast("번호를 연결했어요");
       return;
     }
     if(r.existing){ await enter(await api("/api/phone/login",{method:"POST",body:{ticket}})); return }
@@ -803,9 +804,12 @@ async function verifyCode(){
   finally{ verifying=false; syncBtn() }
 }
 // 이미 로그인한 옛 계정에 번호를 잇게 한다. 문자가 실제로 나갈 때만(서버가 sms:true 일 때)
-function askPhoneLink(){
+function askPhoneLink(instant){
   if(phoneMode!=="signin"||stack.includes("ob-phone")) return;
-  setPhoneMode("link"); go("ob-phone");
+  setPhoneMode("link");
+  if(!instant){ go("ob-phone"); return }
+  const els=[$("#ob-phone"),$("#till")];
+  els.forEach(e=>e.style.transition="none"); go("ob-phone"); void els[0].offsetWidth; els.forEach(e=>e.style.transition="");
 }
 function setPhoneMode(m){
   phoneMode=m; phoneIn.value=""; closeOtp();
