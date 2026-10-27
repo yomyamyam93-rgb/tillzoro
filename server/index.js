@@ -691,6 +691,17 @@ app.post("/api/messages/media", auth, async (req, res) => {
   sendMessage(req, res, bond, { body: kind === "video" ? "동영상" : "사진", kind, media: id, mime, size, w: dim(req.query.w), h: dim(req.query.h) });
 });
 
+// 보낸 메시지 지우기(R-7.6): 보낸 사람만, 방 모두의 화면에서 사라진다. 이미 일어난 Reset 은 되돌리지 않는다.
+// 사진·동영상 파일은 메시지가 없어지는 즉시 아무도 못 받고(받기는 메시지 행을 확인한다), 한 시간 안에 정리된다
+app.delete("/api/messages/:id", auth, async (req, res) => {
+  const { rows } = await pool.query("delete from messages where id = $1 and sender_id = $2 returning id, bond_id",
+    [Number(req.params.id) || 0, req.user.id]);
+  if (!rows[0]) return res.status(404).json({ error: "지울 수 없는 메시지예요" });
+  const bond = await myBond(rows[0].bond_id, req.user.id);
+  if (bond) notify(memberIds(bond), { type: "deleted", bondId: bond.id, id: String(rows[0].id) }, req.user.id);
+  res.json({ ok: true });
+});
+
 // 미리보기 올리기: 보낸 사람이 원본을 올린 뒤 곧바로 보낸다. 파일 이름은 원본이름.t.jpg
 app.post("/api/media/:id/thumb", auth, express.raw({ type: () => true, limit: "2mb" }), async (req, res) => {
   const id = String(req.params.id || "");

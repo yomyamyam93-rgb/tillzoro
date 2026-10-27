@@ -538,7 +538,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1753</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1759</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -577,7 +577,7 @@
   <div class="menu-bg" id="repBg"></div>
   <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
   <div class="confirm" id="delBox"><p>계정을 삭제할까요? 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="text" placeholder="삭제 입력" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
-  <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">내 화면에서 삭제</button></div>
+  <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">삭제</button></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
       <button id="tabTools" data-tab="s-tools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
@@ -679,6 +679,7 @@ function connectWS(){
     if(d.type==="message"&&cur&&cur.id===d.bondId&&$("#chat").classList.contains("on")){
       appendBubble(fromServer(d,false));
     }
+    if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
     }
@@ -746,7 +747,7 @@ applyTheme();
     const local=store.get("me",{});
     me={name:auth.me.nickname,dob:auth.me.dob,photo:local.photo||null,since:local.since||NOW()};
     people=store.get("bonds",[]);   // 기억해둔 목록으로 곧바로 그린다
-    준비 = syncTill().catch(e=>{ if(!requireLogin()) toast(e.message) });
+    준비 = syncTill().then(()=>{ resumeOutbox() }).catch(e=>{ if(!requireLogin()) toast(e.message) });
   }
   // 서버가 느려도 시작 화면에 갇히지 않게 한다
   await Promise.all([최소노출, Promise.race([준비, new Promise(r=>setTimeout(r,2500))])]);
@@ -1271,9 +1272,10 @@ function bubble(ms){
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
   // 길게 누르면 메뉴 (M-4). 스크롤이 시작되면 pointercancel이 와서 취소된다
-  el.addEventListener("pointerdown",()=>{ held=false; pt=setTimeout(()=>{ held=true; msgMenu(ms) },500) });
+  const pick=e=>{ const ln=e.target.closest&&e.target.closest(".txts>div"); return ln?[ms[[...ln.parentNode.children].indexOf(ln)]]:ms };
+  el.addEventListener("pointerdown",e=>{ held=false; const t=pick(e); pt=setTimeout(()=>{ held=true; msgMenu(t) },500) });
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
-  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(ms) });
+  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(pick(e)) });
   if(m.type==="text") return el;
   // 사진·동영상: 시간(못 보냈으면 "다시 보내기")을 말풍선 바깥 옆에 붙인다
   const row=document.createElement("div"); row.className="mrow"+(m.who==="me"?" me":"");
@@ -1283,18 +1285,34 @@ function bubble(ms){
   row.append(el,tm);
   return row;
 }
-// 복사 · 내 화면에서 삭제. 삭제는 R-7.6대로 내 화면에서만이고, 다음에 열어도 안 돌아온다
+// 복사 · 삭제. 삭제는 내가 보낸 것만, 방 모두의 화면에서 사라진다(R-7.6). 이미 일어난 Reset 은 그대로
 function msgMenu(ms){
-  $("#mmCopy").style.display=ms[0].type==="text"?"":"none";   // 사진·동영상은 내 화면에서 삭제만
+  const text=ms[0].type==="text", mine=ms.every(x=>x.who==="me");
+  if(!text&&!mine) return;
+  $("#mmCopy").style.display=text?"":"none";
+  $("#mmDel").style.display=mine?"":"none";
   const box=$("#msgMenu"), bg=$("#msgMenuBg");
   const close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
   $("#mmCopy").onclick=()=>{ close(); copyText(ms.map(x=>x.text).join("\n")) };
-  $("#mmDel").onclick=()=>{ close();
-    const ids=new Set(ms.map(x=>String(x.id)));
-    store.set("hide:"+cur.id, store.get("hide:"+cur.id,[]).concat([...ids]).slice(-500));
-    cur.msgs=cur.msgs.filter(x=>!ids.has(String(x.id))); saveMsgs(); renderMsgs(); };
+  $("#mmDel").onclick=async()=>{ close();
+    const bondId=cur.id;
+    for(const x of ms){
+      // 아직 서버에 없는 것(보내는 중·못 보낸 것)은 보내기를 멈추고 이 화면에서만 뺀다
+      if(x.jobId&&sending.has(x.jobId)){ x.stopped=true; x.gen=(x.gen||0)+1; try{ x.conv&&x.conv.cancel() }catch(e){} try{ x.xhr&&x.xhr.abort() }catch(e){} sending.delete(x.jobId); outbox.del(x.jobId) }
+      if(/^\d+$/.test(String(x.id))&&x.ok!==false&&!x.pending){
+        try{ await api("/api/messages/"+x.id,{method:"DELETE"}) }catch(e){ if(!requireLogin()) toast(e.message); continue }
+      }
+      dropMsg(bondId,x.id);
+    }
+  };
   bg.onclick=close;
   box.classList.add("on"); bg.classList.add("on");
+}
+// 지워진 메시지를 화면과 기억해둔 대화에서 뺀다(내가 지웠거나, 방의 다른 사람이 지웠다는 알림을 받았을 때)
+function dropMsg(bondId,id){
+  id=String(id);
+  if(cur&&String(cur.id)===String(bondId)){ cur.msgs=cur.msgs.filter(x=>String(x.id)!==id); saveMsgs(); renderMsgs(); return }
+  store.set("msgs:"+bondId, store.get("msgs:"+bondId,[]).filter(x=>String(x.id)!==id));
 }
 function copyText(t){
   const done=()=>toast("복사했어요"), fail=()=>toast("복사하지 못했어요");
@@ -1328,7 +1346,8 @@ async function push(m){
 async function send(el,bondId){
   try{
     const r=await api("/api/messages",{method:"POST",body:{bondId,body:el.text}});
-    if(cur&&cur.id===bondId){ cur.mySent=true }
+    if(r.id) el.id=String(r.id);
+    if(cur&&cur.id===bondId){ cur.mySent=true; saveMsgs() }
     if(r.reset) toast("30으로 돌아왔어요");
     syncTill().then(refreshChat).catch(()=>{});
   }catch(e){ el.ok=false; renderMsgs(); saveMsgs(); if(!requireLogin()) toast(e.message) }
