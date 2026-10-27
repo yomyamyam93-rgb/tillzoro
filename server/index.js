@@ -231,12 +231,13 @@ app.post("/api/signup", async (req, res) => {
   res.json({ token: await newSession(rows[0].id), me: meOf(rows[0]) });
 });
 
-// 지금 로그인한(번호 없는 옛) 계정에 번호를 잇는다
+// 지금 로그인한 계정에 인증한 번호를 붙인다. 번호 없는 옛 계정은 처음 잇는 것이고,
+// 번호가 있던 계정은 번호를 바꾸는 것이다. 예전 번호는 바로 풀려서, 그 번호를 나중에 받은 사람은 새 계정으로 들어온다
 app.post("/api/phone/link", auth, async (req, res) => {
   const t = readTicket(req.body?.ticket);
   if (!t) return res.status(400).json({ error: "인증이 지났어요. 다시 해주세요" });
-  if (req.user.phone_tail) return res.status(409).json({ error: "이미 번호가 연결돼 있어요" });
-  if ((await pool.query("select 1 from users where phone_hash = $1", [t.h])).rowCount)
+  const owner = (await pool.query("select id from users where phone_hash = $1", [t.h])).rows[0];
+  if (owner && String(owner.id) !== String(req.user.id))
     return res.status(409).json({ error: "이 번호는 다른 계정에 연결돼 있어요" });
   await pool.query("update users set phone_hash = $2, phone_tail = $3 where id = $1", [req.user.id, t.h, t.t]);
   res.json({ ok: true, phone: masked(t.t) });
