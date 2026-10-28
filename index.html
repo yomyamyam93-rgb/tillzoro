@@ -2470,18 +2470,14 @@ let kbLog=[];
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   if(PLATFORM==="ios"){
-    /* 앱에서는 아이폰이 키보드를 움직이는 바로 그 애니메이션 안에서 웹뷰를 같이 줄인다.
-       플러그인이 원래는 애니메이션 없이 한 번에 바꾸길래 고쳐 썼다(app/scripts/patch-keyboard.mjs).
-       곡선을 흉내 낼 일이 없다. 화면은 100dvh 라 저절로 따라온다 */
-    const K=plug("Keyboard");
-    ph.style.height="";
-    const track=w=>{ const t0=performance.now(), path=[];
-      const step=()=>{ path.push(Math.round(comp.getBoundingClientRect().top));
-        if(performance.now()-t0<420) requestAnimationFrame(step); else log(w+" move "+path.join(",")) };
-      requestAnimationFrame(step) };
-    K.addListener("keyboardWillShow",i=>{ kbMark(); ph.classList.add("kb"); log("willShow "+i.keyboardHeight); track("show") });
-    K.addListener("keyboardWillHide",()=>{ kbMark(); ph.classList.remove("kb"); log("willHide"); track("hide") });
-    log("start app");
+    /* 2026-10-29: 아이폰에게 맡기는 길은 둘 다 막혔다.
+       - Keyboard resize:"native" 는 웹뷰를 실제로 줄여서, 줄어든 자리에 창 배경(검정)이 드러난다
+       - 그 프레임 변경을 UIKit 애니메이션에 넣어도 WKWebView 는 내용을 곧바로 새 크기로 다시 그린다
+       그래서 여기서 직접 움직인다. 곡선은 폰 기록을 보고 고른 값이다(.kbmove) */
+    const K=plug("Keyboard"); fullH=window.innerHeight;
+    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight); flip(fullH-i.keyboardHeight) });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); flip(fullH) });
+    flip(fullH); log("start app");
     return;
   }
   vv.addEventListener("resize",()=>{
