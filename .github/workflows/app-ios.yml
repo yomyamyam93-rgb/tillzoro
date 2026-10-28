@@ -1,0 +1,29 @@
+# 아이폰 앱: GitHub 이 빌려주는 맥에서 만든다. 애플 개발자 계정이 승인되기 전에는 "잘 만들어지는지"(시뮬레이터용)만 확인하고,
+# 승인 뒤 열쇠를 넣으면 같은 곳에서 도장을 찍어 TestFlight 에 올린다
+name: app-ios
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "tokens.css", "privacy.html", "terms.html", "app/**", ".github/workflows/app-ios.yml"]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run sync
+      - run: xcodebuild -version
+      - run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -40

@@ -1,0 +1,31 @@
+# 안드로이드 앱: 화면이나 app/ 이 바뀌면 시험용 설치 파일(APK)을 만든다. Actions 탭의 실행 결과에서 내려받는다
+name: app-android
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "tokens.css", "privacy.html", "terms.html", "app/**", ".github/workflows/app-android.yml"]
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run sync
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tillzero-android
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
