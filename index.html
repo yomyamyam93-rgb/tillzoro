@@ -2470,14 +2470,25 @@ let kbLog=[];
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   if(PLATFORM==="ios"){
-    /* 2026-10-29: 아이폰에게 맡기는 길은 둘 다 막혔다.
-       - Keyboard resize:"native" 는 웹뷰를 실제로 줄여서, 줄어든 자리에 창 배경(검정)이 드러난다
-       - 그 프레임 변경을 UIKit 애니메이션에 넣어도 WKWebView 는 내용을 곧바로 새 크기로 다시 그린다
-       그래서 여기서 직접 움직인다. 곡선은 폰 기록을 보고 고른 값이다(.kbmove) */
-    const K=plug("Keyboard"); fullH=window.innerHeight;
-    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight); flip(fullH-i.keyboardHeight) });
-    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); flip(fullH) });
-    flip(fullH); log("start app");
+    /* 2026-10-29: 화면을 줄이지 않는다. 줄이면 배경이 잘리는 선이 생기고, 그 선은
+       레이아웃이라 애니메이션이 안 된다. 그래서 틀은 그대로 두고 대화와 입력줄만
+       키보드 높이만큼 밀어 올린다. 키보드가 그 위를 덮는다. 움직이는 것은 transform 뿐이다.
+       (아이폰에게 맡기는 두 길은 막혔다: resize:"native" 는 웹뷰를 실제로 줄여 창 배경이
+        드러나고, 그 프레임 변경은 UIKit 애니메이션에 넣어도 WKWebView 가 즉시 다시 그린다) */
+    const K=plug("Keyboard");
+    const safeB=()=>parseFloat(getComputedStyle(ph).paddingBottom)||0;
+    const track=w=>{ const t0=performance.now(), path=[];
+      const step=()=>{ path.push(Math.round(comp.getBoundingClientRect().top));
+        if(performance.now()-t0<420) requestAnimationFrame(step); else log(w+" move "+path.join(",")) };
+      requestAnimationFrame(step) };
+    // 입력줄 아래에는 이미 홈바 여백이 있다. 그만큼은 빼야 키보드 윗변에 정확히 붙는다
+    const push=px=>{ chat.classList.add("kbmove");
+      const t=px?`translateY(${-px}px)`:"";
+      days.style.transform=t; comp.style.transform=t; };
+    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight);
+      push(Math.max(0,i.keyboardHeight-safeB())); track("show") });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); push(0); track("hide") });
+    log("start app");
     return;
   }
   vv.addEventListener("resize",()=>{
