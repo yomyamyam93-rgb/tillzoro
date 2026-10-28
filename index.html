@@ -302,10 +302,10 @@
   /* viewer / camera */
   .full{position:absolute;inset:0;background:#000;z-index:25;display:none;flex-direction:column;color:#fff}
   .full.on{display:flex}
-  .full .bar{padding-top:54px;height:106px}
+  .full .bar{position:absolute;left:0;right:0;top:0;z-index:2;padding-top:54px;height:106px;background:linear-gradient(rgba(0,0,0,.5),transparent)}
   .full .bar .icon{background:rgba(255,255,255,.14);color:#fff;border:0}
-  .full .body{flex:1;display:grid;place-items:center;overflow:hidden}
-  .full img,.full video{max-width:100%;max-height:100%;object-fit:contain}
+  .full .body{position:absolute;inset:0;bottom:env(safe-area-inset-bottom,0px);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .full img,.full video{display:block;width:100%;height:100%;object-fit:contain}
 
   /* settings */
     .list{display:flex;flex-direction:column;background:var(--card);border-radius:var(--r-list);overflow:hidden}
@@ -538,7 +538,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1027-1759</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1004</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -988,11 +988,6 @@ function renderTill(){
   const selfBond=people.find(p=>p.self);
   meRow.addEventListener("click",()=>{ selfBond ? openChat(selfBond.id) : (renderSettings(),go("settings")) });
   rows.appendChild(meRow);
-  if(!live.length){
-    const inv=document.createElement("div"); inv.className="row";
-    inv.innerHTML=`<div class="count"></div>`; inv.appendChild(addPicker("card add"));
-    rows.appendChild(inv);
-  }
   live.concat(lone).forEach(p=>{
     const last=p.msgs[p.msgs.length-1], many=p.group&&p.members.length>2;
     const others=p.group?p.members.filter(m=>String(m.id)!==myId()):[];
@@ -1004,10 +999,13 @@ function renderTill(){
       <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${pre}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
-  fitRows(live.length);
-  if(live.length){
-    rows.appendChild(addPicker("add-slim"));
+  if(live.length) rows.appendChild(addPicker("add-slim"));
+  else{
+    const inv=document.createElement("div"); inv.className="row";
+    inv.innerHTML=`<div class="count"></div>`; inv.appendChild(addPicker("card add"));
+    rows.appendChild(inv);
   }
+  fitRows(live.length);
 }
 // TILL 과 숫자가 한 줄에 사이를 두고 들어가게, 좁은 폰이나 두 자리 수에서는 글자를 줄인다
 function fitHero(){
@@ -1835,12 +1833,18 @@ $("#albumFile").addEventListener("change",e=>{ [...e.target.files].forEach(sendF
 $("#captureFile").addEventListener("change",e=>{ const f=e.target.files[0]; if(f) sendFile(f); e.target.value="" });
 
 /* viewer */
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 function viewer(m){
-  const u=srcOf(m);
-  $("#viewerBody").innerHTML=m.type==="video"?`<video src="${u}" controls playsinline autoplay></video>`:`<img src="${u}" alt="">`;
+  const u=srcOf(m), body=$("#viewerBody");
   $("#viewerSave").href=u; $("#viewer").classList.add("on");
+  if(m.type!=="video"){ body.innerHTML=`<img src="${u}" alt="">`; return }
+  body.innerHTML=`<video src="${u}" controls${IOS?"":" playsinline"}></video>`;
+  const v=body.firstElementChild;
+  v.addEventListener("webkitendfullscreen",closeViewer);
+  v.play().catch(()=>{});   // 누른 그 순간에 재생해야 아이폰이 소리와 함께 틀어 준다
 }
-$("#viewerClose").addEventListener("click",()=>{ $("#viewer").classList.remove("on"); $("#viewerBody").innerHTML="" });
+function closeViewer(){ $("#viewer").classList.remove("on"); $("#viewerBody").innerHTML="" }
+$("#viewerClose").addEventListener("click",closeViewer);
 
 
 /* ---------- Settings ---------- */
