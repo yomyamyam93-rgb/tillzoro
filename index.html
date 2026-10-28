@@ -2430,8 +2430,11 @@ let kbLog=[];
   // 2026-10-26 기록: 다른 화면에 다녀온 직후에는 아이폰이 키보드를 띄우며 화면 전체를 376px 밀어 올린다(sy=376).
   // 그때 "방금 보이던 자리"는 밀려 올라간 자리다. 그래서 자리는 밀림을 되돌리기 전에, 진행 중인 미끄러짐까지 포함해 잰다.
   // 그러면 입력줄은 이미 키보드 위라 안 움직이고, 밀려 올라갔던 머리말과 대화만 제자리로 내려온다.
+  let flipH=0;
   const flip=h=>{
     if(h<=200) return;   // 전환 중 오는 엉뚱한 값은 무시
+    if(h===flipH) return;   // 같은 높이로 또 부르면 첫 움직임만 끊긴다
+    flipH=h;
     const inChat=chat.classList.contains("on");
     const els=[comp,$("#chead"),$("#roomTool")];
     const stick=nearBottom();
@@ -2452,6 +2455,12 @@ let kbLog=[];
     void ph.offsetWidth;
     chat.classList.add("kbmove");
     els.forEach(e=>e.style.transform=""); days.style.transform="";
+    // 입력줄이 프레임마다 어디 있었는지 적는다. 숫자가 뚝 끊기면 순간이동, 고르면 제대로 미끄러진 것
+    const t0=performance.now(), path=[];
+    const step=()=>{ path.push(Math.round(comp.getBoundingClientRect().top));
+      if(performance.now()-t0<360) requestAnimationFrame(step);
+      else log("move "+path.join(",")) };
+    requestAnimationFrame(step);
   };
   let kbUntil=0;   // 키보드가 움직이는 동안(열림·닫힘 전후 1.2초)
   const kbBusy=()=>ph.classList.contains("kb")||performance.now()<kbUntil;
