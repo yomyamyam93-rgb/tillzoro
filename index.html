@@ -29,7 +29,7 @@
     /* fade by d-day (card opacity) — 미결: 1 = 흐림 없음 */
     --fade-dim:1; --fade-warn:1; --fade-zero:1;
     /* motion */
-    --dur:.3s; --ease:cubic-bezier(.2,.7,.2,1);
+    --dur:.3s; --ease:cubic-bezier(.2,.7,.2,1); --ease-soft:cubic-bezier(.22,1,.36,1); --ease-spring:cubic-bezier(.34,1.4,.5,1);
   }
   /* color · dark */
   :root[data-theme="dark"]{
@@ -49,7 +49,7 @@
   .note b{color:var(--ink-2);font-weight:500}
   .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;overflow:clip;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
-  .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease);visibility:hidden}
+  .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease-soft);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
   /* 옆에 대기 중인 화면들 때문에 틀이 화면 두 배 넓이라, 입력칸에 초점이 갈 때 브라우저가 틀을 옆으로 스크롤해버린다.
      clip 은 스크롤 자체가 안 되는 잘라내기다(아이폰 16 이상). 그 전 기기는 아래 scroll 되돌리기로 막는다 */
@@ -72,8 +72,8 @@
   #msgMenuBg.on{animation:fadein .16s ease both}
   .menu.pop.on{animation:popin .18s cubic-bezier(.2,.9,.3,1.2) both}
   .lift{animation:liftin .18s ease-out both}
-  .menu:not(.pop).on,.confirm.on{animation:risein .22s cubic-bezier(.2,.8,.2,1) both}
-  .enter{animation:bubin .24s cubic-bezier(.2,.8,.2,1) both}
+  .menu:not(.pop).on,.confirm.on{animation:risein .26s var(--ease-soft) both}
+  .enter{animation:bubin .28s var(--ease-soft) both}
   /* 삭제: 한 점으로 빨려들며 사라지고, 그 높이만큼 아래 글이 올라와 자리를 메운다 */
   .leave{transition:opacity .16s ease-in,transform .24s cubic-bezier(.4,0,.6,.2),height .26s cubic-bezier(.5,0,.35,1),margin-bottom .26s cubic-bezier(.5,0,.35,1);opacity:0!important;transform:scale(.4);overflow:hidden}
   /* 버전: 폰에서 최신본인지 바로 알아보려고 첫 화면 아래에 작게 적는다 */
@@ -311,17 +311,17 @@
   .compose .send{background:var(--ink);color:var(--paper);transition:opacity .15s}
   .compose .send.off{opacity:.3;pointer-events:none}
   /* 위를 보고 있을 때 온 메시지 (S-3) */
-  .newpill{position:absolute;left:50%;bottom:100%;margin-bottom:8px;transform:translateX(-50%) translateY(6px);background:var(--card);color:var(--ink);font:500 13px var(--font-body);padding:7px 14px;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.15);opacity:0;pointer-events:none;transition:.18s;z-index:2}
+  .newpill{position:absolute;left:50%;bottom:100%;margin-bottom:8px;transform:translateX(-50%) translateY(6px);background:var(--card);color:var(--ink);font:500 13px var(--font-body);padding:7px 14px;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.15);opacity:0;pointer-events:none;transition:opacity .2s var(--ease),transform .26s var(--ease-soft);z-index:2}
   .newpill.on{opacity:1;pointer-events:auto;transform:translateX(-50%)}
   .compose .send svg{fill:currentColor;stroke:none;width:18px;height:18px}
-  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:14px 14px 40px;box-shadow:0 -10px 40px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .25s ease;z-index:5}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:14px 14px 40px;box-shadow:0 -10px 40px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .3s var(--ease-soft);z-index:5}
   .sheet.on{transform:none}
   .sheet .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .sheet .grid button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px;border-radius:14px;background:var(--paper);font-size:12px;color:var(--ink-2)}
   .sheet .grid svg{width:24px;height:24px;fill:var(--ink);stroke:none}
-  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:4}
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .24s var(--ease);z-index:4}
   .scrim.on{opacity:1;pointer-events:auto}
-  .toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--paper);font-size:13px;padding:10px 16px;border-radius:20px;opacity:0;transition:.2s;z-index:30;white-space:nowrap;pointer-events:none}
+  .toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--paper);font-size:13px;padding:10px 16px;border-radius:20px;opacity:0;transition:opacity .22s var(--ease),transform .28s var(--ease-soft);z-index:30;white-space:nowrap;pointer-events:none}
   .toast.on{opacity:1;transform:translateX(-50%)}
 
   /* viewer / camera */
@@ -344,11 +344,11 @@
   .tool{margin-top:16px}
   .tool.off .roomtool{opacity:.4}
   /* 켜고 끄는 스위치. 동그라미가 오른쪽이면 켜짐 */
-  .slide{--r:40px;position:relative;border-radius:var(--r-card);background:var(--line);touch-action:pan-y;cursor:pointer;transition:background .22s}
+  .slide{--r:40px;position:relative;border-radius:var(--r-card);background:var(--line);touch-action:pan-y;cursor:pointer;transition:background .24s var(--ease)}
   .slide.on{background:var(--ink)}
-  .slide::before{content:"";position:absolute;left:calc(var(--r) / 2 - 6px);top:50%;width:12px;height:7px;margin-top:-6px;border:solid var(--paper);border-width:0 0 2.2px 2.2px;transform:rotate(-45deg);opacity:0;transition:opacity .22s}
+  .slide::before{content:"";position:absolute;left:calc(var(--r) / 2 - 6px);top:50%;width:12px;height:7px;margin-top:-6px;border:solid var(--paper);border-width:0 0 2.2px 2.2px;transform:rotate(-45deg);opacity:0;transition:opacity .22s var(--ease)}
   .slide.on::before{opacity:1}
-  .slide>.knob{position:relative;margin:0 var(--r) 0 0!important;transition:transform .22s var(--ease)}
+  .slide>.knob{position:relative;margin:0 var(--r) 0 0!important;transition:transform .28s var(--ease-spring)}
   .slide.on>.knob{transform:translateX(var(--r))}
   .tlist .slide{border-radius:14px}
   .tlist .slide+.slide{margin-top:8px}
@@ -375,8 +375,8 @@
   .profile-card .tag{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font:500 10px var(--font-num);letter-spacing:.08em;color:var(--ink-2)}
   .profile-card .tag i{width:8px;height:8px;border-radius:50%;background:var(--ink)}
   .profile-card .t{flex:1}
-  .toggle{width:var(--toggle-w);height:var(--toggle-h);border-radius:14px;background:var(--line);position:relative;transition:.2s;flex:none}
-  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .toggle{width:var(--toggle-w);height:var(--toggle-h);border-radius:14px;background:var(--line);position:relative;transition:background .24s var(--ease);flex:none}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .26s var(--ease-spring);box-shadow:0 1px 3px rgba(0,0,0,.2)}
   .toggle.on{background:var(--ink)}
   .toggle.on::after{transform:translateX(18px)}
   .seg{display:flex;background:var(--card);border-radius:var(--r-field);overflow:hidden}

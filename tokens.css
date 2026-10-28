@@ -21,7 +21,7 @@
     /* fade by d-day (card opacity) — 미결: 1 = 흐림 없음 */
     --fade-dim:1; --fade-warn:1; --fade-zero:1;
     /* motion */
-    --dur:.3s; --ease:cubic-bezier(.2,.7,.2,1);
+    --dur:.3s; --ease:cubic-bezier(.2,.7,.2,1); --ease-soft:cubic-bezier(.22,1,.36,1); --ease-spring:cubic-bezier(.34,1.4,.5,1);
   }
   /* color · dark */
   :root[data-theme="dark"]{
