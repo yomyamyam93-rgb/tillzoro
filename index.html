@@ -2411,6 +2411,9 @@ let kbLog=[];
   // 바닥에 실제로 붙어 있을 때만 바닥에 붙여 움직인다. 조금이라도 위를 보고 있었으면 보던 자리를 지킨다
   const nearBottom=()=>days.scrollHeight-days.clientHeight-days.scrollTop<30;
   const lastRow=()=>{ const r=days.querySelector(".msg:last-child"); return r?r.getBoundingClientRect().top:0 };
+  // 대화가 화면에서 실제로 얼마나 움직였는지는 마지막 줄의 자리로 잰다.
+  // 칸의 위쪽만 보면, 글이 아래에 붙어 있는 짧은 대화에서는 칸이 안 움직여 "움직임 없음"으로 잘못 본다
+  const anchorTop=()=>{ const r=days.lastElementChild; return r?r.getBoundingClientRect().top:days.getBoundingClientRect().top-days.scrollTop };
   const log=w=>{
     const c=comp.getBoundingClientRect();
     kbLog.push(`${(performance.now()/1000).toFixed(2)} ${w} vv=${Math.round(vv.height)} off=${Math.round(vv.offsetTop)} in=${window.innerHeight} sy=${Math.round(window.scrollY)} ph=${ph.style.height||"-"} comp=${Math.round(c.bottom)} days=${Math.round(days.scrollTop)}/${days.scrollHeight-days.clientHeight} tf=${getComputedStyle(days).transform.slice(-12)}`);
@@ -2430,7 +2433,7 @@ let kbLog=[];
     const inChat=chat.classList.contains("on");
     const els=[comp,$("#chead"),$("#roomTool")];
     const stick=nearBottom();
-    const y0=els.map(e=>e.getBoundingClientRect().top), d0=days.getBoundingClientRect().top-days.scrollTop;
+    const y0=els.map(e=>e.getBoundingClientRect().top), d0=anchorTop();
     const sy=Math.round(window.scrollY);
     chat.classList.remove("kbmove"); els.forEach(e=>e.style.transform=""); days.style.transform="";
     if(sy) window.scrollTo(0,0);
@@ -2438,7 +2441,7 @@ let kbLog=[];
     ph.classList.toggle("kb", noKb()-h>100);
     if(stick) days.scrollTop=days.scrollHeight;
     if(!inChat) return;
-    const dy=els.map((e,i)=>y0[i]-e.getBoundingClientRect().top), dd=d0-(days.getBoundingClientRect().top-days.scrollTop);
+    const dy=els.map((e,i)=>y0[i]-e.getBoundingClientRect().top), dd=d0-anchorTop();
     log(`flip sy=${sy} dc=${Math.round(dy[0])} dh=${Math.round(dy[1])} dd=${Math.round(dd)}`);
     let any=false;
     els.forEach((e,i)=>{ if(Math.abs(dy[i])>=2){ e.style.transform=`translateY(${dy[i]}px)`; any=true } });
