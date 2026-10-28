@@ -266,6 +266,9 @@
   .rt-score{font-size:12px;color:var(--ink-3);justify-content:space-between}
   .rt-score b{font:500 14px/1 var(--font-num);color:var(--ink);margin-left:4px}
   .rt-in{flex:1;min-width:0;height:30px;border:0;background:var(--paper-2);border-radius:9px;padding:0 10px;font-size:16px;outline:none;color:var(--ink)}
+  /* 대화는 아래에 붙는다. 내용이 화면보다 짧아도(다 지웠을 때) 위로 뜨지 않는다.
+     넘칠 때는 auto 가 0 이 되어 아무 일도 하지 않는다 */
+  .days::before{content:"";margin:auto 0 -3px}
   .days{flex:1;overflow:auto;overscroll-behavior-y:contain;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;padding:6px 12px 8px;display:flex;flex-direction:column;gap:3px;scrollbar-width:none}
   .days::-webkit-scrollbar{display:none}
   .evt{flex:none;align-self:center;max-width:85%;margin:6px 0;padding:4px 11px;border-radius:11px;background:var(--line);font-size:12px;line-height:1.45;color:var(--ink-2);text-align:center}
