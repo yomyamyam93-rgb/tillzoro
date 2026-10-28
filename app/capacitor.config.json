@@ -1,0 +1,13 @@
+{
+  "appId": "kr.tillzero.app",
+  "appName": "Till Zero",
+  "webDir": "www",
+  "backgroundColor": "#050506",
+  "ios": { "contentInset": "never", "scrollEnabled": false },
+  "android": { "backgroundColor": "#050506" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 0, "backgroundColor": "#050506" },
+    "Keyboard": { "resize": "none", "resizeOnFullScreen": true },
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}

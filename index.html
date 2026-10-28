@@ -578,7 +578,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1125</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1418</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -640,7 +640,11 @@ const store={
   size(){try{let n=0;for(const k in localStorage) if(k.startsWith("tz:")) n+=localStorage[k].length;return n}catch(e){return 0}}
 };
 /* ---------- server ---------- */
-const API="https://49.247.137.185.sslip.io";   // 한국 서버(아이윈브). 옛 독일 주소는 여기로 넘겨준다
+const API="https://49.247.137.185.sslip.io";
+// 앱(아이폰·안드로이드, Capacitor)으로 열렸는가. 앱에서는 웹이 못 하는 일을 휴대폰 기능으로 바꿔 쓴다
+const CAP=window.Capacitor, NATIVE=!!(CAP&&CAP.isNativePlatform&&CAP.isNativePlatform()), PLATFORM=NATIVE?CAP.getPlatform():"web";
+const plug=n=>CAP.Plugins[n];
+const WEB_URL="https://yomyamyam93-rgb.github.io/tillzoro/";   // 앱 안에서도 남에게 주는 링크는 웹 주소   // 한국 서버(아이윈브). 옛 독일 주소는 여기로 넘겨준다
 let auth = store.get("auth",null);          // {token, me}
 async function api(path,{method="GET",body}={}){
   let r;
@@ -774,7 +778,9 @@ function confirmBox(text,cb,o={}){$("#confirmText").textContent=text;const y=$("
 /* ---------- theme ---------- */
 $("#phone").addEventListener("scroll",e=>{ const ph=e.currentTarget; if(ph.scrollLeft||ph.scrollTop){ ph.scrollLeft=0; ph.scrollTop=0 } });
 let splashing=true, linkAfterSplash=false;   // 시작 화면 중에 번호 연결이 필요해지면, 끝난 뒤에 띄운다
-function applyTheme(){const dark = matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":"";}
+function applyTheme(){const dark = matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.dataset.theme = dark?"dark":"light"; $('meta[name="theme-color"]').content = splashing?"#050506":dark?"#111114":"#F2F2F4"; document.body.style.background = splashing?"#050506":"";
+  if(NATIVE){ const SB=plug("StatusBar"); SB.setStyle({style:splashing||dark?"DARK":"LIGHT"}).catch(()=>{});
+    if(PLATFORM==="android") SB.setBackgroundColor({color:splashing?"#050506":dark?"#111114":"#F2F2F4"}).catch(()=>{}) } }
 // 테마는 폰 설정을 따른다. 폰에서 바꾸면 바로 따라간다
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme);
 
@@ -1159,7 +1165,7 @@ async function openChat(id){
 }
 // 아직 혼자인 방: 코드와 보내기 버튼이 대화 자리 위에 보인다
 const spaced=c=>c.split("").join(" ");
-const codeLink=c=>location.origin+location.pathname+"?code="+c;
+const codeLink=c=>(NATIVE?WEB_URL:location.origin+location.pathname)+"?code="+c;
 let curCode=null;
 async function roomCodeOf(p){ return (await api(`/api/groups/${p.id}/code`)).code }
 async function shareCode(){
@@ -1381,7 +1387,7 @@ function msgMenu(m,bub){
   }
   if(!items.length) return;
   if(!text&&live) prefetchMedia(m);
-  if(navigator.vibrate) navigator.vibrate(8);
+  if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{}); else if(navigator.vibrate) navigator.vibrate(8);
   const box=$("#msgMenu"), bg=$("#msgMenuBg"), host=box.parentNode, hr=host.getBoundingClientRect();
   box.innerHTML="";
   const lift=bub.cloneNode(true), r=bub.getBoundingClientRect();
@@ -1459,6 +1465,7 @@ function prefetchMedia(m){
   while(blobCache.size>3) blobCache.delete(blobCache.keys().next().value);
 }
 function saveMedia(m){
+  if(NATIVE) return saveNative(m);
   const got=m.blob||blobCache.get(m.media||m.id);
   const go=b=>{
     const ext=(b.type.split("/")[1]||"jpg").replace("jpeg","jpg").replace("quicktime","mov");
@@ -1469,6 +1476,22 @@ function saveMedia(m){
   };
   if(got instanceof Blob) return go(got);
   Promise.resolve(got||fetch(srcOf(m)).then(r=>r.ok?r.blob():null)).then(b=>b?go(b):toast("저장하지 못했어요")).catch(()=>toast("저장하지 못했어요"));
+}
+// 앱: 사진 앱에 바로 저장. 서버에 있는 건 앱이 주소로 직접 받고, 방금 보낸 건 이 기기에 있는 파일로.
+// 안드로이드는 앨범을 정해야 해서 "Till Zero" 앨범에 넣는다
+async function saveNative(m){
+  try{
+    const M=plug("Media");
+    const path=m.media?mediaURL(m.media):await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=no; r.readAsDataURL(m.blob) });
+    const opt={path};
+    if(PLATFORM==="android"){
+      const find=async()=>((await M.getAlbums()).albums||[]).find(a=>a.name==="Till Zero");
+      let a=await find(); if(!a){ await M.createAlbum({name:"Till Zero"}); a=await find() }
+      if(a) opt.albumIdentifier=a.identifier;
+    }
+    await (m.type==="video"?M.saveVideo(opt):M.savePhoto(opt));
+    toast("저장했어요");
+  }catch(e){ toast("저장하지 못했어요") }
 }
 // 메시지 하나를 신고. 1:1 이면 그다음 상대 차단을, 단체방이면 보낸 사람 차단을 묻는다
 function reportMsg(m){
@@ -2060,6 +2083,11 @@ function viewer(m){
   v.addEventListener("webkitendfullscreen",closeViewer);
   v.play().catch(()=>{});   // 누른 그 순간에 재생해야 아이폰이 소리와 함께 틀어 준다
 }
+// 안드로이드 뒤로 가기 버튼: 크게 보기 → 닫기, 안쪽 화면 → 뒤로, 맨 앞 화면 → 앱 내리기
+if(NATIVE) plug("App").addListener("backButton",()=>{
+  if($("#viewer").classList.contains("on")) return closeViewer();
+  if(stack.length>1) back(); else plug("App").minimizeApp();
+});
 let viewerM=null;
 $("#viewerSave").addEventListener("click",e=>{ if(!viewerM) return; e.preventDefault(); saveMedia(viewerM) });
 function closeViewer(){ $("#viewer").classList.remove("on"); $("#viewerBody").innerHTML="" }
@@ -2093,6 +2121,7 @@ const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notific
 const b64u=x=>{ const r=atob((x+"=".repeat((4-x.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(r,c=>c.charCodeAt(0)) };
 async function renderPush(){
   const t=$("#pushToggle"), sub=$("#pushSub");
+  if(NATIVE){ t.closest(".item").style.display="none"; return }
   if(!pushOK()){ pushOn=false; t.classList.remove("on"); sub.textContent="홈 화면 앱에서만 켤 수 있어요"; return }
   sub.textContent=Notification.permission==="denied"?"기기 설정에서 알림이 꺼져 있어요":"";
   try{ const s=await (await navigator.serviceWorker.ready).pushManager.getSubscription(); pushOn=!!s&&Notification.permission==="granted" }catch(e){ pushOn=false }
@@ -2207,7 +2236,7 @@ async function doBlock(){
   cur=null; back("till"); toast("차단했어요"); syncTill().catch(()=>{});
 }
 /* 앱이 꺼져 있을 때 알림을 받을 준비 */
-if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+if(!NATIVE&&"serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 
 /* iOS: 키보드가 올라오면 보이는 영역만큼만 쓰게 한다.
    아이폰은 키보드가 "다 올라온 뒤에야" 크기를 알려준다. 알려준 뒤에 움직이면 늦고 딱딱하다.
@@ -2308,6 +2337,14 @@ let kbLog=[];
   const kbMark=()=>{ kbUntil=performance.now()+1200 };
   const unshift=()=>{ if(window.scrollY&&kbBusy()) window.scrollTo(0,0) };
 
+  $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
+  if(PLATFORM==="ios"){
+    const K=plug("Keyboard"); fullH=window.innerHeight;
+    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight); flip(fullH-i.keyboardHeight) });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); flip(fullH) });
+    flip(fullH); log("start app");
+    return;
+  }
   vv.addEventListener("resize",()=>{
     if(vv.height>noKb()) fullH=vv.height;
     kbMark(); log("resize"); flip(vv.height); unshift();
@@ -2329,7 +2366,6 @@ let kbLog=[];
     if(ph.classList.contains("kb")) flip(noKb());
   },0) });
 
-  $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   flip(vv.height); log("start");
 })();
 </script>
