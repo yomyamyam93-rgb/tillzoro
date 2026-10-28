@@ -538,7 +538,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1004</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1006</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1320,7 +1320,7 @@ function copyText(t){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
 // 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,jobId,bondId,...m})=>m).slice(-200))) }catch(e){} }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,shrunk,jobId,bondId,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"")+(small?"&s=t":"");
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
@@ -1375,7 +1375,7 @@ async function runJob(el){
     el.pending=true; el.ok=true; if(cur&&cur.id===el.bondId) renderMsgs(); setPct(el,0);
     const out=await squeezeVideo(el.blob,p=>{ if(live()) setPct(el,Math.min(50,Math.floor(p*50))) },el);
     if(!live()) return;
-    el.blob=out; el.squeezed=true; outbox.put(el);
+    el.shrunk=out!==el.blob; el.blob=out; el.squeezed=true; outbox.put(el);
     if(out.size>VIDEO_MAX){ el.pending=false; el.ok=false; outbox.del(el.jobId); if(cur&&cur.id===el.bondId) renderMsgs(); toast("동영상은 500MB까지 보낼 수 있어요"); return }
   }
   await upload(el,live);
@@ -1432,14 +1432,16 @@ async function squeezeVideo(f,onp,el){
     const MB=await import(MB_URL);
     mlog("lib loaded",ms());
     const input=new MB.Input({source:new MB.BlobSource(f),formats:MB.ALL_FORMATS});
+    const vt=await input.getPrimaryVideoTrack(); if(!vt){ mlog("squeeze skip: no video track"); return f }
+    const vw=await vt.getDisplayWidth(), vh=await vt.getDisplayHeight(), dur=await input.computeDuration(), bps=f.size*8/Math.max(1,dur);
+    mlog("input",vt.codec,vw+"x"+vh,"dur",dur.toFixed(1)+"s",(bps/1e6).toFixed(1)+"Mbps",ms());
+    if(Math.min(vw,vh)<=1080&&bps<8e6){ mlog("squeeze skip: already small"); return f }
     const output=new MB.Output({format:new MB.Mp4OutputFormat({fastStart:"in-memory"}),target:new MB.BufferTarget()});
     const conv=await MB.Conversion.init({input,output,showWarnings:false,
       video:async t=>{
         const w=await t.getDisplayWidth(), h=await t.getDisplayHeight(), k=Math.min(1,720/Math.min(w,h));
         return {width:Math.round(w*k/2)*2,height:Math.round(h*k/2)*2,fit:"fill",codec:"avc",quality:new MB.Quality({bitrate:2500000})};
       }});
-    const vt=await input.getPrimaryVideoTrack();
-    mlog("input",vt?vt.codec:"-",vt?(await vt.getDisplayWidth())+"x"+(await vt.getDisplayHeight()):"-","dur",(await input.computeDuration()).toFixed(1)+"s",ms());
     if(!conv.isValid||conv.discardedTracks.some(d=>d.track.isVideoTrack()||d.track.isAudioTrack())){ mlog("squeeze skip: invalid",conv.discardedTracks.map(d=>d.track.type+":"+d.reason).join(",")); return f }
     let step=0; if(el) el.conv=conv;
     conv.onProgress=p=>{ onp(p); if(p*10>=step+1){ step=Math.floor(p*10); mlog("squeeze",step*10+"%",ms()) } };
@@ -1450,7 +1452,22 @@ async function squeezeVideo(f,onp,el){
     return out.size&&out.size<f.size?out:f;
   }catch(e){ if(el) delete el.conv; mlog("squeeze fail",String(e&&e.message||e).slice(0,120),ms()); return f }
 }
-// 동영상: 가로·세로와 첫 장면(미리보기). 3초 안에 못 읽으면 없이 보낸다
+// 동영상: 가로·세로와 첫 장면(미리보기). 기기 변환기로 읽고, 안 되는 기기는 video 태그로(3초 안에 못 읽으면 없이)
+async function probeVideo(f){
+  try{
+    if(typeof VideoDecoder==="undefined") throw 0;
+    const MB=await import(MB_URL);
+    const t=await new MB.Input({source:new MB.BlobSource(f),formats:MB.ALL_FORMATS}).getPrimaryVideoTrack(); if(!t) throw 0;
+    const w=await t.getDisplayWidth(), h=await t.getDisplayHeight(), k=Math.min(1,480/Math.max(w,h));
+    let thumb=null;
+    try{
+      const wc=await new MB.CanvasSink(t,{width:Math.round(w*k),height:Math.round(h*k),fit:"fill"}).getCanvas(await t.getFirstTimestamp());
+      const c=wc&&wc.canvas;
+      if(c) thumb=c.convertToBlob?await c.convertToBlob({type:"image/jpeg",quality:.7}):await new Promise(ok=>c.toBlob(ok,"image/jpeg",.7));
+    }catch(e){}
+    return {w,h,thumb};
+  }catch(e){ return videoInfo(f) }
+}
 function videoInfo(f){
   return new Promise(ok=>{
     const v=document.createElement("video"), u=URL.createObjectURL(f);
@@ -1469,7 +1486,7 @@ async function sendFile(f){
   let blob, thumb, w, h;
   if(video) mlog("pick",f.type||"?",mb(f.size));
   try{
-    if(video){ const d=await videoInfo(f); mlog("info",d.w+"x"+d.h,d.thumb?"thumb":"nothumb"); blob=f; thumb=d.thumb; w=d.w; h=d.h }
+    if(video){ const d=await probeVideo(f); mlog("info",d.w+"x"+d.h,d.thumb?"thumb":"nothumb"); blob=f; thumb=d.thumb; w=d.w; h=d.h }
     else{ const r=await shrinkImage(f); blob=r.full; thumb=r.thumb; w=blob.w; h=blob.h }
   }catch(e){ toast(e.message); return }
   const src=URL.createObjectURL(blob);
@@ -1478,7 +1495,7 @@ async function sendFile(f){
   appendBubble(el); runJob(el);
 }
 async function upload(el,live){
-  const bondId=el.bondId, base=el.type==="video"&&el.squeezed?50:0;   // 줄이기가 앞에 있었으면 50% 부터
+  const bondId=el.bondId, base=el.type==="video"&&el.shrunk?50:0;   // 줄이기가 앞에 있었으면 50% 부터
   el.pending=true; el.ok=true; el.pct=base; if(cur&&cur.id===bondId) renderMsgs();
   try{
     const q=el.w&&el.h?`&w=${el.w}&h=${el.h}`:"";
