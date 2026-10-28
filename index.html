@@ -578,7 +578,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1114</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1125</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1141,6 +1141,7 @@ async function openChat(id){
   cur.unread=false; cur.msgs=store.get("msgs:"+id,[]).concat(live);   // 지난번에 본 대화를 먼저 보여준다
   drawHead(cur); showRoomInvite();
   roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
+  nodes.clear(); $("#days").replaceChildren(); pinned=true;
   renderMsgs(); go("chat");
   loadRoomTools();
   try{
@@ -1154,7 +1155,6 @@ async function openChat(id){
       .filter(m=>!hidden.has(String(m.id))).concat(failed.filter(x=>!live.includes(x)),live);
     if(!cur.self){ cur.lastResetAt=NOW()-(30-d.bond.dday)*DAY; drawHead(cur) }
     showRoomInvite(); renderMsgs(); saveMsgs();
-    const v=$("#days"); v.scrollTop=v.scrollHeight;
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
 // 아직 혼자인 방: 코드와 보내기 버튼이 대화 자리 위에 보인다
@@ -1252,27 +1252,46 @@ function refreshChat(){
   if(cur.group) renderMsgs();
 }
 function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())return "오늘";const y=new Date(t-DAY);if(d.toDateString()===y.toDateString())return "어제";return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`}
+/* 대화 목록 그리기. 칸마다 이름표(key)와 내용 요약(sig)을 붙여 두고, 내용이 그대로인 칸은 만들어 둔 것을 그대로 쓴다.
+   바뀐 칸만 새로 만들고, 순서가 그대로면 화면을 아예 건드리지 않는다. 그래서 다시 그려도 사진이 다시 불러와지거나
+   스크롤이 튀지 않는다. 스크롤은 하나의 규칙: 바닥을 보고 있었으면(pinned) 바닥, 아니면 보던 자리 */
+const nodes=new Map();   // key → {sig, el}
 const fresh=new Set();   // 방금 들어온 메시지: 다음 그리기에서 한 번만 나타나는 모션
+const keyOf=m=>String(m.jobId||m.cid||m.id);   // 보내는 동안 번호가 바뀌어도 같은 칸으로 본다
+const quoteKey=rid=>{ const o=cur.msgs.find(x=>String(x.id)===String(rid)); return o?o.who+":"+o.type+":"+(o.text||""):"-" };
+// 사진·동영상은 올리는 중 → 보냄이 그 자리에서 바뀌므로(syncMedia) 요약에 넣지 않는다. 다시 만들면 사진이 깜빡인다
+const sigOf=ms=>ms.map(x=>x.type==="text"
+  ?[x.id,x.text,x.ok,x.replyTo?quoteKey(x.replyTo):""].join("")
+  :[x.type,x.w,x.h,x.ok,x.replyTo?quoteKey(x.replyTo):""].join("")).join("")+""+fmtT(ms[ms.length-1].ts);
+function syncMedia(row,m){
+  const b=row.querySelector(".msg"), tm=row.querySelector(".tm"); if(!b||!tm) return;
+  b.classList.toggle("pending",!!m.pending);
+  if(!m.pending&&m.ok!==false) tm.textContent=fmtT(m.ts);
+}
 function renderMsgs(){
-  const days=$("#days"), top=days.scrollTop, stick=days.scrollHeight-days.scrollTop-days.clientHeight<40; days.innerHTML="";
+  const days=$("#days"), top=days.scrollTop;
   const items=cur.msgs.concat(toolEvents(),memberEvents()).sort((a,b)=>a.ts-b.ts);
-  if(!items.length) return;
-  let lastDay="";
-  let group=[];
+  const out=[], keep=new Map();
+  const put=(key,sig,make)=>{ const c=nodes.get(key), el=c&&c.sig===sig?c.el:make(); keep.set(key,{sig,el}); out.push(el); return el };
+  const div=(cls,text)=>()=>{ const e=document.createElement("div"); e.className=cls; e.textContent=text; return e };
   const named=cur.group&&cur.members.length>2;
-  const flush=()=>{ if(group.length){
-    if(named&&group[0].who==="you") days.insertAdjacentHTML("beforeend",`<div class="fromname">${esc(nameOf(group[0].from))}</div>`);
-    days.appendChild(bubble(group)); group=[] } };
+  const fromName=m=>{ if(named&&m.who==="you"){ const n=nameOf(m.from); put("fn:"+keyOf(m),n,div("fromname",n)) } };
+  const addBubble=ms=>{ const el=put("b:"+keyOf(ms[0]),sigOf(ms),()=>bubble(ms)); if(ms[0].type!=="text") syncMedia(el,ms[0]) };
+  let lastDay="", group=[];
+  const flush=()=>{ if(group.length){ fromName(group[0]); addBubble(group); group=[] } };
   items.forEach(m=>{
-    const d=new Date(m.ts), key=d.toDateString();
-    if(key!==lastDay){ flush(); lastDay=key; days.insertAdjacentHTML("beforeend",`<div class="sep">${sepLabel(d)}</div>`) }
-    if(m.type==="event"){ flush(); days.insertAdjacentHTML("beforeend",`<div class="evt">${esc(m.who)} · ${esc(m.text)}</div>`); return }
-    if(m.type!=="text"){ flush(); if(named&&m.who==="you") days.insertAdjacentHTML("beforeend",`<div class="fromname">${esc(nameOf(m.from))}</div>`); days.appendChild(bubble([m])); return }
+    const d=new Date(m.ts), day=d.toDateString();
+    if(day!==lastDay){ flush(); lastDay=day; const lb=sepLabel(d); put("sep:"+day,lb,div("sep",lb)) }
+    if(m.type==="event"){ flush(); const tx=`${m.who} · ${m.text}`; put("evt:"+m.ts+":"+tx,tx,div("evt",tx)); return }
+    if(m.type!=="text"){ flush(); fromName(m); addBubble([m]); return }
     if(group.length&&!sameGroup(group[group.length-1],m)) flush();
     group.push(m);
   });
   flush();
-  days.scrollTop=stick?days.scrollHeight:top;
+  nodes.clear(); keep.forEach((v,k)=>nodes.set(k,v));
+  const kids=days.children;
+  if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
+  days.scrollTop=pinned?days.scrollHeight:top;
   // 묶인 말풍선에 한 줄이 더해진 거면 그 줄만, 아니면 말풍선 전체가 나타난다
   fresh.forEach(id=>{
     const ln=days.querySelector(`[data-mid="${id}"]`), bub=ln?ln.closest(".msg"):days.querySelector(`.msg[data-id="${id}"]`);
@@ -1307,7 +1326,7 @@ function bubble(ms){
     el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
     // 동영상 미리보기: 받은 직후엔 아직 서버에 없을 수 있어 한 번 더 받아본다. 그래도 없으면 어두운 칸에 재생 표시만
     const vi=m.type==="video"&&el.querySelector(".vthumb img");
-    if(vi){ vi.onload=()=>vi.classList.add("ok"); vi.onerror=()=>{ if(vi.dataset.r){ vi.remove(); return } vi.dataset.r=1; setTimeout(()=>{ vi.src=poster+"&r=1" },3000) } }
+    if(vi){ if(vi.complete&&vi.naturalWidth) vi.classList.add("ok"); vi.onload=()=>vi.classList.add("ok"); vi.onerror=()=>{ if(vi.dataset.r){ vi.remove(); return } vi.dataset.r=1; setTimeout(()=>{ vi.src=poster+"&r=1" },3000) } }
     // 다 받으면 나타나고, 바닥을 보고 있었으면 곧바로 바닥에 붙인다
     const md=el.querySelector("img,.vthumb"), d0=$("#days");
     const settle=()=>{
@@ -1320,7 +1339,8 @@ function bubble(ms){
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
   // 길게 누르면 메뉴 (M-4). 스크롤이 시작되면 pointercancel이 와서 취소된다
-  const pick=e=>{ const ln=e.target.closest&&e.target.closest("[data-mid]"); return (ln&&ms.find(x=>String(x.id)===ln.dataset.mid))||m };
+  const now=x=>cur.msgs.find(y=>y===x)||cur.msgs.find(y=>String(y.id)===String(x.id))||x;
+  const pick=e=>{ const ln=e.target.closest&&e.target.closest("[data-mid]"); return now((ln&&ms.find(x=>String(x.id)===ln.dataset.mid))||m) };
   el.addEventListener("pointerdown",e=>{ held=false; const t=pick(e); pt=setTimeout(()=>{ held=true; msgMenu(t,el) },500) });
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
   el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(pick(e),el) });
@@ -1492,7 +1512,7 @@ function copyText(t){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
 // 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,shrunk,jobId,bondId,...m})=>m).slice(-200))) }catch(e){} }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,shrunk,jobId,bondId,cid,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"")+(small?"&s=t":"");
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
@@ -1510,7 +1530,7 @@ function appendBubble(m){
   else $("#newPill").classList.add("on");
 }
 async function push(m){
-  const el={id:uid(),who:"me",type:"text",text:m.text,replyTo:m.replyTo||null,ts:NOW(),ok:true};
+  const id=uid(), el={id,cid:id,who:"me",type:"text",text:m.text,replyTo:m.replyTo||null,ts:NOW(),ok:true};
   appendBubble(el); send(el,cur.id);
 }
 async function send(el,bondId){
