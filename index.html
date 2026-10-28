@@ -76,6 +76,9 @@
   .enter{animation:bubin .24s cubic-bezier(.2,.8,.2,1) both}
   /* 삭제: 한 점으로 빨려들며 사라지고, 그 높이만큼 아래 글이 올라와 자리를 메운다 */
   .leave{transition:opacity .16s ease-in,transform .24s cubic-bezier(.4,0,.6,.2),height .26s cubic-bezier(.5,0,.35,1),margin-bottom .26s cubic-bezier(.5,0,.35,1);opacity:0!important;transform:scale(.4);overflow:hidden}
+  /* 버전: 폰에서 최신본인지 바로 알아보려고 첫 화면 아래에 작게 적는다 */
+  #ver{display:none;position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;font:400 10px/1 var(--font-body);color:var(--ink-3);opacity:.55;pointer-events:none;z-index:5}
+  #phone:has(#splash.on) #ver,#phone:has(.ob.on) #ver{display:block}
   .cbar:not([hidden]){animation:risein .18s cubic-bezier(.2,.8,.2,1) both}
   #viewer.on{animation:fadein .2s ease both}
   #viewer.on .body>*{animation:zoomin .24s cubic-bezier(.2,.8,.2,1) both}
@@ -447,6 +450,7 @@
 
   <!-- 0. splash -->
   <section class="screen base" id="splash"><img class="zero" src="icon-512.png" alt=""><div class="wm">Till Zero</div></section>
+  <div id="ver"></div>
 
   <!-- 1. onboarding -->
   <section class="screen ob" id="ob-phone"><div class="pad">
@@ -769,6 +773,13 @@ window.addEventListener("focus",catchUp);
 
 /* ---------- nav ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+/* 버전. 이 화면 파일이 만들어진 시각이라 손으로 적을 필요가 없다.
+   폰에서 첫 화면 아래에 작게 보인다. 최신본인지 이것으로 가린다 */
+const BUILD=(()=>{
+  const d=new Date(document.lastModified), p=n=>String(n).padStart(2,"0");
+  return isNaN(d.getTime())?"----":`${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+})();
+$("#ver").textContent="버전 "+BUILD;
 let stack=[];
 function go(id,{replace=false}={}){
   const cur=stack[stack.length-1];
@@ -1549,6 +1560,7 @@ function dropMsg(bondId,id){
     const done=()=>{ cur.msgs=cur.msgs.filter(x=>String(x.id)!==id); saveMsgs(); renderMsgs() };
     const days=$("#days"), ln=days.querySelector(`[data-mid="${id}"]`), bub=ln?ln.closest(".msg"):days.querySelector(`.msg[data-id="${id}"]`);
     const t=ln&&bub.querySelectorAll("[data-mid]").length>1?ln:bub&&(bub.closest(".mrow")||bub);
+    if(t&&t.classList.contains("leave")) return;   // 서버가 알려준 삭제가 뒤따라와도 한 번만 움직인다
     if(t&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
       // 높이를 재서 0 으로 줄인다. 목록의 줄 사이 틈(gap 3px)은 음수 여백으로 함께 닫는다
       const row=t.parentNode===days;
@@ -2138,6 +2150,7 @@ function renderSettings(){
   api("/api/blocks").then(d=>{ $("#blockSub").textContent=`${d.blocks.length}명` }).catch(()=>{});
   renderPush(); loadNoti();
   $("#storeInfo").textContent=`저장 사용량 ${(store.size()/1024).toFixed(0)} KB`;
+  $("#buildId").textContent=BUILD;
   applyTheme();
 }
 const NOTI_MAP={n_msg:"msg",n_req:"req",n_dday:"dday",n_dnd:"dnd"};
