@@ -2458,10 +2458,15 @@ let kbLog=[];
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   if(PLATFORM==="ios"){
-    const K=plug("Keyboard"); fullH=window.innerHeight;
-    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight); flip(fullH-i.keyboardHeight) });
-    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); flip(fullH) });
-    flip(fullH); log("start app");
+    /* 앱에서는 아이폰이 키보드를 올리는 바로 그 애니메이션으로 웹뷰를 같이 줄여 준다
+       (Keyboard resize: native). 화면은 100dvh 라 저절로 따라 줄어든다.
+       그러니 높이를 손으로 바꾸지도, flip 으로 흉내 내지도 않는다. 흉내가 어긋나면
+       "입력줄이 먼저 자리를 잡고 나서 올라가는" 것처럼 보인다 */
+    const K=plug("Keyboard");
+    ph.style.height="";
+    K.addListener("keyboardWillShow",i=>{ kbMark(); ph.classList.add("kb"); log("willShow "+i.keyboardHeight) });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); ph.classList.remove("kb"); log("willHide") });
+    log("start app");
     return;
   }
   vv.addEventListener("resize",()=>{
