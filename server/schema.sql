@@ -13,7 +13,8 @@ create table if not exists users (
   phone_hash text unique,  -- 휴대폰 번호를 되돌릴 수 없게 바꾼 값. 번호 하나에 계정 하나(R-8.1, R-8.4)
   phone_tail text,         -- 화면 표시용 끝 4자리
 
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  banned_at  timestamptz   -- 운영자가 이용을 정지한 때(그 계정은 계정 삭제만 된다)
 );
 
 create table if not exists sessions (
@@ -98,6 +99,8 @@ create table if not exists reports (
   reason      text not null,
   snapshot    jsonb not null default '[]'::jsonb,
   message_id  bigint,        -- 메시지를 길게 눌러 신고했으면 그 메시지
+  resolved_at timestamptz,   -- 운영자가 처리한 때
+  action      text,          -- delmsg 메시지 삭제 / ban 계정 정지 / dismiss 넘기기
   created_at  timestamptz not null default now()
 );
 

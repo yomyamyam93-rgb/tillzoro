@@ -70,11 +70,12 @@ async function auth(req, res, next) {
   const t = (req.get("authorization") || "").replace(/^Bearer /, "");
   if (!t) return res.status(401).json({ error: "로그인이 필요해요" });
   const { rows } = await pool.query(
-    "select u.id, u.nickname, u.dob, u.photo, u.phone_tail from sessions s join users u on u.id = s.user_id where s.token = $1",
+    "select u.id, u.nickname, u.dob, u.photo, u.phone_tail, u.banned_at from sessions s join users u on u.id = s.user_id where s.token = $1",
     [t]
   );
   if (!rows[0]) return res.status(401).json({ error: "로그인이 필요해요" });
   req.user = rows[0];
+  if (rows[0].banned_at && req.path !== "/api/me/delete") return res.status(403).json({ error: "이용이 제한된 계정이에요", need: "banned" });
   // R-8.1: 휴대폰 인증을 마치지 않은 계정은 아무것도 할 수 없다. 번호 잇기, 내 상태 보기, 계정 삭제·알림 끊기만 된다.
   // 문자가 실제로 나갈 때만 막는다(준비 전에는 연결할 방법이 없으므로)
   if (sms && !rows[0].phone_tail && !PHONE_FREE.has(req.path))
@@ -203,6 +204,15 @@ app.post("/api/phone/send", async (req, res) => {
   if (!PEPPER) return res.status(503).json({ error: "인증 준비 중이에요" });
   const d = phoneDigits(req.body?.phone);
   if (!validPhone(d)) return res.status(400).json({ error: "휴대폰 번호를 확인해주세요" });
+  if (process.env.REVIEW_PHONE && d === process.env.REVIEW_PHONE && /^[0-9]{6}$/.test(process.env.REVIEW_CODE || "")) {
+    const rh = phoneHash(d);
+    await pool.query(
+      `insert into phone_codes (phone_hash, code_hash, expires_at, tries, sends, day, last_sent)
+         values ($1, $2, now() + interval '30 minutes', 0, 0, current_date, now())
+       on conflict (phone_hash) do update set code_hash = $2, expires_at = now() + interval '30 minutes', tries = 0`,
+      [rh, sha(rh + process.env.REVIEW_CODE)]);
+    return res.json({ ok: true });
+  }
   const ip = clientIp(req), now = Date.now();
   const hits = (ipHits.get(ip) || []).filter((t) => now - t < 3600000);
   if (hits.length >= 10) return res.status(429).json({ error: "잠시 뒤에 다시 해주세요" });
@@ -326,7 +336,7 @@ app.get("/api/till", auth, async (req, res) => {
       x.name.localeCompare(y.name)
   );
   // sms: 문자가 실제로 나가는지. 준비되기 전에는 옛 계정에 번호 연결을 요구하지 않는다
-  res.json({ me: { ...meOf(req.user), photo: req.user.photo }, bonds, sms: !!sms });
+  res.json({ me: { ...meOf(req.user), photo: req.user.photo }, bonds, sms: !!sms, admin: isAdmin(req.user.id) });
 });
 
 app.post("/api/profile", auth, async (req, res) => {
@@ -543,6 +553,51 @@ app.post("/api/report", auth, async (req, res) => {
   if (msg && !snap.some((r) => String(r.id) === String(msg.id))) snap.unshift(msg);
   await pool.query("insert into reports (reporter_id, target_id, reason, snapshot, message_id) values ($1, $2, $3, $4, $5)",
     [req.user.id, msg ? msg.sender_id : bond.kind === "group" ? null : otherOf(bond, req.user.id), reason, JSON.stringify(snap), msg ? msg.id : null]);
+  for (const id of ADMINS) { push(id, "admin", { title: "Till Zero", body: `신고 · ${reason}`, tag: "report" }); notify([id], { type: "report" }); }
+  res.json({ ok: true });
+});
+
+/* ---------- 운영자: 신고 처리 ----------
+   운영자 계정(.env ADMIN_IDS, 쉼표로 여러 명)만 쓴다. 처리: 메시지 삭제(방 모두의 화면에서 사라짐) · 계정 정지(그 계정은 계정 삭제만 됨) · 넘기기.
+   처리한 신고는 맨 아래로 내려가고, 무엇을 했는지 남는다 */
+const ADMINS = new Set(String(process.env.ADMIN_IDS || "").split(",").map((s) => s.trim()).filter(Boolean));
+const isAdmin = (id) => ADMINS.has(String(id));
+const adminOnly = (req, res, next) => (isAdmin(req.user.id) ? next() : res.sendStatus(404));
+app.get("/api/admin/reports", auth, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(
+    `select r.id, r.reason, r.created_at, r.resolved_at, r.action, r.message_id, r.snapshot, r.target_id,
+            a.nickname as reporter, t.nickname as target, t.banned_at, m.body as msg_body, m.kind as msg_kind
+       from reports r left join users a on a.id = r.reporter_id left join users t on t.id = r.target_id
+       left join messages m on m.id = r.message_id
+      order by r.resolved_at is not null, r.id desc limit 100`);
+  const ids = new Set(); rows.forEach((r) => (r.snapshot || []).forEach((x) => ids.add(String(x.sender_id))));
+  const names = new Map((await pool.query("select id, nickname from users where id = any($1::bigint[])", [[...ids]])).rows.map((u) => [String(u.id), u.nickname]));
+  res.json({ reports: rows.map((r) => ({
+    id: String(r.id), reason: r.reason, at: r.created_at, resolved: !!r.resolved_at, action: r.action,
+    reporter: r.reporter || "-", target: r.target || null, targetId: r.target_id ? String(r.target_id) : null, banned: !!r.banned_at,
+    messageId: r.message_id ? String(r.message_id) : null,
+    message: r.message_id ? (r.msg_kind === "image" ? "사진" : r.msg_kind === "video" ? "동영상" : r.msg_body ?? null) : null,
+    context: (r.snapshot || []).slice(-6).map((x) => `${names.get(String(x.sender_id)) || "?"}: ${x.body}`),
+  })) });
+});
+app.post("/api/admin/reports/:id", auth, adminOnly, async (req, res) => {
+  const r = (await pool.query("select * from reports where id = $1", [Number(req.params.id) || 0])).rows[0];
+  if (!r) return res.sendStatus(404);
+  const act = ["delmsg", "ban", "dismiss"].includes(req.body?.action) ? req.body.action : null;
+  if (!act) return res.status(400).json({ error: "처리할 수 없어요" });
+  if (act === "delmsg" && r.message_id) {
+    const m = (await pool.query("delete from messages where id = $1 returning id, bond_id", [r.message_id])).rows[0];
+    if (m) {
+      const who = (await pool.query(
+        "select user_id as id from bond_members where bond_id = $1 union select a_id from bonds where id = $1 union select b_id from bonds where id = $1", [m.bond_id])).rows;
+      notify(who.map((x) => x.id), { type: "deleted", bondId: String(m.bond_id), id: String(m.id) });
+    }
+  }
+  if (act === "ban" && r.target_id) {
+    await pool.query("update users set banned_at = now() where id = $1", [r.target_id]);
+    for (const ws of sockets.get(String(r.target_id)) || []) ws.close(4001, "banned");
+  }
+  await pool.query("update reports set resolved_at = now(), action = $2 where id = $1", [r.id, act]);
   res.json({ ok: true });
 });
 
@@ -910,8 +965,8 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 wss.on("connection", async (ws, req) => {
   const t = new URL(req.url, "http://x").searchParams.get("token") || "";
   const { rows } = await pool.query(
-    "select s.user_id, u.phone_tail from sessions s join users u on u.id = s.user_id where s.token = $1", [t]);
-  if (!rows[0]) return ws.close(4001, "unauthorized");
+    "select s.user_id, u.phone_tail, u.banned_at from sessions s join users u on u.id = s.user_id where s.token = $1", [t]);
+  if (!rows[0] || rows[0].banned_at) return ws.close(4001, "unauthorized");
   if (sms && !rows[0].phone_tail) return ws.close(4003, "phone required");   // R-8.1
 
   const uid = String(rows[0].user_id);

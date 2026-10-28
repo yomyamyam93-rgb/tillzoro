@@ -411,6 +411,16 @@
   .menu-bg{position:absolute;inset:0;z-index:27;display:none}.menu-bg.on{display:block}
   .menu{position:absolute;left:24px;right:24px;bottom:calc(40px + env(safe-area-inset-bottom,0px));background:var(--card);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:28;display:none;flex-direction:column;overflow:hidden}
   .menu.on{display:flex}
+  .rep{background:var(--card);border-radius:var(--r-list);padding:14px 16px;margin-bottom:10px}
+  .rep.done{opacity:.55}
+  .rep .h{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-3)}
+  .rep .h b{color:var(--zero);font-weight:600}
+  .rep .who{margin-top:4px;font-size:13px;color:var(--ink-2)}
+  .rep .m{margin:8px 0 6px;font-size:15px;line-height:1.45;word-break:break-word}
+  .rep .ctx{font-size:12.5px;line-height:1.5;color:var(--ink-3);white-space:pre-wrap;word-break:break-word;border-left:2px solid var(--line);padding-left:8px}
+  .rep .acts{display:flex;gap:8px;margin-top:12px}
+  .rep .acts button{flex:1;height:38px;border-radius:10px;background:var(--paper-2);font-size:14px;color:var(--ink);white-space:nowrap}
+  .rep .acts button.danger{color:var(--zero)}
   .menu.pop{left:auto;right:auto;bottom:auto;width:max-content;min-width:168px;max-width:calc(100% - 24px);border-radius:14px;z-index:29;box-shadow:0 12px 40px rgba(0,0,0,.22)}
   .menu.pop button{height:46px;display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;font-size:15px;color:var(--ink);text-align:left;white-space:nowrap;background:none;width:100%}
   .menu.pop button svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
@@ -574,11 +584,12 @@
       </div>
       <div class="lbl sect">Account</div>
       <div class="list">
+        <div class="item" id="adminBtn" style="display:none"><div class="t">신고 처리</div><span class="val" id="adminVal"></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="phoneBtn"><div class="t">휴대폰 번호</div><span class="val" id="phoneVal"></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1418</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1435</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -597,6 +608,11 @@
   <section class="screen" id="s-doc">
     <div class="bar big"><button class="icon" data-back=""><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="docTitle">Terms</h2></div>
     <iframe id="docFrame" title="문서"></iframe>
+  </section>
+
+  <section class="screen" id="s-admin">
+    <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Reports</h2></div>
+    <div class="pad" id="repList"></div>
   </section>
 
   <section class="screen" id="s-blocked">
@@ -658,6 +674,8 @@ async function api(path,{method="GET",body}={}){
   const loggingIn = path==="/api/login" || path==="/api/signup";
   if(r.status===401 && !loggingIn){ store.del("auth"); throw new Error("다시 로그인해주세요") }
   // 번호를 잇지 않은 계정: 서버가 다른 일을 막는다. 곧바로 인증 화면으로
+  // 운영자가 이용을 정지한 계정: 이 기기의 로그인을 지우고 처음 화면으로
+  if(r.status===403 && d.need==="banned"){ localStorage.clear(); toast(d.error); setTimeout(()=>location.reload(),1800); throw new Error(d.error) }
   if(r.status===403 && d.need==="phone"){ store.set("needPhone",1); if(!splashing) setTimeout(()=>askPhoneLink(true),0) }
   if(!r.ok) throw new Error(d.error||"문제가 생겼어요");
   return d;
@@ -683,6 +701,7 @@ function savePeople(){return true}   // 기록은 서버가 갖는다
 async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
+  $("#adminBtn").style.display=d.admin?"":"none";
   if(d.sms&&!d.me.phone){ store.set("needPhone",1); if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
   else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
@@ -724,6 +743,7 @@ function connectWS(){
       appendBubble(fromServer(d,false));
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
+    if(d.type==="report"){ if($("#s-admin").classList.contains("on")) renderAdmin(); else api("/api/admin/reports").then(x=>{ $("#adminVal").textContent=x.reports.filter(r=>!r.resolved).length||"" }).catch(()=>{}) }
     if(d.type==="edited"){ patchMsg(d.bondId,d.id,x=>{ x.text=d.body }) }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
@@ -1797,7 +1817,7 @@ function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove(
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-blocked":"settings","s-rule":"settings","s-doc":"settings"};
+  "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -2183,6 +2203,34 @@ async function askJoin(raw,done){
     try{ const r=await api("/api/join",{method:"POST",body:{code:c}}); await open(r.bondId) }catch(e){ toast(e.message) }
   },{ok:"들어가기",safe:true});
 }
+// 운영자: 신고 처리. 처리 안 한 것이 위, 한 것은 흐리게 아래
+const ACT_NAME={delmsg:"메시지 삭제함",ban:"계정 정지함",dismiss:"넘김"};
+async function renderAdmin(){
+  let list=[]; try{ list=(await api("/api/admin/reports")).reports }catch(e){ toast(e.message) }
+  const box=$("#repList"); box.innerHTML="";
+  $("#adminVal").textContent=list.filter(r=>!r.resolved).length||"";
+  if(!list.length){ box.innerHTML=`<p style="color:var(--ink-3);font-size:14px;text-align:center;margin-top:40px">들어온 신고가 없어요</p>`; return }
+  list.forEach(r=>{
+    const at=new Date(r.at).getTime(), el=document.createElement("div"); el.className="rep"+(r.resolved?" done":"");
+    el.innerHTML=`<div class="h"><b>${esc(r.reason)}</b><span>${fmtD(at)} ${fmtT(at)}</span>${r.resolved?`<span>· ${ACT_NAME[r.action]||""}</span>`:""}</div>
+      <div class="who">${esc(r.reporter)} → ${r.target?esc(r.target)+(r.banned?" (정지됨)":""):"방 전체"}</div>
+      ${r.messageId?`<div class="m">${r.message==null?"(지워진 메시지)":esc(r.message)}</div>`:""}
+      ${r.context.length?`<div class="ctx">${esc(r.context.join(String.fromCharCode(10)))}</div>`:""}`;
+    if(!r.resolved){
+      const acts=document.createElement("div"); acts.className="acts";
+      const btn=(label,act,danger,ask)=>{ const b=document.createElement("button"); b.textContent=label; if(danger) b.className="danger";
+        b.onclick=()=>{ const run=async()=>{ try{ await api("/api/admin/reports/"+r.id,{method:"POST",body:{action:act}}) }catch(e){ toast(e.message); return } renderAdmin() };
+          ask?confirmBox(ask,run,{ok:label}):run() };
+        acts.appendChild(b) };
+      if(r.messageId&&r.message!=null) btn("메시지 삭제","delmsg",true,"이 메시지를 모두에게서 지울까요?");
+      if(r.targetId&&!r.banned) btn("계정 정지","ban",true,`${r.target}의 이용을 정지할까요?`);
+      btn("넘기기","dismiss",false);
+      el.appendChild(acts);
+    }
+    box.appendChild(el);
+  });
+}
+$("#adminBtn").addEventListener("click",()=>{ go("s-admin"); renderAdmin() });
 async function renderBlocked(){
   let list=[]; try{ list=(await api("/api/blocks")).blocks }catch(e){ toast(e.message) }
   const l=$("#blockList"); l.innerHTML=""; $("#blockEmpty").style.display=list.length?"none":"block";
