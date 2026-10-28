@@ -74,7 +74,8 @@
   .lift{animation:liftin .18s ease-out both}
   .menu:not(.pop).on,.confirm.on{animation:risein .22s cubic-bezier(.2,.8,.2,1) both}
   .enter{animation:bubin .24s cubic-bezier(.2,.8,.2,1) both}
-  .leave{transition:opacity .18s ease,transform .18s ease;opacity:0!important;transform:scale(.94)}
+  /* 삭제: 한 점으로 빨려들며 사라지고, 그 높이만큼 아래 글이 올라와 자리를 메운다 */
+  .leave{transition:opacity .16s ease-in,transform .24s cubic-bezier(.4,0,.6,.2),height .26s cubic-bezier(.5,0,.35,1),margin-bottom .26s cubic-bezier(.5,0,.35,1);opacity:0!important;transform:scale(.4);overflow:hidden}
   .cbar:not([hidden]){animation:risein .18s cubic-bezier(.2,.8,.2,1) both}
   #viewer.on{animation:fadein .2s ease both}
   #viewer.on .body>*{animation:zoomin .24s cubic-bezier(.2,.8,.2,1) both}
@@ -425,8 +426,6 @@
   .menu.pop button{height:46px;display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;font-size:15px;color:var(--ink);text-align:left;white-space:nowrap;background:none;width:100%}
   .menu.pop button svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
   .menu.pop button.danger{color:var(--zero)}
-  .menu.pop button.sure{background:var(--zero);color:#fff}
-  .menu.pop button.sure svg{opacity:1}
   #msgMenuBg.on{background:rgba(0,0,0,.25)}
   .lift{position:absolute;z-index:28;margin:0;pointer-events:none;box-sizing:border-box}
   .quote{display:block;max-width:100%;font-size:12.5px;line-height:1.4;padding:1px 0 1px 8px;margin:1px 0 5px;border-left:2px solid currentColor;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
@@ -1390,20 +1389,26 @@ const MI={
   edit:'<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
   save:'<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>',
   del:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  delall:'<path d="M4 7h16M6 7l1 13h10l1-13M9 7V4h6v3M10 12l4 4M14 12l-4 4"/>',
   report:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   resend:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'
 };
 const onServer=m=>/^\d+$/.test(String(m.id))&&m.ok!==false&&!m.pending;
 function msgMenu(m,bub){
   const text=m.type==="text", mine=m.who==="me", live=onServer(m), items=[];
-  if(m.ok===false){ items.push(["resend","다시 보내기",()=>resend([m])]); items.push(["del","삭제",()=>deleteMsg(m),"danger"]) }
+  if(m.ok===false){ items.push(["resend","다시 보내기",()=>resend([m])]); items.push(["del","삭제",()=>deleteMsg(m)]) }
   else{
     if(live) items.push(["reply","답장",()=>startCompose("reply",m)]);
     if(text) items.push(["copy","복사",()=>copyText(m.text)]);
     if(!text&&live) items.push(["save","저장",()=>saveMedia(m)]);
     if(text&&mine&&live) items.push(["edit","수정",()=>startCompose("edit",m)]);
-    if(mine) items.push(["del","삭제",()=>deleteMsg(m),"danger",live]);
-    else if(live&&!cur.self) items.push(["report","신고",()=>reportMsg(m)]);
+    if(!mine&&live&&!cur.self) items.push(["report","신고",()=>reportMsg(m)]);
+    // 아직 보내는 중인 내 글은 나눌 것이 없다. 보내기를 멈추고 치운다
+    if(mine&&!live) items.push(["del","삭제",()=>deleteMsg(m)]);
+    else{
+      items.push(["del","나에게만 삭제",()=>hideMsg(m)]);
+      if(mine) items.push(["delall","모두에게 삭제",()=>deleteMsg(m)]);
+    }
   }
   if(!items.length) return;
   if(!text&&live) prefetchMedia(m);
@@ -1414,18 +1419,13 @@ function msgMenu(m,bub){
   lift.classList.add("lift"); lift.style.transformOrigin=(mine?"right":"left")+" center"; Object.assign(lift.style,{left:r.left-hr.left+"px",top:r.top-hr.top+"px",width:r.width+"px",height:r.height+"px"});
   host.appendChild(lift);
   const close=()=>{ box.classList.remove("on"); bg.classList.remove("on"); lift.remove() };
-  items.forEach(([k,label,act,cls,twoStep])=>{
+  items.forEach(([k,label,act,cls])=>{
     const b=document.createElement("button"); if(cls) b.className=cls;
     b.innerHTML=`<svg viewBox="0 0 24 24">${MI[k]}</svg><span>${label}</span>`;
-    b.onclick=()=>{
-      // 서버에 있는 걸 지울 땐 한 번 더 묻는다: 그 자리가 빨간 "모두에게서 삭제"로 바뀐다
-      if(twoStep&&!b.classList.contains("sure")){ b.classList.add("sure"); b.lastChild.textContent="모두에게서 삭제"; place(); return }
-      close(); act();
-    };
+    b.onclick=()=>{ close(); act() };
     box.appendChild(b);
   });
   // 말풍선 아래(공간이 없으면 위)에, 내 것은 오른쪽·남의 것은 왼쪽 끝을 맞춘다. 화면 밖으로 나가지 않게
-  // "모두에게서 삭제"로 바뀌어 폭이 늘면 다시 맞춘다
   box.classList.add("on"); bg.classList.add("on"); bg.onclick=close;
   function place(){
     const mw=box.offsetWidth, mh=box.offsetHeight, gap=8, pad=12;
@@ -1442,6 +1442,13 @@ async function deleteMsg(m){
   if(m.jobId&&sending.has(m.jobId)){ m.stopped=true; m.gen=(m.gen||0)+1; try{ m.conv&&m.conv.cancel() }catch(e){} try{ m.xhr&&m.xhr.abort() }catch(e){} sending.delete(m.jobId); outbox.del(m.jobId) }
   if(onServer(m)){ try{ await api("/api/messages/"+m.id,{method:"DELETE"}) }catch(e){ if(!requireLogin()) toast(e.message); return } }
   dropMsg(bondId,m.id);
+}
+/* 나에게만 삭제. 서버의 글은 그대로 두고 이 기기에서만 감춘다.
+   감춘 id 는 방마다 남아서, 다음에 서버에서 다시 받아올 때도 걸러진다(hide:) */
+function hideMsg(m){
+  const key="hide:"+cur.id, id=String(m.id), list=store.get(key,[]);
+  if(!list.includes(id)){ list.push(id); store.set(key,list) }
+  dropMsg(cur.id,m.id);
 }
 // 답장 인용 줄. 원래 글이 지워졌으면 "삭제된 메시지"
 function quoteOf(m){
@@ -1542,7 +1549,15 @@ function dropMsg(bondId,id){
     const done=()=>{ cur.msgs=cur.msgs.filter(x=>String(x.id)!==id); saveMsgs(); renderMsgs() };
     const days=$("#days"), ln=days.querySelector(`[data-mid="${id}"]`), bub=ln?ln.closest(".msg"):days.querySelector(`.msg[data-id="${id}"]`);
     const t=ln&&bub.querySelectorAll("[data-mid]").length>1?ln:bub&&(bub.closest(".mrow")||bub);
-    if(t&&!matchMedia("(prefers-reduced-motion: reduce)").matches){ t.classList.add("leave"); setTimeout(done,180) } else done();
+    if(t&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
+      // 높이를 재서 0 으로 줄인다. 목록의 줄 사이 틈(gap 3px)은 음수 여백으로 함께 닫는다
+      const row=t.parentNode===days;
+      t.style.height=t.getBoundingClientRect().height+"px"; if(row) t.style.marginBottom="0px";
+      void t.offsetWidth;
+      t.classList.add("leave");
+      t.style.height="0px"; if(row) t.style.marginBottom="-3px";
+      setTimeout(done,260);
+    } else done();
     return;
   }
   store.set("msgs:"+bondId, store.get("msgs:"+bondId,[]).filter(x=>String(x.id)!==id));
