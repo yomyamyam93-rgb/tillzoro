@@ -4,7 +4,7 @@
   "description": "Till Zero 앱(아이폰·안드로이드). 웹 화면(저장소 맨 위 index.html)을 그대로 앱 안에 넣는다",
   "scripts": {
     "www": "node scripts/build-www.mjs",
-    "sync": "node scripts/build-www.mjs && cap sync"
+    "sync": "node scripts/build-www.mjs && node scripts/patch-keyboard.mjs && cap sync"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

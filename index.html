@@ -2470,13 +2470,18 @@ let kbLog=[];
 
   $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
   if(PLATFORM==="ios"){
-    /* resize:"native" 는 쓰지 않는다. 플러그인이 웹뷰 프레임을 애니메이션 없이,
-       그것도 키보드가 다 올라온 뒤에(duration+0.2초) 한 번에 바꾼다. 그러면 화면이 뚝 끊긴다.
-       그래서 직접 흉내 낸다. 곡선은 아이폰 키보드 곡선에 맞춰 둔다(.kbmove) */
-    const K=plug("Keyboard"); fullH=window.innerHeight;
-    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight); flip(fullH-i.keyboardHeight) });
-    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); flip(fullH) });
-    flip(fullH); log("start app");
+    /* 앱에서는 아이폰이 키보드를 움직이는 바로 그 애니메이션 안에서 웹뷰를 같이 줄인다.
+       플러그인이 원래는 애니메이션 없이 한 번에 바꾸길래 고쳐 썼다(app/scripts/patch-keyboard.mjs).
+       곡선을 흉내 낼 일이 없다. 화면은 100dvh 라 저절로 따라온다 */
+    const K=plug("Keyboard");
+    ph.style.height="";
+    const track=w=>{ const t0=performance.now(), path=[];
+      const step=()=>{ path.push(Math.round(comp.getBoundingClientRect().top));
+        if(performance.now()-t0<420) requestAnimationFrame(step); else log(w+" move "+path.join(",")) };
+      requestAnimationFrame(step) };
+    K.addListener("keyboardWillShow",i=>{ kbMark(); ph.classList.add("kb"); log("willShow "+i.keyboardHeight); track("show") });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); ph.classList.remove("kb"); log("willHide"); track("hide") });
+    log("start app");
     return;
   }
   vv.addEventListener("resize",()=>{

@@ -7,7 +7,7 @@
   "android": { "backgroundColor": "#050506" },
   "plugins": {
     "SplashScreen": { "launchShowDuration": 0, "backgroundColor": "#050506" },
-    "Keyboard": { "resize": "none", "resizeOnFullScreen": true },
+    "Keyboard": { "resize": "native", "resizeOnFullScreen": true },
     "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
   }
 }
