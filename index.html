@@ -305,9 +305,10 @@
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
-  /* 아이폰 키보드가 쓰는 곡선(UIViewAnimationCurve 7)의 근사치.
-     앞이 빠른 곡선을 쓰면 입력줄이 키보드보다 먼저 올라가 자리를 잡고 기다리는 것처럼 보인다 */
-  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .25s cubic-bezier(.38,.7,.125,1)}
+  /* 2026-10-29 폰 기록으로 고른 값. 앞이 빠른 곡선(.2,.8,.2,1 / .38,.7,.125,1)은
+     시간의 20%에 거리의 90%를 가버려서, 눈에는 뚝 갔다가 기어가는 것으로 보인다.
+     이 곡선은 천천히 떠나 천천히 멈춘다: 시간 35%에 거리 50%, 51%에 78% */
+  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .25s cubic-bezier(.4,0,.2,1)}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
   .compose .icon[hidden]{display:none}
