@@ -75,7 +75,9 @@
   .menu:not(.pop).on,.confirm.on{animation:risein .26s var(--ease-soft) both}
   .enter{animation:bubin .28s var(--ease-soft) both}
   /* 삭제: 한 점으로 빨려들며 사라지고, 그 높이만큼 아래 글이 올라와 자리를 메운다 */
-  .leave{transition:opacity .16s ease-in,transform .24s cubic-bezier(.4,0,.6,.2),height .26s cubic-bezier(.5,0,.35,1),margin-bottom .26s cubic-bezier(.5,0,.35,1);opacity:0!important;transform:scale(.4);overflow:hidden}
+  /* 먼저 말풍선이 제자리에서 줄어들고(0~.2초), 그다음 자리가 닫힌다(.1~.34초).
+     한꺼번에 하면 바닥을 보고 있을 때 스크롤이 따라 내려가 줄어드는 것이 안 보인다 */
+  .leave{transition:opacity .22s cubic-bezier(.7,0,.9,.6),transform .2s cubic-bezier(.4,0,.6,.2),height .24s cubic-bezier(.4,0,.2,1) .1s,margin-bottom .24s cubic-bezier(.4,0,.2,1) .1s;opacity:0!important;transform:scale(.4);overflow:hidden}
   /* 버전: 폰에서 최신본인지 바로 알아보려고 첫 화면 아래에 작게 적는다 */
   #ver{display:none;position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;font:400 10px/1 var(--font-body);color:var(--ink-3);opacity:.55;pointer-events:none;z-index:5}
   #phone:has(#splash.on) #ver,#phone:has(.ob.on) #ver{display:block}
@@ -1570,7 +1572,7 @@ function dropMsg(bondId,id){
       void t.offsetWidth;
       t.classList.add("leave");
       t.style.height="0px"; if(row) t.style.marginBottom="-3px";
-      setTimeout(done,260);
+      setTimeout(done,350);
     } else done();
     return;
   }
