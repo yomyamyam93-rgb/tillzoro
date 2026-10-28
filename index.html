@@ -390,6 +390,24 @@
   .menu-bg{position:absolute;inset:0;z-index:27;display:none}.menu-bg.on{display:block}
   .menu{position:absolute;left:24px;right:24px;bottom:calc(40px + env(safe-area-inset-bottom,0px));background:var(--card);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:28;display:none;flex-direction:column;overflow:hidden}
   .menu.on{display:flex}
+  .menu.pop{left:auto;right:auto;bottom:auto;width:max-content;min-width:168px;max-width:calc(100% - 24px);border-radius:14px;z-index:29;box-shadow:0 12px 40px rgba(0,0,0,.22)}
+  .menu.pop button{height:46px;display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;font-size:15px;color:var(--ink);text-align:left;white-space:nowrap;background:none;width:100%}
+  .menu.pop button svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+  .menu.pop button.danger{color:var(--zero)}
+  .menu.pop button.sure{background:var(--zero);color:#fff}
+  .menu.pop button.sure svg{opacity:1}
+  #msgMenuBg.on{background:rgba(0,0,0,.25)}
+  .lift{position:absolute;z-index:28;margin:0;pointer-events:none;box-sizing:border-box}
+  .quote{display:block;max-width:100%;font-size:12.5px;line-height:1.4;padding:1px 0 1px 8px;margin:1px 0 5px;border-left:2px solid currentColor;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .quote b{font-weight:600;margin-right:5px}
+  .msg.media .quote{color:var(--ink-3);opacity:1;margin:0 0 5px}
+  .flash{animation:flash 1s ease}
+  @keyframes flash{0%,60%{filter:brightness(.82)}100%{filter:none}}
+  .cbar{display:flex;align-items:center;gap:8px;padding:2px 2px 6px 10px}
+  .cbar[hidden]{display:none}
+  .cbt{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid var(--ink-3);padding-left:8px}
+  .cbt b{font-weight:600;color:var(--ink);margin-right:6px}
+  .cbar .icon{width:30px;height:30px;flex:none}
   .menu button{height:50px;font-size:16px;border-top:1px solid var(--line)}.menu button:first-child{border-top:0}.menu button.danger{color:var(--zero)}
 </style>
 <link rel="stylesheet" href="tokens.css">
@@ -455,6 +473,7 @@
     <div class="dayswrap"><div class="days" id="days"></div></div>
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
+      <div class="cbar" id="cbar" hidden><div class="cbt"><b id="cbarK"></b><span id="cbarT"></span></div><button class="icon" id="cbarX" aria-label="취소"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <div class="bar2">
         <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
@@ -538,7 +557,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1006</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1103</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -577,7 +596,7 @@
   <div class="menu-bg" id="repBg"></div>
   <div class="menu" id="repMenu"><button data-r="스팸·광고">스팸·광고</button><button data-r="욕설·괴롭힘">욕설·괴롭힘</button><button data-r="음란물">음란물</button><button data-r="사칭">사칭</button><button data-r="기타">기타</button><button data-r="">취소</button></div>
   <div class="confirm" id="delBox"><p>계정을 삭제할까요? 모든 Bond와 대화가 사라지고 되돌릴 수 없어요.</p><input class="field" id="delPw" type="text" placeholder="삭제 입력" autocomplete="off"><div class="row2"><button class="btn ghost" id="delNo">취소</button><button class="btn danger" id="delYes">계정 삭제</button></div></div>
-  <div class="menu" id="msgMenu"><button id="mmCopy">복사</button><button class="danger" id="mmDel">삭제</button></div>
+  <div class="menu pop" id="msgMenu"></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
       <button id="tabTools" data-tab="s-tools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
@@ -680,6 +699,7 @@ function connectWS(){
       appendBubble(fromServer(d,false));
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
+    if(d.type==="edited"){ patchMsg(d.bondId,d.id,x=>{ x.text=d.body }) }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
       loadRoomTools(); return;
     }
@@ -1095,6 +1115,7 @@ function drawHead(p){
 }
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
+  composeMode=null; $("#cbar").hidden=true;
   const live=[...sending.values()].filter(x=>x.bondId===id);   // 보내는 중이거나 못 보낸 사진·동영상
   cur.unread=false; cur.msgs=store.get("msgs:"+id,[]).concat(live);   // 지난번에 본 대화를 먼저 보여준다
   drawHead(cur); showRoomInvite();
@@ -1233,7 +1254,7 @@ function renderMsgs(){
 }
 // 같은 사람이 같은 분에 이어 보낸 것은 한 묶음으로 본다
 function sameGroup(a,b){
-  return a && b && a.who===b.who && (a.from||"")===(b.from||"") && Math.floor(a.ts/60000)===Math.floor(b.ts/60000)
+  return a && b && !b.replyTo && a.who===b.who && (a.from||"")===(b.from||"") && Math.floor(a.ts/60000)===Math.floor(b.ts/60000)
     && new Date(a.ts).toDateString()===new Date(b.ts).toDateString();
 }
 // 한 묶음(같은 사람이 같은 분에 이어 보낸 것)이 말풍선 하나가 된다
@@ -1244,7 +1265,7 @@ function bubble(ms){
   el.dataset.id=m.id;
   let pt, held=false;
   if(m.type==="text"){
-    el.innerHTML=`<div class="txts">${ms.map(x=>`<div>${esc(x.text)}</div>`).join("")}</div>`
+    el.innerHTML=`<div class="txts">${quoteOf(ms[0])}${ms.map(x=>`<div data-mid="${x.id}">${esc(x.text)}</div>`).join("")}</div>`
       +`<span class="stamp">${failed?"다시 보내기":fmtT(m.ts)}</span>`;
   }
   else if(m.type==="image"||m.type==="video"){
@@ -1252,14 +1273,14 @@ function bubble(ms){
     const ar=m.w&&m.h?` style="aspect-ratio:${m.w}/${m.h}"`:"";
     const poster=m.thumbSrc||(m.media?mediaURL(m.media,true):"");
     const arImg=ar||' style="aspect-ratio:4/3"';   // 크기를 모르는 예전 사진: 다 받으면 실제 비율로 한 번만 바뀐다
-    el.innerHTML=m.type==="image"?`<img src="${thumbOf(m)}" alt=""${arImg} decoding="async">`
-      :`<span class="vthumb"${ar||' style="aspect-ratio:16/9"'}>${poster?`<img src="${poster}" alt="" decoding="async">`:""}</span>`;
+    el.innerHTML=quoteOf(m)+(m.type==="image"?`<img src="${thumbOf(m)}" alt=""${arImg} decoding="async">`
+      :`<span class="vthumb"${ar||' style="aspect-ratio:16/9"'}>${poster?`<img src="${poster}" alt="" decoding="async">`:""}</span>`);
     el.addEventListener("click",()=>{ if(!held&&!failed) viewer(m) });
     // 동영상 미리보기: 받은 직후엔 아직 서버에 없을 수 있어 한 번 더 받아본다. 그래도 없으면 어두운 칸에 재생 표시만
     const vi=m.type==="video"&&el.querySelector(".vthumb img");
     if(vi){ vi.onload=()=>vi.classList.add("ok"); vi.onerror=()=>{ if(vi.dataset.r){ vi.remove(); return } vi.dataset.r=1; setTimeout(()=>{ vi.src=poster+"&r=1" },3000) } }
     // 다 받으면 나타나고, 바닥을 보고 있었으면 곧바로 바닥에 붙인다
-    const md=el.firstElementChild, d0=$("#days");
+    const md=el.querySelector("img,.vthumb"), d0=$("#days");
     const settle=()=>{
       const stick=pinned||d0.scrollHeight-d0.scrollTop-d0.clientHeight<40;
       if(m.type==="image"){ if(!ar&&md.naturalWidth) md.style.aspectRatio=md.naturalWidth+"/"+md.naturalHeight; md.classList.add("ok") }
@@ -1270,10 +1291,12 @@ function bubble(ms){
   // 못 보낸 묶음은 탭하면 다시 보낸다 (T-1)
   if(failed) el.addEventListener("click",()=>{ if(!held) resend(ms) });
   // 길게 누르면 메뉴 (M-4). 스크롤이 시작되면 pointercancel이 와서 취소된다
-  const pick=e=>{ const ln=e.target.closest&&e.target.closest(".txts>div"); return ln?[ms[[...ln.parentNode.children].indexOf(ln)]]:ms };
-  el.addEventListener("pointerdown",e=>{ held=false; const t=pick(e); pt=setTimeout(()=>{ held=true; msgMenu(t) },500) });
+  const pick=e=>{ const ln=e.target.closest&&e.target.closest("[data-mid]"); return (ln&&ms.find(x=>String(x.id)===ln.dataset.mid))||m };
+  el.addEventListener("pointerdown",e=>{ held=false; const t=pick(e); pt=setTimeout(()=>{ held=true; msgMenu(t,el) },500) });
   ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
-  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(pick(e)) });
+  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(pick(e),el) });
+  const qt=el.querySelector(".quote");
+  if(qt) qt.addEventListener("click",e=>{ e.stopPropagation(); if(!held) jumpTo(qt.dataset.q) });
   if(m.type==="text") return el;
   // 사진·동영상: 시간(못 보냈으면 "다시 보내기")을 말풍선 바깥 옆에 붙인다
   const row=document.createElement("div"); row.className="mrow"+(m.who==="me"?" me":"");
@@ -1283,28 +1306,141 @@ function bubble(ms){
   row.append(el,tm);
   return row;
 }
-// 복사 · 삭제. 삭제는 내가 보낸 것만, 방 모두의 화면에서 사라진다(R-7.6). 이미 일어난 Reset 은 그대로
-function msgMenu(ms){
-  const text=ms[0].type==="text", mine=ms.every(x=>x.who==="me");
-  if(!text&&!mine) return;
-  $("#mmCopy").style.display=text?"":"none";
-  $("#mmDel").style.display=mine?"":"none";
-  const box=$("#msgMenu"), bg=$("#msgMenuBg");
-  const close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
-  $("#mmCopy").onclick=()=>{ close(); copyText(ms.map(x=>x.text).join("\n")) };
-  $("#mmDel").onclick=async()=>{ close();
-    const bondId=cur.id;
-    for(const x of ms){
-      // 아직 서버에 없는 것(보내는 중·못 보낸 것)은 보내기를 멈추고 이 화면에서만 뺀다
-      if(x.jobId&&sending.has(x.jobId)){ x.stopped=true; x.gen=(x.gen||0)+1; try{ x.conv&&x.conv.cancel() }catch(e){} try{ x.xhr&&x.xhr.abort() }catch(e){} sending.delete(x.jobId); outbox.del(x.jobId) }
-      if(/^\d+$/.test(String(x.id))&&x.ok!==false&&!x.pending){
-        try{ await api("/api/messages/"+x.id,{method:"DELETE"}) }catch(e){ if(!requireLogin()) toast(e.message); continue }
-      }
-      dropMsg(bondId,x.id);
-    }
+/* 길게 누르기 메뉴. 누른 말풍선을 어두운 배경 위로 들어 올리고 바로 옆에 띄운다
+   내 글: 답장·복사·수정·삭제 / 남의 글: 답장·복사·신고 / 사진·동영상: 답장·저장·삭제(내 것)·신고(남의 것) / 못 보낸 것: 다시 보내기·삭제
+   삭제는 두 번 눌러야 지워지고, 서버에 있는 건 방 모두의 화면에서 사라진다(R-7.6). 이미 일어난 Reset 은 그대로 */
+const MI={
+  reply:'<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 6 6v5"/>',
+  copy:'<path d="M9 9h10v10H9zM5 15V5h10"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  save:'<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>',
+  del:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  report:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  resend:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>'
+};
+const onServer=m=>/^\d+$/.test(String(m.id))&&m.ok!==false&&!m.pending;
+function msgMenu(m,bub){
+  const text=m.type==="text", mine=m.who==="me", live=onServer(m), items=[];
+  if(m.ok===false){ items.push(["resend","다시 보내기",()=>resend([m])]); items.push(["del","삭제",()=>deleteMsg(m),"danger"]) }
+  else{
+    if(live) items.push(["reply","답장",()=>startCompose("reply",m)]);
+    if(text) items.push(["copy","복사",()=>copyText(m.text)]);
+    if(!text&&live) items.push(["save","저장",()=>saveMedia(m)]);
+    if(text&&mine&&live) items.push(["edit","수정",()=>startCompose("edit",m)]);
+    if(mine) items.push(["del","삭제",()=>deleteMsg(m),"danger",live]);
+    else if(live&&!cur.self) items.push(["report","신고",()=>reportMsg(m)]);
+  }
+  if(!items.length) return;
+  if(!text&&live) prefetchMedia(m);
+  if(navigator.vibrate) navigator.vibrate(8);
+  const box=$("#msgMenu"), bg=$("#msgMenuBg"), host=box.parentNode, hr=host.getBoundingClientRect();
+  box.innerHTML="";
+  const lift=bub.cloneNode(true), r=bub.getBoundingClientRect();
+  lift.classList.add("lift"); Object.assign(lift.style,{left:r.left-hr.left+"px",top:r.top-hr.top+"px",width:r.width+"px",height:r.height+"px"});
+  host.appendChild(lift);
+  const close=()=>{ box.classList.remove("on"); bg.classList.remove("on"); lift.remove() };
+  items.forEach(([k,label,act,cls,twoStep])=>{
+    const b=document.createElement("button"); if(cls) b.className=cls;
+    b.innerHTML=`<svg viewBox="0 0 24 24">${MI[k]}</svg><span>${label}</span>`;
+    b.onclick=()=>{
+      // 서버에 있는 걸 지울 땐 한 번 더 묻는다: 그 자리가 빨간 "모두에게서 삭제"로 바뀐다
+      if(twoStep&&!b.classList.contains("sure")){ b.classList.add("sure"); b.lastChild.textContent="모두에게서 삭제"; place(); return }
+      close(); act();
+    };
+    box.appendChild(b);
+  });
+  // 말풍선 아래(공간이 없으면 위)에, 내 것은 오른쪽·남의 것은 왼쪽 끝을 맞춘다. 화면 밖으로 나가지 않게
+  // "모두에게서 삭제"로 바뀌어 폭이 늘면 다시 맞춘다
+  box.classList.add("on"); bg.classList.add("on"); bg.onclick=close;
+  function place(){
+    const mw=box.offsetWidth, mh=box.offsetHeight, gap=8, pad=12;
+    let top=r.bottom-hr.top+gap; if(top+mh>hr.height-pad) top=r.top-hr.top-gap-mh; if(top<pad) top=Math.max(pad,(hr.height-mh)/2);
+    let left=mine?r.right-hr.left-mw:r.left-hr.left; left=Math.max(pad,Math.min(left,hr.width-mw-pad));
+    box.style.top=top+"px"; box.style.left=left+"px";
+  }
+  place();
+}
+async function deleteMsg(m){
+  const bondId=cur.id;
+  // 아직 서버에 없는 것(보내는 중·못 보낸 것)은 보내기를 멈추고 이 화면에서만 뺀다
+  if(m.jobId&&sending.has(m.jobId)){ m.stopped=true; m.gen=(m.gen||0)+1; try{ m.conv&&m.conv.cancel() }catch(e){} try{ m.xhr&&m.xhr.abort() }catch(e){} sending.delete(m.jobId); outbox.del(m.jobId) }
+  if(onServer(m)){ try{ await api("/api/messages/"+m.id,{method:"DELETE"}) }catch(e){ if(!requireLogin()) toast(e.message); return } }
+  dropMsg(bondId,m.id);
+}
+// 답장 인용 줄. 원래 글이 지워졌으면 "삭제된 메시지"
+function quoteOf(m){
+  if(!m.replyTo) return "";
+  const o=cur.msgs.find(x=>String(x.id)===String(m.replyTo));
+  const who=o?(o.who==="me"?"나":nameOf(o.from)):"";
+  return `<span class="quote" data-q="${m.replyTo}">${o?`<b>${esc(who)}</b>${preview(o)}`:"삭제된 메시지"}</span>`;
+}
+function jumpTo(id){
+  const t=$("#days").querySelector(`[data-mid="${id}"]`)||$("#days").querySelector(`.msg[data-id="${id}"]`); if(!t) return;
+  const b=t.closest(".msg")||t; b.scrollIntoView({block:"center",behavior:"smooth"});
+  b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
+}
+// 답장·수정: 입력칸 위에 한 줄이 붙고, ✕ 로 취소
+let composeMode=null;
+function startCompose(kind,m){
+  composeMode={kind,m};
+  $("#cbarK").textContent=kind==="reply"?(m.who==="me"?"나":nameOf(m.from)):"수정";
+  $("#cbarT").innerHTML=preview(m);
+  $("#cbar").hidden=false;
+  if(kind==="edit"){ msgIn.value=m.text; fitIn() }
+  msgIn.focus();
+}
+function endCompose(){
+  if(composeMode&&composeMode.kind==="edit"){ msgIn.value=""; fitIn() }
+  composeMode=null; $("#cbar").hidden=true;
+}
+$("#cbarX").addEventListener("click",endCompose);
+async function editMsg(m,t){
+  const old=m.text; m.text=t; renderMsgs(); saveMsgs();
+  try{ await api("/api/messages/"+m.id+"/edit",{method:"POST",body:{body:t}}) }
+  catch(e){ m.text=old; renderMsgs(); saveMsgs(); if(!requireLogin()) toast(e.message) }
+}
+// 저장: 아이폰은 공유 시트("이미지 저장"·"동영상 저장")로, 그 밖은 내려받기.
+// 공유 시트는 누른 그 순간에 열어야 해서, 메뉴·크게 보기를 열 때 파일을 미리 받아 둔다(최근 3개만)
+const blobCache=new Map();
+function prefetchMedia(m){
+  const k=m.media||m.id; if(m.blob||blobCache.has(k)) return;
+  const p=fetch(srcOf(m)).then(r=>r.ok?r.blob():null).catch(()=>null);
+  blobCache.set(k,p); p.then(b=>{ if(b) blobCache.set(k,b); else blobCache.delete(k) });
+  while(blobCache.size>3) blobCache.delete(blobCache.keys().next().value);
+}
+function saveMedia(m){
+  const got=m.blob||blobCache.get(m.media||m.id);
+  const go=b=>{
+    const ext=(b.type.split("/")[1]||"jpg").replace("jpeg","jpg").replace("quicktime","mov");
+    const f=new File([b],"tillzero-"+Date.now()+"."+ext,{type:b.type});
+    const dl=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),30000) };
+    if(navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f]}).catch(e=>{ if(e.name!=="AbortError") dl() });
+    else dl();
   };
+  if(got instanceof Blob) return go(got);
+  Promise.resolve(got||fetch(srcOf(m)).then(r=>r.ok?r.blob():null)).then(b=>b?go(b):toast("저장하지 못했어요")).catch(()=>toast("저장하지 못했어요"));
+}
+// 메시지 하나를 신고. 1:1 이면 그다음 상대 차단을, 단체방이면 보낸 사람 차단을 묻는다
+function reportMsg(m){
+  const box=$("#repMenu"), bg=$("#repBg"), close=()=>{ box.classList.remove("on"); bg.classList.remove("on") };
   bg.onclick=close;
+  box.querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    close(); const reason=b.dataset.r; if(!reason||!cur) return;
+    try{ await api("/api/report",{method:"POST",body:{bondId:cur.id,reason,messageId:m.id}}) }catch(e){ toast(e.message); return }
+    const name=nameOf(m.from);
+    if(cur.group) confirmBox(`신고했어요. ${josa(name,"을","를")} 차단할까요?`,async()=>{
+      try{ await api("/api/block",{method:"POST",body:{userId:m.from}}) }catch(e){ toast(e.message); return }
+      toast("차단했어요"); syncTill().then(refreshChat).catch(()=>{});
+    },{ok:"차단"});
+    else confirmBox(`신고했어요. ${josa(name,"을","를")} 차단할까요?`,doBlock,{ok:"차단"});
+  });
   box.classList.add("on"); bg.classList.add("on");
+}
+// 고쳐진 메시지를 화면과 기억해둔 대화에 반영한다
+function patchMsg(bondId,id,fn){
+  id=String(id);
+  if(cur&&String(cur.id)===String(bondId)){ const m=cur.msgs.find(x=>String(x.id)===id); if(m){ fn(m); saveMsgs(); renderMsgs() } return }
+  const arr=store.get("msgs:"+bondId,[]), m=arr.find(x=>String(x.id)===id); if(m){ fn(m); store.set("msgs:"+bondId,arr) }
 }
 // 지워진 메시지를 화면과 기억해둔 대화에서 뺀다(내가 지웠거나, 방의 다른 사람이 지웠다는 알림을 받았을 때)
 function dropMsg(bondId,id){
@@ -1327,7 +1463,7 @@ const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기
 const thumbOf=m=>m.thumbSrc||(m.media?mediaURL(m.media,true):m.src);   // 대화 안에 보이는 작은 것
 function fromServer(m,mine){
   const type=m.kind==="image"||m.kind==="video"?m.kind:"text";
-  return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,w:m.w||null,h:m.h||null,ts:new Date(m.at).getTime(),ok:true};
+  return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,w:m.w||null,h:m.h||null,replyTo:m.replyTo?String(m.replyTo):null,ts:new Date(m.at).getTime(),ok:true};
 }
 // 내가 보낸 것이거나 바닥 근처를 보고 있으면 따라 내려가고, 위를 보고 있으면 자리를 지키고 알약만 띄운다 (S-2 S-3)
 function appendBubble(m){
@@ -1338,12 +1474,12 @@ function appendBubble(m){
   else $("#newPill").classList.add("on");
 }
 async function push(m){
-  const el={id:uid(),who:"me",type:"text",text:m.text,ts:NOW(),ok:true};
+  const el={id:uid(),who:"me",type:"text",text:m.text,replyTo:m.replyTo||null,ts:NOW(),ok:true};
   appendBubble(el); send(el,cur.id);
 }
 async function send(el,bondId){
   try{
-    const r=await api("/api/messages",{method:"POST",body:{bondId,body:el.text}});
+    const r=await api("/api/messages",{method:"POST",body:{bondId,body:el.text,replyTo:el.replyTo||undefined}});
     if(r.id) el.id=String(r.id);
     if(cur&&cur.id===bondId){ cur.mySent=true; saveMsgs() }
     if(r.reset) toast("30으로 돌아왔어요");
@@ -1364,7 +1500,7 @@ const outbox={
   db:null,
   open(){ return this.db||(this.db=new Promise((ok,no)=>{ const r=indexedDB.open("tz-outbox",1); r.onupgradeneeded=()=>r.result.createObjectStore("jobs",{keyPath:"id"}); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error) })) },
   async run(mode,fn){ const db=await this.open(); return new Promise((ok,no)=>{ const tx=db.transaction("jobs",mode), r=fn(tx.objectStore("jobs")); tx.oncomplete=()=>ok(r&&r.result); tx.onerror=()=>no(tx.error) }) },
-  put(el){ return this.run("readwrite",st=>st.put({id:el.jobId,bondId:el.bondId,type:el.type,blob:el.blob,thumb:el.thumb||null,w:el.w,h:el.h,ts:el.ts,squeezed:!!el.squeezed})).catch(()=>{}) },
+  put(el){ return this.run("readwrite",st=>st.put({id:el.jobId,bondId:el.bondId,type:el.type,blob:el.blob,thumb:el.thumb||null,w:el.w,h:el.h,ts:el.ts,squeezed:!!el.squeezed,replyTo:el.replyTo||null})).catch(()=>{}) },
   del(id){ return this.run("readwrite",st=>st.delete(id)).catch(()=>{}) },
   all(){ return this.run("readonly",st=>st.getAll()).catch(()=>[]) },
 };
@@ -1392,7 +1528,7 @@ async function resumeOutbox(){
   for(const j of await outbox.all()){
     if(sending.has(j.id)) continue;
     if(NOW()-j.ts>DAY||!people.some(p=>p.id===j.bondId)){ outbox.del(j.id); continue }
-    const el={id:j.id,jobId:j.id,bondId:j.bondId,who:"me",type:j.type,blob:j.blob,thumb:j.thumb,w:j.w,h:j.h,ts:j.ts,squeezed:j.squeezed,ok:true,pending:true,
+    const el={id:j.id,jobId:j.id,bondId:j.bondId,who:"me",type:j.type,blob:j.blob,thumb:j.thumb,w:j.w,h:j.h,ts:j.ts,squeezed:j.squeezed,replyTo:j.replyTo||null,ok:true,pending:true,
       src:URL.createObjectURL(j.blob),thumbSrc:j.thumb?URL.createObjectURL(j.thumb):(j.type==="video"?null:URL.createObjectURL(j.blob))};
     sending.set(el.id,el); mlog("resume from outbox",j.type,mb(j.blob.size));
     if(cur&&cur.id===el.bondId){ cur.msgs.push(el); renderMsgs() }
@@ -1491,6 +1627,7 @@ async function sendFile(f){
   }catch(e){ toast(e.message); return }
   const src=URL.createObjectURL(blob);
   const el={id:uid(),who:"me",type:video?"video":"image",blob,thumb,src,thumbSrc:thumb?URL.createObjectURL(thumb):(video?null:src),w,h,ts:NOW(),ok:true,pending:true};
+  if(composeMode&&composeMode.kind==="reply"){ el.replyTo=String(composeMode.m.id); endCompose() }
   el.jobId=el.id; el.bondId=cur.id; sending.set(el.id,el); outbox.put(el);
   appendBubble(el); runJob(el);
 }
@@ -1498,7 +1635,7 @@ async function upload(el,live){
   const bondId=el.bondId, base=el.type==="video"&&el.shrunk?50:0;   // 줄이기가 앞에 있었으면 50% 부터
   el.pending=true; el.ok=true; el.pct=base; if(cur&&cur.id===bondId) renderMsgs();
   try{
-    const q=el.w&&el.h?`&w=${el.w}&h=${el.h}`:"";
+    const q=(el.w&&el.h?`&w=${el.w}&h=${el.h}`:"")+(el.replyTo?`&replyTo=${el.replyTo}`:"");
     // 큰 동영상은 오래 걸리므로 올라가는 만큼 보여준다(fetch 는 진행률을 못 주니 XHR)
     let x;
     const r=await new Promise((ok,no)=>{
@@ -1550,7 +1687,13 @@ function fitIn(){
 }
 msgIn.addEventListener("input",fitIn);
 msgIn.addEventListener("keydown",e=>{ if(TOUCH) return; if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); sendText() } });
-function sendText(){ const t=msgIn.value.trim(); if(!t) return; push({type:"text",text:t}); msgIn.value=""; fitIn() }
+function sendText(){
+  const t=msgIn.value.trim(); if(!t) return;
+  const mode=composeMode; composeMode=null; $("#cbar").hidden=true;
+  msgIn.value=""; fitIn();
+  if(mode&&mode.kind==="edit"){ if(t!==mode.m.text) editMsg(mode.m,t); return }
+  push({type:"text",text:t,replyTo:mode&&mode.kind==="reply"?String(mode.m.id):null});
+}
 sendBtn.addEventListener("click",sendText);
 // 입력줄의 버튼을 눌러도 키보드는 그대로 (C-5). 입력칸 자체는 건드리지 않는다
 $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDefault() });
@@ -1854,12 +1997,15 @@ const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="M
 function viewer(m){
   const u=srcOf(m), body=$("#viewerBody");
   $("#viewerSave").href=u; $("#viewer").classList.add("on");
+  viewerM=m; if(m.media) prefetchMedia(m);
   if(m.type!=="video"){ body.innerHTML=`<img src="${u}" alt="">`; return }
   body.innerHTML=`<video src="${u}" controls${IOS?"":" playsinline"}></video>`;
   const v=body.firstElementChild;
   v.addEventListener("webkitendfullscreen",closeViewer);
   v.play().catch(()=>{});   // 누른 그 순간에 재생해야 아이폰이 소리와 함께 틀어 준다
 }
+let viewerM=null;
+$("#viewerSave").addEventListener("click",e=>{ if(!viewerM) return; e.preventDefault(); saveMedia(viewerM) });
 function closeViewer(){ $("#viewer").classList.remove("on"); $("#viewerBody").innerHTML="" }
 $("#viewerClose").addEventListener("click",closeViewer);
 

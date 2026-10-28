@@ -56,6 +56,7 @@ create table if not exists messages (
   sender_id  bigint not null references users(id) on delete cascade,
   body       text not null,
   kind       text not null default 'text',   -- text / image / video
+  reply_to   bigint,        -- 답장이면 원래 메시지(지워져도 남는다. 화면에선 "삭제된 메시지")
   media      text,          -- 사진·동영상 파일 이름(MEDIA_DIR 안). 방이 사라지면 파일도 정리된다
   mime       text,
   size       int,
@@ -96,6 +97,7 @@ create table if not exists reports (
   target_id   bigint references users(id) on delete set null,
   reason      text not null,
   snapshot    jsonb not null default '[]'::jsonb,
+  message_id  bigint,        -- 메시지를 길게 눌러 신고했으면 그 메시지
   created_at  timestamptz not null default now()
 );
 
