@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// 올릴 때마다 번호가 올라가야 기존 설치를 덮어쓴다. 없으면 1
+def tzBuild = (System.getenv("TZ_BUILD") ?: "1").toInteger()
+
 android {
     namespace = "kr.tillzero.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,7 +10,7 @@ android {
         applicationId "kr.tillzero.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("TZ_BUILD") ?: "1") as int
+        versionCode tzBuild
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
