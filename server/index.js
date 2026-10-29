@@ -962,7 +962,7 @@ app.post("/api/room/:bondId/:tool", auth, async (req, res) => {
    - AI 비용: 하루 전체 상한(.env AI_DAILY_USD, 기본 3달러)과 사람마다 하루 횟수(AI_USER_CALLS, 기본 40) */
 const Anthropic = require("@anthropic-ai/sdk");
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
-const { z } = require("zod");
+const { z } = require("zod/v4");   // SDK 의 출력 모양 도우미는 zod 4 문법을 쓴다
 const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)() : null;
 const AI_MODEL = "claude-opus-5-5";
 const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
