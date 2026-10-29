@@ -915,6 +915,15 @@ app.get("/api/rooms/:tool", auth, async (req, res) => {
   res.json({ rooms });
 });
 
+app.get("/api/room/:bondId", auth, async (req, res) => {
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  const { rows } = await pool.query("select tool, data from room_state where bond_id = $1", [bond.id]);
+  const tools = {};
+  rows.forEach((r) => (tools[r.tool] = r.data));
+  res.json({ tools });
+});
+
 app.get("/api/room/:bondId/:tool", auth, async (req, res) => {
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
@@ -942,6 +951,170 @@ app.post("/api/room/:bondId/:tool", auth, async (req, res) => {
   // 상대에게 바뀐 것을 알린다
   notify(memberIds(bond), { type: "room", bondId: bond.id, tool: req.params.tool }, req.user.id);
   res.json({ ok: true });
+});
+
+/* ---------- 도구 만들기 (tools-maker-plan.md) ----------
+   사용자가 AI 봇과 대화하며 도구를 만든다. 지금은 운영자만(계획 3단계).
+   - 도구 하나 = user_tools 한 줄. 고칠 때마다 tool_versions 에 버전이 하나씩 쌓이고, 지워지는 버전은 없다
+   - 되돌리기도 "예전 코드로 새 버전 만들기"라서 되돌린 걸 다시 되돌릴 수 있다
+   - 방에 붙일 때는 그 순간의 버전 번호를 방 데이터(room_state)에 적어 둔다. 고쳐도 방은 그대로, 다시 붙여야 바뀐다
+   - 도구 코드는 앱 안의 격리된 칸(iframe sandbox)에서만 돈다. 서버는 코드를 실행하지 않는다
+   - AI 비용: 하루 전체 상한(.env AI_DAILY_USD, 기본 3달러)과 사람마다 하루 횟수(AI_USER_CALLS, 기본 40) */
+const Anthropic = require("@anthropic-ai/sdk");
+const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
+const { z } = require("zod");
+const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)() : null;
+const AI_MODEL = "claude-opus-5-5";
+const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
+const AI_DAILY_USD = Number(process.env.AI_DAILY_USD || 3), AI_USER_CALLS = Number(process.env.AI_USER_CALLS || 40);
+const BOTS = {
+  play: "놀이: 장난기 있고 연출을 좋아한다. 강화·퀴즈·끝말잇기·빙고·내기·키우기 같은 놀이를 잘 만든다. 확률·차례·점수·순위·짧은 연출을 즐겨 쓴다.",
+  pick: "결정: 빠르고 공정하다. 메뉴 룰렛·사다리·제비뽑기·순서 정하기·팀 나누기를 잘 만든다. 무작위 결과는 한 번 정해서 c.data 에 저장해 모두에게 같게 보이게 한다.",
+  money: "돈: 꼼꼼하다. 정산·더치페이·회비·공동 가계부를 잘 만든다. 금액은 정수 원 단위, 천 단위 쉼표, 각자 자기 줄만 체크.",
+  meet: "모임: 정리를 잘한다. 공지·투표·일정 잡기·출석·역할 나누기·준비물을 잘 만든다. 만든 사람만 고치는 칸과 모두가 누르는 칸을 나눈다.",
+  two: "둘이서: 다정하다. 기념일·안부 확인·교환 일기·버킷리스트 같은 두 사람(친구·가족·연인) 도구를 잘 만든다.",
+  memory: "기억: 차분하다. 타임캡슐·하루 한 줄·연속 기록·습관 챌린지를 잘 만든다. 날짜는 한국 시간 기준.",
+  free: "자유 제작자: 무엇이든 만든다.",
+};
+const MAKER_RULES = `너는 메신저 앱 Till Zero 안에서 사용자와 대화하며 "도구"를 만드는 봇이다. 사용자는 코드를 모른다. 한국어로, 짧고 쉽게 말한다.
+
+[도구가 도는 곳]
+- 대화방 맨 위의 작은 칸 하나. 안쪽 크기는 가로 약 300px, 세로 64px. 두 줄을 넘지 않게 그린다. 넘치면 잘린다.
+- 격리된 iframe 안이다. 바깥 인터넷(fetch, WebSocket, 외부 이미지·폰트·스크립트)은 막혀 있다. alert/confirm/prompt 도 쓰지 않는다.
+- 미리 들어 있는 것: 함수 esc(글) — HTML 에 넣을 글은 꼭 esc 로 감싼다. CSS 클래스 rt-row(가로 줄), rt-title(굵은 제목, 넘치면 …), rt-title none(흐린 안내), rt-pt(작은 숫자), rt-btn(검은 알약 버튼), rt-btn ghost(회색 버튼), rt-score(작은 점수 줄), rt-in(입력칸). 색은 CSS 변수 --ink --ink-2 --ink-3 --paper --paper-2 --card --line --zero(빨강) 를 쓰면 밝은·어두운 화면 모두 맞는다. 필요하면 <style> 을 box.innerHTML 안에 넣어도 된다.
+
+[코드 모양] 자바스크립트로 함수 하나를 만든다. 다른 전역 코드는 두지 않는다.
+function render(box, c) { ... }
+- 그릴 때마다 box.innerHTML 로 새로 그리고, box.querySelector 로 버튼을 찾아 onclick 을 단다.
+- c.data: 이 방·이 도구의 저장 데이터(JSON 으로 저장 가능한 값만). 칸 이름은 마음대로. on, log, ver, name 은 앱이 쓰는 칸이라 건드리지 않는다.
+- c.me: 내 아이디(문자열). c.members: 방 사람 [{id, name}] (나 포함). c.self: 나와의 대화면 true.
+- c.ui: 저장하지 않는 화면 상태(입력 중인지 등). c.redraw(): c.ui 만 바꿨을 때 다시 그린다.
+- c.save(글): c.data 를 바꾼 뒤 부른다. 저장되고 방 사람 모두의 화면이 다시 그려진다. 글을 주면 대화 사이에 기록으로 남는다(예: "'설거지' 완료 +2P"). 기록할 일만 글을 준다.
+- c.toast(글): 화면 아래 잠깐 뜨는 알림.
+- 무작위 결과는 누른 사람 쪽에서 한 번 정해 c.data 에 넣고 c.save 한다. 그래야 모두에게 같은 결과가 보인다.
+
+[지킬 것]
+- 화면에 설명 문장을 넣지 않는다. 이름·숫자·짧은 버튼 글자(2~4자)·빈 상태 한 줄만. 사용법 안내 문구 금지.
+- Count·D-day·Keep(앱의 30일 규칙)을 바꾸려 하지 않는다. 그런 기능은 없다.
+- 오류 없이 돌아야 한다. 데이터가 비어 있을 때(처음)도 그려져야 한다.
+
+[대화하는 법]
+- 사용자가 원하는 게 분명하면 바로 만들고, 정할 게 남았으면 그 자리에서 묻는다. 한 번에 하나만 묻는다.
+- 꼭 정해야 하는 것만 묻는다: 몇 명이서(둘·여럿·혼자), 누가 조작하는지(모두·각자 자기 것만·만든 사람만·차례대로), 대화에 기록을 남길지. 분명하면 묻지 않는다.
+- 물을 때는 options 에 고를 답 2~4개(짧게)를 준다. 묻지 않을 때도 다음에 해 볼 만한 고치기 2~3개를 options 로 줄 수 있다.
+- reply 는 두 문장 이내. 코드 이야기는 하지 않는다.
+- 도구를 바꿨으면 changed=true, code 에 render 함수 전체, note 에 무엇을 바꿨는지 한 줄(예: "실패하면 한 단계 내려감"). 안 바꿨으면 changed=false, code 와 note 는 빈 글.
+- name 은 하는 일이 보이는 짧은 이름(예: "무기 강화", "회식 정산").`;
+const MakerOut = z.object({
+  reply: z.string(),
+  options: z.array(z.string()),
+  changed: z.boolean(),
+  name: z.string(),
+  note: z.string(),
+  code: z.string(),
+});
+const kstDay = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+async function myTool(id, userId) {
+  return (await pool.query("select * from user_tools where id = $1 and owner_id = $2", [Number(id) || 0, userId])).rows[0];
+}
+async function toolCode(id, ver) {
+  return (await pool.query("select code, note from tool_versions where tool_id = $1 and ver = $2", [id, ver])).rows[0];
+}
+async function addVersion(tool, code, note) {
+  const ver = tool.ver + 1;
+  await pool.query("insert into tool_versions (tool_id, ver, code, note) values ($1, $2, $3, $4)", [tool.id, ver, code, note]);
+  await pool.query("update user_tools set ver = $2, updated_at = now() where id = $1", [tool.id, ver]);
+  return ver;
+}
+const makerOnly = (req, res, next) => (isAdmin(req.user.id) ? next() : res.sendStatus(404));
+
+app.get("/api/tools/mine", auth, makerOnly, async (req, res) => {
+  const { rows } = await pool.query("select id, name, bot, ver, updated_at from user_tools where owner_id = $1 order by updated_at desc", [req.user.id]);
+  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, at: r.updated_at })) });
+});
+// 새로 만들기. from 을 주면(기본 도구 "고쳐 만들기") 그 코드가 1번 버전이 된다
+app.post("/api/tools", auth, makerOnly, async (req, res) => {
+  const bot = BOTS[req.body?.bot] ? req.body.bot : "free";
+  const from = req.body?.from;
+  const name = String(from?.name || "새 도구").slice(0, 30);
+  const tool = (await pool.query("insert into user_tools (owner_id, name, bot) values ($1, $2, $3) returning *", [req.user.id, name, bot])).rows[0];
+  await pool.query("insert into tool_chats (tool_id, messages) values ($1, '[]')", [tool.id]);
+  if (from?.code && String(from.code).length < 60000) await addVersion(tool, String(from.code), "원본");
+  res.json({ id: "u" + tool.id });
+});
+app.get("/api/tools/:id", auth, makerOnly, async (req, res) => {
+  const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
+  if (!tool) return res.sendStatus(404);
+  const vers = (await pool.query("select ver, note, created_at from tool_versions where tool_id = $1 order by ver desc", [tool.id])).rows;
+  const chat = (await pool.query("select messages from tool_chats where tool_id = $1", [tool.id])).rows[0]?.messages || [];
+  const cur = tool.ver ? await toolCode(tool.id, tool.ver) : null;
+  res.json({ id: "u" + tool.id, name: tool.name, bot: tool.bot, ver: tool.ver, code: cur?.code || "",
+    versions: vers.map((v) => ({ ver: v.ver, note: v.note, at: v.created_at })), chat });
+});
+// 방에서 도구를 그릴 때. 붙인 버전의 코드
+app.get("/api/tools/:id/v/:ver", auth, async (req, res) => {
+  const id = Number(String(req.params.id).replace(/^u/, "")) || 0;
+  const tool = (await pool.query("select name from user_tools where id = $1", [id])).rows[0];
+  const v = tool && (await toolCode(id, Number(req.params.ver) || 0));
+  if (!v) return res.sendStatus(404);
+  res.json({ name: tool.name, code: v.code });
+});
+// 예전 버전으로: 그 코드로 새 버전을 만든다(기록은 지워지지 않는다)
+app.post("/api/tools/:id/revert", auth, makerOnly, async (req, res) => {
+  const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
+  const v = tool && (await toolCode(tool.id, Number(req.body?.ver) || 0));
+  if (!v) return res.sendStatus(404);
+  const ver = await addVersion(tool, v.code, `${req.body.ver}번으로 되돌림`);
+  res.json({ ver, code: v.code });
+});
+// 봇과 대화: 한 번 말할 때마다 AI 를 한 번 부른다
+app.post("/api/tools/:id/chat", auth, makerOnly, async (req, res) => {
+  if (!ai) return res.status(503).json({ error: "AI 준비 중이에요" });
+  const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
+  if (!tool) return res.sendStatus(404);
+  const text = String(req.body?.text || "").trim().slice(0, 1000);
+  if (!text) return res.status(400).json({ error: "내용을 적어주세요" });
+  const day = kstDay();
+  const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [day])).rows[0].usd;
+  const mine = (await pool.query("select calls from ai_usage where day = $1 and user_id = $2", [day, req.user.id])).rows[0]?.calls || 0;
+  if (spent >= AI_DAILY_USD || mine >= AI_USER_CALLS) return res.status(429).json({ error: "오늘은 더 만들 수 없어요" });
+
+  const chat = (await pool.query("select messages from tool_chats where tool_id = $1", [tool.id])).rows[0]?.messages || [];
+  const cur = tool.ver ? await toolCode(tool.id, tool.ver) : null;
+  // 지난 대화는 말만 보낸다. 지금 코드는 이번 요청에 한 번만 붙인다(대화가 길어져도 비용이 덜 는다)
+  const history = chat.slice(-20).map((m) => ({ role: m.role, content: m.text + (m.ver ? `\n(→ ${m.ver}번 버전)` : "") }));
+  const now = (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") + `[사용자]\n${text}`;
+  let r;
+  try {
+    r = await ai.beta.messages.parse({
+      model: AI_MODEL, max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+      output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
+      system: [{ type: "text", text: MAKER_RULES + "\n\n[너의 성격과 전문]\n" + BOTS[tool.bot], cache_control: { type: "ephemeral" } }],
+      messages: [...history, { role: "user", content: now }],
+    });
+  } catch (e) {
+    console.error("maker", e.status || "", e.message);
+    return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 해주세요" });
+  }
+  const u = r.usage || {};
+  const usd = ((u.input_tokens || 0) * AI_PRICE.in + (u.output_tokens || 0) * AI_PRICE.out +
+    (u.cache_read_input_tokens || 0) * AI_PRICE.cacheRead + (u.cache_creation_input_tokens || 0) * AI_PRICE.cacheWrite) / 1e6;
+  await pool.query(
+    `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, 1, $3)
+       on conflict (day, user_id) do update set calls = ai_usage.calls + 1, usd = ai_usage.usd + $3`, [day, req.user.id, usd]);
+  const out = r.stop_reason === "refusal" ? null : r.parsed_output;
+  if (!out) return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 해주세요" });
+  let ver = null;
+  if (out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code)) {
+    ver = await addVersion(tool, out.code, out.note.slice(0, 80) || "고침");
+  }
+  if (out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
+  const options = out.options.slice(0, 4).map((o) => o.slice(0, 20));
+  const next = chat.concat({ role: "user", text }, { role: "assistant", text: out.reply, options, ver }).slice(-60);
+  await pool.query("update tool_chats set messages = $2 where tool_id = $1", [tool.id, JSON.stringify(next)]);
+  res.json({ reply: out.reply, options, ver, name: out.name || tool.name, code: ver ? out.code : null, note: ver ? out.note : null,
+    usd: Math.round(usd * 1e4) / 1e4 });
 });
 
 /* ---------- 실시간 알림 ---------- */

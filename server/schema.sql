@@ -147,3 +147,37 @@ create table if not exists bond_members (
   primary key (bond_id, user_id)
 );
 create index if not exists bond_members_user_idx on bond_members(user_id);
+
+-- 사용자가 만든 도구 (tools-maker-plan.md). 만든 사람이 계정을 지우면 함께 지워진다
+create table if not exists user_tools (
+  id         bigserial primary key,
+  owner_id   bigint not null references users(id) on delete cascade,
+  name       text not null default '새 도구',
+  bot        text not null,          -- 만든 봇: play pick money meet two memory free
+  slot       text not null default 'top',
+  ver        int  not null default 0, -- 지금 버전 번호(0 = 아직 코드 없음)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+-- 버전마다 코드 전체. 지우지 않는다(되돌리기도 새 버전)
+create table if not exists tool_versions (
+  tool_id    bigint not null references user_tools(id) on delete cascade,
+  ver        int    not null,
+  code       text   not null,
+  note       text,                   -- 무엇을 바꿨는지 한 줄(봇이 씀)
+  created_at timestamptz not null default now(),
+  primary key (tool_id, ver)
+);
+-- 만들기 대화(최근 60개)
+create table if not exists tool_chats (
+  tool_id  bigint primary key references user_tools(id) on delete cascade,
+  messages jsonb not null default '[]'::jsonb
+);
+-- AI 사용량. 하루 전체 상한과 사람마다 하루 횟수를 지키는 데 쓴다
+create table if not exists ai_usage (
+  day     date   not null,
+  user_id bigint not null,
+  calls   int    not null default 0,
+  usd     numeric not null default 0,
+  primary key (day, user_id)
+);

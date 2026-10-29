@@ -362,6 +362,33 @@
   .tlist .slide+.slide{margin-top:8px}
   .tlist .knob{display:flex;align-items:center;padding:15px 16px;border-radius:14px;background:var(--paper-2);font-size:15px}
   .tlist .tnone{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px}
+  .tzbox{display:block;width:100%;height:100%;border:0;background:transparent}
+  .roomtool.user{padding:10px 14px}
+  .bots{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+  .bots button{flex:none;height:38px;padding:0 16px;border-radius:19px;background:var(--card);font-size:14px;color:var(--ink);white-space:nowrap}
+  .tool .remix{margin-left:auto;font:500 12px var(--font-body);color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:5px 10px;white-space:nowrap}
+  #s-maker .bar .mkact{display:flex;gap:8px;align-items:center}
+  #s-maker .bar .attach{height:40px;padding:0 16px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
+  #s-maker .bar .icon[disabled]{opacity:.35}
+  .mkprev{flex:none;padding:0 0 6px}
+  .mkprev .roomtool{display:flex}
+  .mkbar{display:flex;gap:6px;justify-content:flex-end;align-items:center;margin:0 16px;font-size:12px;color:var(--ink-3)}
+  .mkbar span{margin-right:auto}
+  .mkbar button{height:28px;padding:0 12px;border-radius:14px;background:var(--card);font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .mkchat{flex:1;overflow:auto;padding:8px 14px 10px;display:flex;flex-direction:column;gap:6px;scrollbar-width:none;overscroll-behavior-y:contain}
+  .mkchat .b{max-width:82%;padding:8px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;word-break:break-word;white-space:pre-wrap}
+  .mkchat .b.bot{align-self:flex-start;background:var(--card);color:var(--ink);border-bottom-left-radius:4px}
+  .mkchat .b.me{align-self:flex-end;background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-right-radius:4px}
+  .mkchat .b.wait{color:var(--ink-3)}
+  .mkchat .v{align-self:flex-start;font-size:11.5px;color:var(--ink-3);margin:-2px 0 2px 4px}
+  .mkchat .opts{display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;max-width:92%}
+  .mkchat .opts button{height:32px;padding:0 13px;border-radius:16px;background:var(--paper-2);border:1px solid var(--line);font-size:13px;color:var(--ink);white-space:nowrap}
+  .mkhist .knob{display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:14px;background:var(--paper-2);font-size:14px}
+  .mkhist .knob b{font:500 13px var(--font-num);min-width:24px}
+  .mkhist .knob span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mkhist .knob i{font-style:normal;font-size:12px;color:var(--ink-3)}
+  .mkhist .knob+.knob{margin-top:8px}
+  .mkhist .knob.now{outline:1.5px solid var(--ink)}
   .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
   /* 상자는 하나의 규격이다. 어떤 도구든 이 안에서 해결한다. */
   .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.45;color:var(--ink);
@@ -533,6 +560,11 @@
   <section class="screen" id="s-tools">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
     <div class="pad">
+      <div id="makerArea" style="display:none">
+        <div class="lbl sect">Make</div><div class="bots" id="botRow"></div>
+        <div id="mineWrap" style="display:none"><div class="lbl sect">Mine</div><div class="list" id="mineList"></div></div>
+        <div class="lbl sect">Browse</div>
+      </div>
       <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
       <div id="toolList"></div>
       <p id="toolEmpty" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0">찾는 도구가 없어요</p>
@@ -600,7 +632,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1028-1435</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1236</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -619,6 +651,18 @@
   <section class="screen" id="s-doc">
     <div class="bar big"><button class="icon" data-back=""><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="docTitle">Terms</h2></div>
     <iframe id="docFrame" title="문서"></iframe>
+  </section>
+
+  <section class="screen" id="s-maker">
+    <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
+      <div class="mkact"><button class="icon" id="mkUndo" aria-label="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="attach" id="mkAttach">붙이기</button></div></div>
+    <div class="mkprev"><div class="roomtool user" id="mkBox"></div>
+      <div class="mkbar"><span id="mkVer"></span><button id="mkAs">상대 화면</button><button id="mkHist">기록</button></div></div>
+    <div class="mkchat" id="mkChat"></div>
+    <div class="compose" id="mkCompose"><div class="bar2"><div class="field2"><textarea id="mkIn" rows="1" placeholder="메시지"></textarea></div><button class="icon send off" id="mkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button></div></div>
+    <div class="scrim" id="mkScrim"></div>
+    <div class="sheet" id="mkHistSheet"><div class="mkhist" id="mkHistList"></div></div>
+    <div class="sheet" id="mkRoomSheet"><div class="tlist" id="mkRoomList"></div></div>
   </section>
 
   <section class="screen" id="s-admin">
@@ -713,6 +757,7 @@ async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
   $("#adminBtn").style.display=d.admin?"":"none";
+  if(amMaker!==!!d.admin){ amMaker=!!d.admin; renderTools($("#toolSearch")?.value||""); loadMyTools() }
   if(d.sms&&!d.me.phone){ store.set("needPhone",1); if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
   else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
@@ -1231,12 +1276,68 @@ const myId=()=>String(auth?.me?.id||"");
 // 받침에 맞는 조사. 한글이 아닌 글자로 끝나면 둘 다 적는다(zt24680을(를))
 const josa=(w,a,b)=>{ const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172?(c%28?a:b):`${a}(${b})`) };
 
+/* 사용자가 만든 도구("u…")는 격리된 칸(iframe sandbox)에서만 돈다. 바깥 인터넷·앱 화면·로그인 정보에 닿지 못하고
+   (sandbox + Content-Security-Policy), 정해진 통로로만 앱과 이야기한다: 앱 → state(데이터·나·방 사람) / 칸 → save·toast·error.
+   도구 코드 모양은 기본 도구와 같은 render(box, c) 라서, 퀘스트 같은 기본 도구를 그대로 가져와 고칠 수 있다 */
+const SANDBOX_VARS=["--ink","--ink-2","--ink-3","--paper","--paper-2","--card","--line","--zero","--r-pill","--bubble-me","--bubble-me-ink"];
+const rtCss=()=>[...document.styleSheets].flatMap(x=>{ try{ return [...x.cssRules] }catch(e){ return [] } })
+  .filter(r=>/^\.rt-/.test(r.selectorText||"")).map(r=>r.cssText).join("\n");
+function sandboxDoc(code){
+  const cs=getComputedStyle(document.documentElement);
+  const vars=SANDBOX_VARS.map(v=>`${v}:${cs.getPropertyValue(v).trim()}`).join(";");
+  const close="</"+"script>", safe=String(code||"").replace(/<\/script/gi,"<\\/script");
+  return `<!doctype html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:">
+<style>:root{${vars}} html,body{margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
+#box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
+${rtCss()}</style></head><body><div id="box"></div>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const __send=m=>parent.postMessage(Object.assign({tz:1},m),"*");
+const __fail=e=>__send({k:"error",text:String(e&&e.message||e).slice(0,300)});
+addEventListener("error",e=>__fail(e.error||e.message));
+${close}<script>${safe}
+${close}<script>
+let S={data:{},me:"",self:false,members:[]}; const __ui={}; const __box=document.getElementById("box");
+const __r=typeof render==="function"?render:null;
+const c={get data(){return S.data},get me(){return S.me},get self(){return S.self},get members(){return S.members},ui:__ui,
+  redraw:()=>__draw(), save:t=>{ __send({k:"save",data:JSON.parse(JSON.stringify(S.data)),text:t?String(t):""}); __draw() }, toast:t=>__send({k:"toast",text:String(t)})};
+function __draw(){ if(!__r){ __fail("render 함수가 없어요"); return } try{ __r(__box,c) }catch(e){ __fail(e) } }
+addEventListener("message",e=>{ const m=e.data; if(m&&m.tz&&m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[]}; __draw() } });
+__send({k:"ready"});
+${close}</body></html>`;
+}
+const sandboxes=new WeakMap();   // 칸의 window → 연결
+window.addEventListener("message",e=>{
+  const h=sandboxes.get(e.source), m=e.data; if(!h||!m||!m.tz) return;
+  if(m.k==="ready"){ h.alive=true; h.push() }
+  else if(m.k==="save") h.save(m.data,m.text);
+  else if(m.k==="toast") toast(m.text);
+  else if(m.k==="error"&&h.error) h.error(m.text);
+});
+function mountSandbox(host,code,{state,save,error}){
+  const f=document.createElement("iframe"); f.className="tzbox"; f.setAttribute("sandbox","allow-scripts"); f.title="도구";
+  host.innerHTML=""; host.appendChild(f);
+  const h={frame:f,alive:false,save,error,push(){ if(h.alive&&f.contentWindow) f.contentWindow.postMessage({tz:1,k:"state",...state()},"*") }};
+  sandboxes.set(f.contentWindow,h);
+  f.srcdoc=sandboxDoc(code);
+  return h;
+}
+// 이 방의 도구: 기본 도구(TOOLS)와 사용자가 만든 도구("u…"). 만든 도구는 방 데이터에 이름(name)과 붙인 버전(ver)이 적혀 있다
+const isUserTool=id=>/^u\d+$/.test(id);
+const toolName=id=>TOOLS.find(t=>t.id===id)?.name||roomData[id]?.name||"도구";
 async function loadRoomTools(){
   const id=cur?.id; if(!id) return;
-  const got={};
-  await Promise.all(TOOLS.map(async t=>{ try{ got[t.id]=(await api(`/api/room/${id}/${t.id}`)).data||{} }catch(e){ got[t.id]={} } }));
+  let got={}; try{ got=(await api(`/api/room/${id}`)).tools||{} }catch(e){}
   if(cur?.id!==id) return;
   roomData=got; renderRoomTool(); renderMsgs();
+}
+const codeCache=new Map();   // "u5@3" → 코드
+async function fetchToolCode(id,ver){
+  const key=id+"@"+ver; if(codeCache.has(key)) return codeCache.get(key);
+  let code=""; try{ code=(await api(`/api/tools/${id}/v/${ver}`)).code||"" }catch(e){}
+  codeCache.set(key,code); return code;
 }
 function addLog(d,text){ d.log=(d.log||[]).concat({at:Date.now(),by:myId(),text}).slice(-30) }
 async function saveTool(id){
@@ -1258,24 +1359,39 @@ function toolCtx(t){
   };
 }
 // 대화방 위 칸에는 한 번에 도구 하나
+let roomBox=null;   // 위 칸에 떠 있는 만든 도구 {key, h}. 같은 버전이면 칸을 다시 만들지 않고 데이터만 보낸다(입력 중인 것이 안 날아가게)
 function renderRoomTool(){
   const box=$("#roomTool");
-  const t=cur&&TOOLS.find(x=>x.slot==="top"&&roomData[x.id]?.on);
-  if(!t){ box.classList.remove("on"); box.innerHTML=""; return }
-  box.classList.add("on"); t.render(box,toolCtx(t));
+  const id=cur&&Object.keys(roomData).find(k=>roomData[k]?.on&&(isUserTool(k)||TOOLS.some(t=>t.id===k&&t.slot==="top")));
+  if(!id){ box.classList.remove("on","user"); box.innerHTML=""; roomBox=null; return }
+  box.classList.add("on");
+  if(!isUserTool(id)){ box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }
+  box.classList.add("user");
+  const d=roomData[id], key=id+"@"+d.ver;
+  if(roomBox&&roomBox.key===key&&box.contains(roomBox.h.frame)){ roomBox.h.push(); return }
+  if(!codeCache.has(key)){ box.innerHTML=""; roomBox=null; fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return }
+  const bid=cur.id;
+  const h=mountSandbox(box,codeCache.get(key),{
+    state:()=>({data:roomData[id]||{},me:myId(),self:!!cur.self,members:(cur.group?cur.members:[]).map(m=>({id:String(m.id),name:m.name}))}),
+    save:(data,text)=>{ if(!cur||cur.id!==bid) return;
+      const old=roomData[id]||{}; roomData[id]={...data,on:old.on,ver:old.ver,name:old.name,log:old.log};
+      if(text){ addLog(roomData[id],text); renderMsgs() } saveTool(id); h.push() },
+  });
+  roomBox={key,h};
 }
 // 이 방에 띄우기/내리기. 설치 안 한 도구는 띄우는 순간 설치된다. 같은 자리에 있던 도구는 내려간다
 async function setRoomTool(t,on){
-  if(on&&!toolOn[t.id]) setToolOn(t,true,false);
-  if(on) TOOLS.forEach(o=>{ if(o!==t&&o.slot===t.slot&&roomData[o.id]?.on){ roomData[o.id].on=false; addLog(roomData[o.id],josa(o.name,"을","를")+" 내렸어요"); saveTool(o.id) } });
+  if(on&&!t.user&&!toolOn[t.id]) setToolOn(t,true,false);
+  if(on) Object.keys(roomData).forEach(k=>{ if(k!==t.id&&roomData[k]?.on){ roomData[k].on=false; addLog(roomData[k],josa(toolName(k),"을","를")+" 내렸어요"); saveTool(k) } });
   const d=roomData[t.id]||(roomData[t.id]={});
+  if(t.user){ d.name=t.name; if(on) d.ver=t.ver }   // 만든 도구는 띄우는 순간의 버전으로 고정된다
   d.on=on; addLog(d,josa(t.name,"을","를")+(on?" 띄웠어요":" 내렸어요"));
   renderRoomTool(); renderMsgs(); await saveTool(t.id);
 }
 // 대화 사이에 끼울 도구 기록
 function toolEvents(){
   const out=[];
-  TOOLS.forEach(t=>(roomData[t.id]?.log||[]).forEach(e=>out.push({type:"event",ts:e.at,text:e.text,who:whoName(e.by)})));
+  Object.values(roomData).forEach(d=>(d?.log||[]).forEach(e=>out.push({type:"event",ts:e.at,text:e.text,who:whoName(e.by)})));
   return out;
 }
 const nameOf=id=>{ const m=cur&&cur.group&&cur.members.find(x=>String(x.id)===String(id)); return m?m.name:(cur?cur.name:"") };
@@ -1878,7 +1994,7 @@ function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove(
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-rule":"settings","s-doc":"settings"};
+  "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-maker":"s-tools","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -1931,7 +2047,9 @@ $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab
 /* 대화방 머리말의 도구 버튼. 설치한 도구를 이 방에 띄우거나 내린다. 설치한 게 없으면 도구 탭으로 안내한다 */
 function openToolSheet(){
   const l=$("#toolSheetList"); l.innerHTML="";
-  TOOLS.forEach(t=>{
+  const made=myTools.filter(m=>m.ver).map(m=>({id:m.id,name:m.name,slot:"top",user:true,ver:m.ver}));
+  Object.keys(roomData).filter(k=>isUserTool(k)&&!made.some(m=>m.id===k)&&roomData[k]?.ver).forEach(k=>made.push({id:k,name:roomData[k].name||"도구",slot:"top",user:true,ver:roomData[k].ver}));
+  TOOLS.concat(made).forEach(t=>{
     const r=document.createElement("div"); r.className="slide";
     r.innerHTML=`<div class="knob"><span style="flex:1">${esc(t.name)}</span><span class="slot">${SLOT[t.slot]}</span></div>`;
     slideToggle(r,!!roomData[t.id]?.on,on=>{ setTimeout(closeSheets,260); setRoomTool(t,on) });
@@ -2010,12 +2128,129 @@ function renderTools(q=""){
     const el=document.createElement("div"); el.className="tool";
     const on=!!toolOn[t.id];
     el.classList.toggle("off",!on);
-    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span></div>
+    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span>${amMaker?`<button class="remix">고쳐 만들기</button>`:""}</div>
       <div class="slide"><div class="roomtool on knob">${t.pv}</div></div>`;
     slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
+    const rx=el.querySelector(".remix"); if(rx) rx.onclick=()=>newTool("free",{name:t.name,code:"function "+t.render.toString()});
     list.appendChild(el);
   });
 }
+
+/* 도구 만들기(운영자만, tools-maker-plan.md 3단계). 봇을 고르면 새 도구가 생기고 대화 화면이 열린다 */
+let amMaker=false, myTools=[];
+const BOT_NAME={play:"놀이",pick:"결정",money:"돈",meet:"모임",two:"둘이서",memory:"기억",free:"자유"};
+function renderMakerArea(){
+  $("#makerArea").style.display=amMaker?"":"none"; if(!amMaker) return;
+  const row=$("#botRow"); row.innerHTML="";
+  Object.entries(BOT_NAME).forEach(([k,n])=>{ const b=document.createElement("button"); b.textContent=n; b.onclick=()=>newTool(k); row.appendChild(b) });
+  const l=$("#mineList"); l.innerHTML=""; $("#mineWrap").style.display=myTools.length?"":"none";
+  myTools.forEach(m=>{ const it=document.createElement("div"); it.className="item";
+    it.innerHTML=`<div class="t">${esc(m.name)}</div><span class="val">${m.ver?m.ver+"번":""} · ${BOT_NAME[m.bot]||""}</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>`;
+    it.onclick=()=>openMaker(m.id); l.appendChild(it) });
+}
+async function loadMyTools(){ if(!amMaker) return; try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} renderMakerArea() }
+async function newTool(bot,from){
+  try{ const d=await api("/api/tools",{method:"POST",body:{bot,from}}); await openMaker(d.id); loadMyTools() }catch(e){ toast(e.message) }
+}
+/* 만들기 화면: 위는 진짜 방 칸과 같은 미리보기(가짜 방 사람들과), 아래는 봇과의 대화.
+   봇이 고칠 때마다 버전이 하나씩 쌓인다. ↶ 는 바로 전 버전으로, 기록은 아무 버전으로. 되돌리기도 새 버전이라 지워지는 건 없다 */
+let mk=null;
+const FAKE=[{id:"f1",name:"민지"},{id:"f2",name:"준호"}];
+async function openMaker(id){
+  let d; try{ d=await api("/api/tools/"+id) }catch(e){ toast(e.message); return }
+  mk={...d,data:{},asOther:false,busy:false,fixed:0};
+  go("s-maker"); drawMaker();
+  if(!mk.chat.length) mkPush("bot",{text:mk.code?"어떻게 고칠까요?":"무엇을 만들까요?"});
+}
+function drawMaker(){
+  $("#mkName").textContent=mk.name; $("#mkVer").textContent=mk.ver?mk.ver+"번 버전":"";
+  $("#mkUndo").disabled=!(mk.ver>1); $("#mkAttach").style.visibility=mk.ver?"":"hidden";
+  $("#mkAs").textContent=mk.asOther?"내 화면":"상대 화면";
+  drawMkPreview(); drawMkChat();
+}
+function drawMkPreview(){
+  const box=$("#mkBox");
+  if(!mk.code){ mk.h=null; box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[mk.bot]||""}</span></div>`; return }
+  const ver=mk.ver;
+  mk.h=mountSandbox(box,mk.code,{
+    state:()=>({data:mk.data,me:mk.asOther?"f1":myId(),self:false,members:[{id:myId(),name:"나"},...FAKE]}),
+    save:data=>{ mk.data=data; mk.h.push() },
+    // 미리보기에서 오류가 나면 봇에게 한 번 알아서 고쳐 달라고 한다(같은 버전에 한 번만)
+    error:text=>{ if(mk.ver!==ver||mk.fixed===ver||mk.busy) return; mk.fixed=ver; mkSend("미리보기에서 오류가 났어: "+text+" — 고쳐줘",true) },
+  });
+}
+function drawMkChat(){
+  const box=$("#mkChat"); box.innerHTML="";
+  mk.chat.forEach((m,i)=>{
+    const b=document.createElement("div"); b.className="b "+(m.role==="user"?"me":"bot")+(m.wait?" wait":""); b.textContent=m.text; box.appendChild(b);
+    if(m.ver){ const v=document.createElement("div"); v.className="v"; v.textContent=m.ver+"번 버전"; box.appendChild(v) }
+    if(i===mk.chat.length-1&&m.role!=="user"&&(m.options||[]).length&&!mk.busy){
+      const o=document.createElement("div"); o.className="opts";
+      m.options.forEach(t=>{ const x=document.createElement("button"); x.textContent=t; x.onclick=()=>mkSend(t); o.appendChild(x) });
+      box.appendChild(o);
+    }
+  });
+  box.scrollTop=box.scrollHeight;
+}
+function mkPush(role,m){ mk.chat.push({role:role==="bot"?"assistant":"user",...m}); drawMkChat() }
+async function mkSend(text,hidden){
+  text=String(text||"").trim(); if(!text||!mk||mk.busy) return;
+  const id=mk.id; mk.busy=true;
+  if(!hidden) mkPush("user",{text});
+  mkPush("bot",{text:"만드는 중…",wait:true});
+  let d=null, err=null;
+  try{ d=await api(`/api/tools/${id}/chat`,{method:"POST",body:{text}}) }catch(e){ err=e.message }
+  if(!mk||mk.id!==id) return;
+  mk.busy=false; mk.chat.pop();
+  if(err){ mkPush("bot",{text:err}); return }
+  mk.name=d.name||mk.name;
+  if(d.ver){ mk.code=d.code; mk.ver=d.ver; mk.versions.unshift({ver:d.ver,note:d.note,at:new Date().toISOString()}) }
+  mk.chat.push({role:"assistant",text:d.reply,options:d.options,ver:d.ver});
+  drawMaker(); loadMyTools();
+}
+async function mkRevert(ver){
+  if(!mk||mk.busy) return;
+  try{ const d=await api(`/api/tools/${mk.id}/revert`,{method:"POST",body:{ver}}); mk.code=d.code; mk.ver=d.ver; mk.versions.unshift({ver:d.ver,note:ver+"번으로 되돌림",at:new Date().toISOString()}) }
+  catch(e){ toast(e.message); return }
+  mk.chat.push({role:"assistant",text:ver+"번 모습으로 돌렸어요",ver:mk.ver}); drawMaker(); loadMyTools();
+}
+const mkSheet=(id,on)=>{ $(id).classList.toggle("on",on); $("#mkScrim").classList.toggle("on",on) };
+$("#mkScrim").addEventListener("click",()=>{ mkSheet("#mkHistSheet",false); mkSheet("#mkRoomSheet",false) });
+$("#mkUndo").addEventListener("click",()=>{ if(mk&&mk.ver>1) mkRevert(mk.ver-1) });
+$("#mkAs").addEventListener("click",()=>{ if(!mk) return; mk.asOther=!mk.asOther; $("#mkAs").textContent=mk.asOther?"내 화면":"상대 화면"; mk.h&&mk.h.push() });
+$("#mkHist").addEventListener("click",()=>{
+  if(!mk) return; const l=$("#mkHistList"); l.innerHTML="";
+  mk.versions.forEach(v=>{ const r=document.createElement("div"); r.className="knob"+(v.ver===mk.ver?" now":"");
+    const at=new Date(v.at).getTime();
+    r.innerHTML=`<b>${v.ver}</b><span>${esc(v.note||"")}</span><i>${fmtD(at)} ${fmtT(at)}</i>`;
+    r.onclick=()=>{ mkSheet("#mkHistSheet",false); if(v.ver!==mk.ver) mkRevert(v.ver) };
+    l.appendChild(r) });
+  mkSheet("#mkHistSheet",true);
+});
+// 붙이기: 방을 고르면 지금 버전이 그 방 위 칸에 뜨고, 그 방으로 간다
+$("#mkAttach").addEventListener("click",()=>{
+  if(!mk||!mk.ver) return; const l=$("#mkRoomList"); l.innerHTML="";
+  people.filter(p=>p.self||!p.group||p.members.length>=2).forEach(p=>{ const r=document.createElement("div"); r.className="knob"; r.style.marginBottom="8px";
+    r.textContent=p.self?"나와의 대화":p.name; r.onclick=()=>{ mkSheet("#mkRoomSheet",false); attachTool(p.id) }; l.appendChild(r) });
+  mkSheet("#mkRoomSheet",true);
+});
+async function attachTool(bondId){
+  const t={id:mk.id,name:mk.name,slot:"top",user:true,ver:mk.ver};
+  const say=(d,txt)=>{ d.log=(d.log||[]).concat({at:Date.now(),by:myId(),text:txt}).slice(-30) };
+  try{
+    const tools=(await api(`/api/room/${bondId}`)).tools||{};
+    for(const [k,d] of Object.entries(tools)) if(k!==t.id&&d&&d.on){ d.on=false; say(d,josa(TOOLS.find(x=>x.id===k)?.name||d.name||"도구","을","를")+" 내렸어요"); await api(`/api/room/${bondId}/${k}`,{method:"POST",body:{data:d}}) }
+    const d=tools[t.id]||{}; d.on=true; d.ver=t.ver; d.name=t.name; say(d,josa(t.name,"을","를")+" 띄웠어요");
+    await api(`/api/room/${bondId}/${t.id}`,{method:"POST",body:{data:d}});
+  }catch(e){ toast(e.message); return }
+  openChat(String(bondId));
+}
+const mkIn=$("#mkIn");
+mkIn.addEventListener("input",()=>{ mkIn.style.height="auto"; mkIn.style.height=Math.min(100,mkIn.scrollHeight)+"px"; $("#mkSend").classList.toggle("off",!mkIn.value.trim()) });
+const mkGo=()=>{ const t=mkIn.value.trim(); if(!t) return; mkIn.value=""; mkIn.dispatchEvent(new Event("input")); mkSend(t) };
+$("#mkSend").addEventListener("click",mkGo);
+mkIn.addEventListener("keydown",e=>{ if(TOUCH) return; if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); mkGo() } });
+$("#mkCompose").addEventListener("mousedown",e=>{ if(e.target!==mkIn) e.preventDefault() });
 
 /* 도구는 스위치로 설치한다. 설치하면 내 모든 대화방의 머리말 도구 버튼에서 불러올 수 있다. */
 let toolOn={};
