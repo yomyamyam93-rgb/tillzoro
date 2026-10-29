@@ -1004,7 +1004,9 @@ function render(box, c) { ... }
 - 물을 때는 options 에 고를 답 2~4개(짧게)를 준다. 묻지 않을 때도 다음에 해 볼 만한 고치기 2~3개를 options 로 줄 수 있다.
 - reply 는 두 문장 이내. 코드 이야기는 하지 않는다.
 - 도구를 바꿨으면 changed=true, code 에 render 함수 전체, note 에 무엇을 바꿨는지 한 줄(예: "실패하면 한 단계 내려감"). 안 바꿨으면 changed=false, code 와 note 는 빈 글.
-- name 은 하는 일이 보이는 짧은 이름(예: "무기 강화", "회식 정산").`;
+- name 은 열 글자 안쪽의 재미있는 이름. 기능 설명이 아니라 별명처럼 짓는다.
+  하는 일이 짐작되면서 한 번 웃기거나 정감 있게(예: "오늘의 빚쟁이", "누가 더 멀리", "칼퇴 적금").
+  밋밋한 기능명("회식 정산", "거리 계산")은 쓰지 않는다.`;
 const MakerOut = z.object({
   reply: z.string(),
   options: z.array(z.string()),
@@ -1029,8 +1031,29 @@ async function addVersion(tool, code, note) {
 const makerOnly = (req, res, next) => (isAdmin(req.user.id) ? next() : res.sendStatus(404));
 
 app.get("/api/tools/mine", auth, makerOnly, async (req, res) => {
-  const { rows } = await pool.query("select id, name, bot, ver, updated_at from user_tools where owner_id = $1 order by updated_at desc", [req.user.id]);
-  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, at: r.updated_at })) });
+  const { rows } = await pool.query("select id, name, bot, ver, public, updated_at from user_tools where owner_id = $1 order by updated_at desc", [req.user.id]);
+  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, public: r.public, at: r.updated_at })) });
+});
+// 탐색에 보이는 남의 도구. 공개한 것만, 코드가 있는 것만. :id 보다 먼저 와야 "public" 이 id 로 잡히지 않는다
+app.get("/api/tools/public", auth, async (req, res) => {
+  const { rows } = await pool.query(
+    `select t.id, t.name, t.bot, t.ver, u.nickname from user_tools t join users u on u.id = t.owner_id
+      where t.public and t.ver > 0 order by t.updated_at desc limit 60`);
+  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, by: r.nickname })) });
+});
+// 이름 바꾸기·공개 여부. 내 도구만
+app.patch("/api/tools/:id", auth, makerOnly, async (req, res) => {
+  const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
+  if (!tool) return res.sendStatus(404);
+  const sets = [], vals = [];
+  if (req.body?.name !== undefined) {
+    const name = String(req.body.name).trim().slice(0, 30);
+    if (!name) return res.status(400).json({ error: "이름은 비울 수 없어요" });
+    vals.push(name); sets.push("name = $" + (vals.length + 1));
+  }
+  if (req.body?.public !== undefined) { vals.push(!!req.body.public); sets.push("public = $" + (vals.length + 1)); }
+  if (sets.length) await pool.query(`update user_tools set ${sets.join(", ")}, updated_at = now() where id = $1`, [tool.id, ...vals]);
+  res.json({ ok: true });
 });
 // 새로 만들기. from 을 주면(기본 도구 "고쳐 만들기") 그 코드가 1번 버전이 된다
 app.post("/api/tools", auth, makerOnly, async (req, res) => {
@@ -1048,14 +1071,22 @@ app.get("/api/tools/:id", auth, makerOnly, async (req, res) => {
   const vers = (await pool.query("select ver, note, created_at from tool_versions where tool_id = $1 order by ver desc", [tool.id])).rows;
   const chat = (await pool.query("select messages from tool_chats where tool_id = $1", [tool.id])).rows[0]?.messages || [];
   const cur = tool.ver ? await toolCode(tool.id, tool.ver) : null;
-  res.json({ id: "u" + tool.id, name: tool.name, bot: tool.bot, ver: tool.ver, code: cur?.code || "",
+  res.json({ id: "u" + tool.id, name: tool.name, bot: tool.bot, ver: tool.ver, public: tool.public, code: cur?.code || "",
     versions: vers.map((v) => ({ ver: v.ver, note: v.note, at: v.created_at })), chat });
 });
 // 방에서 도구를 그릴 때. 붙인 버전의 코드
 app.get("/api/tools/:id/v/:ver", auth, async (req, res) => {
   const id = Number(String(req.params.id).replace(/^u/, "")) || 0;
-  const tool = (await pool.query("select name from user_tools where id = $1", [id])).rows[0];
-  const v = tool && (await toolCode(id, Number(req.params.ver) || 0));
+  const tool = (await pool.query("select name, owner_id, public from user_tools where id = $1", [id])).rows[0];
+  if (!tool) return res.sendStatus(404);
+  // 내 것이거나, 공개했거나, 내가 들어가 있는 방에 붙어 있을 때만 코드를 준다.
+  // 아니면 번호를 훑어 남이 만드는 중인 도구를 통째로 읽을 수 있다
+  let ok = tool.owner_id === req.user.id || tool.public;
+  if (!ok) ok = (await pool.query(
+    `select 1 from room_state rs join bonds b on b.id = rs.bond_id where rs.tool = $2 and ${IN_ROOM} limit 1`,
+    [req.user.id, "u" + id])).rowCount > 0;
+  if (!ok) return res.sendStatus(404);
+  const v = await toolCode(id, Number(req.params.ver) || 0);
   if (!v) return res.sendStatus(404);
   res.json({ name: tool.name, code: v.code });
 });

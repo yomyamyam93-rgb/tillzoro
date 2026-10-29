@@ -702,7 +702,7 @@
     <div class="mkprev">
       <div class="roomtool user" id="mkBox"></div>
       <div class="roomtool user" id="mkBoxOther"></div>
-      <div class="mkbar"><span id="mkVer"></span><button id="mkHist">기록</button></div></div>
+      <div class="mkbar"><span id="mkVer"></span><span style="flex:1"></span><span>탐색에 공개</span><div class="toggle" id="mkPub"></div><button id="mkHist">기록</button></div></div>
     <div class="mkchatwrap"><div class="mkchat" id="mkChat"></div></div>
     <div class="compose" id="mkCompose"><div class="bar2"><div class="field2"><textarea id="mkIn" rows="1" placeholder="메시지"></textarea></div><button class="icon send off" id="mkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button></div></div>
     <div class="scrim" id="mkScrim"></div>
@@ -2288,6 +2288,7 @@ function drawMaker(){
   $("#mkName").textContent=mk.name; $("#mkVer").textContent=mk.ver?mk.ver+"번 버전":"";
   const av=$("#mkAv"); av.style.display=BOT_IMG[mk.bot]?"":"none"; if(BOT_IMG[mk.bot]) av.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
   $("#mkAttach").style.visibility=mk.ver?"":"hidden";
+  $("#mkPub").classList.toggle("on",!!mk.public);
   $(".mkprev").classList.toggle("making",!!mk.busy);
   drawMkPreview(); drawMkChat();
 }
@@ -2362,6 +2363,28 @@ $("#mkHist").addEventListener("click",()=>{
   mkSheet("#mkHistSheet",true);
 });
 // 붙이기: 방을 고르면 지금 버전이 그 방 위 칸에 뜨고, 그 방으로 간다
+/* 이름을 눌러 그 자리에서 고친다. 봇이 지어 준 이름이 마음에 안 들 때 */
+$("#mkName").addEventListener("click",()=>{
+  const h=$("#mkName"); if(!mk||h.isContentEditable) return;
+  const old=mk.name;
+  h.contentEditable="true"; h.spellcheck=false; h.focus();
+  const sel=getSelection(); const r=document.createRange(); r.selectNodeContents(h); sel.removeAllRanges(); sel.addRange(r);
+  h.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); h.blur() } if(e.key==="Escape"){ h.textContent=old; h.blur() } });
+  h.addEventListener("blur",async()=>{
+    h.contentEditable="false";
+    const name=h.textContent.trim().slice(0,30);
+    if(!name||name===old){ h.textContent=old; return }
+    try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{name}}); mk.name=name; loadMyTools(); toast("이름을 바꿨어요") }
+    catch(e){ h.textContent=old; toast(e.message) }
+  },{once:true});
+});
+/* 공개하면 남들 탐색에 보인다. 끄면 다시 나만 본다 */
+$("#mkPub").addEventListener("click",async()=>{
+  if(!mk) return; const t=$("#mkPub"), on=!t.classList.contains("on");
+  t.classList.toggle("on",on);
+  try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{public:on}}); mk.public=on; toast(on?"탐색에 올렸어요":"탐색에서 내렸어요") }
+  catch(e){ t.classList.toggle("on",!on); toast(e.message) }
+});
 /* 완료하면 내 도구에 담긴다. 어느 방에 띄울지는 방에 들어가서 고르면 된다 */
 $("#mkAttach").addEventListener("click",()=>{
   if(!mk||!mk.ver) return;

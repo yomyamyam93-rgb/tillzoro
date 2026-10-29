@@ -156,9 +156,12 @@ create table if not exists user_tools (
   bot        text not null,          -- 만든 봇: play pick money meet two memory free
   slot       text not null default 'top',
   ver        int  not null default 0, -- 지금 버전 번호(0 = 아직 코드 없음)
+  public     boolean not null default false, -- 켜면 남들 탐색에 보인다
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table user_tools add column if not exists public boolean not null default false;
+create index if not exists user_tools_public_idx on user_tools(public) where public;
 -- 버전마다 코드 전체. 지우지 않는다(되돌리기도 새 버전)
 create table if not exists tool_versions (
   tool_id    bigint not null references user_tools(id) on delete cascade,
