@@ -364,8 +364,19 @@
   .tlist .tnone{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px}
   .tzbox{display:block;width:100%;height:100%;border:0;background:transparent}
   .roomtool.user{padding:10px 14px}
-  .bots{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
-  .bots button{flex:none;height:38px;padding:0 16px;border-radius:19px;background:var(--card);font-size:14px;color:var(--ink);white-space:nowrap}
+  .hscroll{display:flex;gap:10px;overflow-x:auto;margin:0 -22px;padding:2px 22px 4px;scroll-padding:0 22px;scrollbar-width:none;overscroll-behavior-x:contain}
+  .hscroll::-webkit-scrollbar{display:none}
+  .hscroll::after{content:"";flex:0 0 12px}   /* 끝 여백: 스크롤 끝에서도 오른쪽이 화면 끝에 붙지 않게 */
+  .btile,.mtile{border-radius:var(--r-card);background:var(--card);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;padding:14px;text-align:left;min-width:0;transition:transform .12s}
+  .btile:active,.mtile:active{transform:scale(.97)}
+  .btile{flex:none;width:112px;height:112px}
+  .mtile{height:112px}
+  .btile .ic,.mtile .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);color:var(--ink);flex:none}
+  .btile svg,.mtile svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .btile b,.mtile b{display:block;max-width:100%;font:600 15px var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mtile .tx{min-width:0;max-width:100%}
+  .mtile i{display:block;font-style:normal;font-size:12px;color:var(--ink-3);margin-top:2px}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .tool .remix{margin-left:auto;font:500 12px var(--font-body);color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:5px 10px;white-space:nowrap}
   #s-maker .bar .mkact{display:flex;gap:8px;align-items:center}
   #s-maker .bar .attach{height:40px;padding:0 16px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
@@ -561,8 +572,8 @@
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
     <div class="pad">
       <div id="makerArea" style="display:none">
-        <div class="lbl sect">Make</div><div class="bots" id="botRow"></div>
-        <div id="mineWrap" style="display:none"><div class="lbl sect">Mine</div><div class="list" id="mineList"></div></div>
+        <div class="lbl sect">Make</div><div class="hscroll" id="botRow"></div>
+        <div id="mineWrap" style="display:none"><div class="lbl sect">Mine</div><div class="mgrid" id="mineList"></div></div>
         <div class="lbl sect">Browse</div>
       </div>
       <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
@@ -632,7 +643,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1240</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1258</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2139,13 +2150,23 @@ function renderTools(q=""){
 /* 도구 만들기(운영자만, tools-maker-plan.md 3단계). 봇을 고르면 새 도구가 생기고 대화 화면이 열린다 */
 let amMaker=false, myTools=[];
 const BOT_NAME={play:"놀이",pick:"결정",money:"돈",meet:"모임",two:"둘이서",memory:"기억",free:"자유"};
+const BOT_IC={
+  play:'<path d="M5 5h14v14H5z"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01M12 12h.01"/>',
+  pick:'<path d="M4 7h3l10 10h3M4 17h3l3-3M14 10l3-3h3M18 5l2 2-2 2M18 15l2 2-2 2"/>',
+  money:'<circle cx="12" cy="12" r="9"/><path d="M8.5 9l1.5 6 2-5 2 5 1.5-6M7.5 12h9"/>',
+  meet:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.5M18 14a5 5 0 0 1 3 6"/>',
+  two:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  memory:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  free:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
+};
 function renderMakerArea(){
   $("#makerArea").style.display=amMaker?"":"none"; if(!amMaker) return;
   const row=$("#botRow"); row.innerHTML="";
-  Object.entries(BOT_NAME).forEach(([k,n])=>{ const b=document.createElement("button"); b.textContent=n; b.onclick=()=>newTool(k); row.appendChild(b) });
+  Object.entries(BOT_NAME).forEach(([k,n])=>{ const b=document.createElement("button"); b.className="btile";
+    b.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24">${BOT_IC[k]}</svg></span><b>${n}</b>`; b.onclick=()=>newTool(k); row.appendChild(b) });
   const l=$("#mineList"); l.innerHTML=""; $("#mineWrap").style.display=myTools.length?"":"none";
-  myTools.forEach(m=>{ const it=document.createElement("div"); it.className="item";
-    it.innerHTML=`<div class="t">${esc(m.name)}</div><span class="val">${m.ver?m.ver+"번":""} · ${BOT_NAME[m.bot]||""}</span><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>`;
+  myTools.forEach(m=>{ const it=document.createElement("button"); it.className="mtile";
+    it.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24">${BOT_IC[m.bot]||BOT_IC.free}</svg></span><span class="tx"><b>${esc(m.name)}</b><i>${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</i></span>`;
     it.onclick=()=>openMaker(m.id); l.appendChild(it) });
 }
 async function loadMyTools(){ if(!amMaker) return; try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} renderMakerArea() }
