@@ -306,6 +306,11 @@
   .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .25s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
   #s-maker .mkprev{position:relative;z-index:2;background:var(--paper-2)}
+  /* 키보드가 올라오면 대화가 transform 으로 올라간다. 머리말 위(상태바 여백)로 새지 않게 잘라낸다 */
+  .mkchatwrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}
+  @keyframes mkshine{to{background-position:-200% 0}}
+  .mkprev.making #mkBox{position:relative;overflow:hidden}
+  .mkprev.making #mkBox::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.8) 50%,transparent 58%) 0 0/200% 100%;animation:mkshine 1.3s linear infinite}
   .confirm,.menu:not(.pop){transition:bottom .25s cubic-bezier(.4,0,.2,1)}
   .phone.kbapp .confirm{bottom:calc(16px + var(--kb))}
   .phone.kbapp .menu:not(.pop){bottom:calc(16px + var(--kb))}
@@ -685,10 +690,10 @@
 
   <section class="screen" id="s-maker">
     <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span class="mkav" id="mkAv"></span><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
-      <div class="mkact"><button class="icon" id="mkUndo" aria-label="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="attach" id="mkAttach">붙이기</button></div></div>
+      <div class="mkact"><button class="attach" id="mkAttach">완료</button></div></div>
     <div class="mkprev"><div class="roomtool user" id="mkBox"></div>
       <div class="mkbar"><span id="mkVer"></span><button id="mkAs">상대 화면</button><button id="mkHist">기록</button></div></div>
-    <div class="mkchat" id="mkChat"></div>
+    <div class="mkchatwrap"><div class="mkchat" id="mkChat"></div></div>
     <div class="compose" id="mkCompose"><div class="bar2"><div class="field2"><textarea id="mkIn" rows="1" placeholder="메시지"></textarea></div><button class="icon send off" id="mkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button></div></div>
     <div class="scrim" id="mkScrim"></div>
     <div class="sheet" id="mkHistSheet"><div class="mkhist" id="mkHistList"></div></div>
@@ -2254,14 +2259,17 @@ let mk=null;
 const FAKE=[{id:"f1",name:"민지"},{id:"f2",name:"준호"}];
 async function openMaker(id){
   let d; try{ d=await api("/api/tools/"+id) }catch(e){ toast(e.message); return }
-  mk={...d,data:{},asOther:false,busy:false,fixed:0};
+  const making=mkBusy.has(id);
+  mk={...d,data:{},asOther:false,busy:making,fixed:0};
   go("s-maker"); drawMaker();
+  if(making) mkPush("bot",{text:"만드는 중…",wait:true});
   if(!mk.chat.length) mkPush("bot",{text:mk.code?"어떻게 고칠까요?":"무엇을 만들까요?"});
 }
 function drawMaker(){
   $("#mkName").textContent=mk.name; $("#mkVer").textContent=mk.ver?mk.ver+"번 버전":"";
   const av=$("#mkAv"); av.style.display=BOT_IMG[mk.bot]?"":"none"; if(BOT_IMG[mk.bot]) av.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
-  $("#mkUndo").disabled=!(mk.ver>1); $("#mkAttach").style.visibility=mk.ver?"":"hidden";
+  $("#mkAttach").style.visibility=mk.ver?"":"hidden";
+  $(".mkprev").classList.toggle("making",!!mk.busy);
   $("#mkAs").textContent=mk.asOther?"내 화면":"상대 화면";
   drawMkPreview(); drawMkChat();
 }
@@ -2280,7 +2288,10 @@ function drawMkChat(){
   const box=$("#mkChat"); box.innerHTML="";
   mk.chat.forEach((m,i)=>{
     const b=document.createElement("div"); b.className="b "+(m.role==="user"?"me":"bot")+(m.wait?" wait":""); b.textContent=m.text; box.appendChild(b);
-    if(m.ver){ const v=document.createElement("div"); v.className="v"; v.textContent=m.ver+"번 버전"; box.appendChild(v) }
+    // 버전 줄을 누르면 그 모습으로 돌아간다. 되돌리기도 새 버전이라 지워지는 건 없다
+    if(m.ver){ const v=document.createElement("button"); v.className="v"; v.textContent=m.ver+"번 버전";
+      if(m.ver===mk.ver) v.disabled=true; else v.onclick=()=>mkRevert(m.ver);
+      box.appendChild(v) }
     if(i===mk.chat.length-1&&m.role!=="user"&&(m.options||[]).length&&!mk.busy){
       const o=document.createElement("div"); o.className="opts";
       m.options.forEach(t=>{ const x=document.createElement("button"); x.textContent=t; x.onclick=()=>mkSend(t); o.appendChild(x) });
@@ -2290,20 +2301,24 @@ function drawMkChat(){
   box.scrollTop=box.scrollHeight;
 }
 function mkPush(role,m){ mk.chat.push({role:role==="bot"?"assistant":"user",...m}); drawMkChat() }
+// 만드는 중인 도구. 화면을 떠나도 남아 있어서 다시 들어오면 이어서 보인다
+const mkBusy=new Set();
 async function mkSend(text,hidden){
   text=String(text||"").trim(); if(!text||!mk||mk.busy) return;
-  const id=mk.id; mk.busy=true;
+  const id=mk.id; mk.busy=true; mkBusy.add(id);
   if(!hidden) mkPush("user",{text});
   mkPush("bot",{text:"만드는 중…",wait:true});
   let d=null, err=null;
   try{ d=await api(`/api/tools/${id}/chat`,{method:"POST",body:{text}}) }catch(e){ err=e.message }
+  mkBusy.delete(id); loadMyTools();
+  // 화면을 떠났어도 서버에는 남았다. 다시 들어오면 openMaker 가 받아 온다
   if(!mk||mk.id!==id) return;
   mk.busy=false; mk.chat.pop();
   if(err){ mkPush("bot",{text:err}); return }
   mk.name=d.name||mk.name;
   if(d.ver){ mk.code=d.code; mk.ver=d.ver; mk.versions.unshift({ver:d.ver,note:d.note,at:new Date().toISOString()}) }
   mk.chat.push({role:"assistant",text:d.reply,options:d.options,ver:d.ver});
-  drawMaker(); loadMyTools();
+  drawMaker();
 }
 async function mkRevert(ver){
   if(!mk||mk.busy) return;
@@ -2313,7 +2328,6 @@ async function mkRevert(ver){
 }
 const mkSheet=(id,on)=>{ $(id).classList.toggle("on",on); $("#mkScrim").classList.toggle("on",on) };
 $("#mkScrim").addEventListener("click",()=>{ mkSheet("#mkHistSheet",false); mkSheet("#mkRoomSheet",false) });
-$("#mkUndo").addEventListener("click",()=>{ if(mk&&mk.ver>1) mkRevert(mk.ver-1) });
 $("#mkAs").addEventListener("click",()=>{ if(!mk) return; mk.asOther=!mk.asOther; $("#mkAs").textContent=mk.asOther?"내 화면":"상대 화면"; mk.h&&mk.h.push() });
 $("#mkHist").addEventListener("click",()=>{
   if(!mk) return; const l=$("#mkHistList"); l.innerHTML="";
