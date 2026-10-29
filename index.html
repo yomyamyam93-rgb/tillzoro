@@ -309,9 +309,6 @@
   /* 키보드가 올라오면 대화가 transform 으로 올라간다. 머리말 위(상태바 여백)로 새지 않게 잘라낸다 */
   .mkchatwrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}
   @keyframes mkshine{to{background-position:-200% 0}}
-  .mkview{display:flex;align-items:center;gap:8px;margin:0 16px 4px}
-  .mkview .mklab{flex:none;width:26px;font:500 11px var(--font-body);color:var(--ink-3);text-align:right}
-  .mkview .roomtool{flex:1;min-width:0}
   .mkprev.making .roomtool{position:relative;overflow:hidden}
   .mkprev.making .roomtool::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.8) 50%,transparent 58%) 0 0/200% 100%;animation:mkshine 1.3s linear infinite}
   .confirm,.menu:not(.pop){transition:bottom .25s cubic-bezier(.4,0,.2,1)}
@@ -695,8 +692,8 @@
     <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span class="mkav" id="mkAv"></span><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
       <div class="mkact"><button class="attach" id="mkAttach">완료</button></div></div>
     <div class="mkprev">
-      <div class="mkview"><span class="mklab">나</span><div class="roomtool user" id="mkBox"></div></div>
-      <div class="mkview"><span class="mklab">상대</span><div class="roomtool user" id="mkBoxOther"></div></div>
+      <div class="roomtool user" id="mkBox"></div>
+      <div class="roomtool user" id="mkBoxOther"></div>
       <div class="mkbar"><span id="mkVer"></span><button id="mkHist">기록</button></div></div>
     <div class="mkchatwrap"><div class="mkchat" id="mkChat"></div></div>
     <div class="compose" id="mkCompose"><div class="bar2"><div class="field2"><textarea id="mkIn" rows="1" placeholder="메시지"></textarea></div><button class="icon send off" id="mkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button></div></div>
@@ -2276,7 +2273,7 @@ async function openMaker(id){
   const making=mkBusy.has(id);
   mk={...d,data:{},hs:[],busy:making,fixed:0};
   go("s-maker"); drawMaker();
-  if(making) mkPush("bot",{text:"만드는 중…",wait:true});
+  if(making){ $(".mkprev").classList.add("making"); mkPush("bot",{text:"만드는 중…",wait:true}) }
   if(!mk.chat.length) mkPush("bot",{text:mk.code?"어떻게 고칠까요?":"무엇을 만들까요?"});
 }
 function drawMaker(){
@@ -2322,11 +2319,13 @@ const mkBusy=new Set();
 async function mkSend(text,hidden){
   text=String(text||"").trim(); if(!text||!mk||mk.busy) return;
   const id=mk.id; mk.busy=true; mkBusy.add(id);
+  $(".mkprev").classList.add("making");   // 답을 기다리는 동안 상자에 빛이 돈다
   if(!hidden) mkPush("user",{text});
   mkPush("bot",{text:"만드는 중…",wait:true});
   let d=null, err=null;
   try{ d=await api(`/api/tools/${id}/chat`,{method:"POST",body:{text}}) }catch(e){ err=e.message }
   mkBusy.delete(id); loadMyTools();
+  $(".mkprev").classList.remove("making");
   // 화면을 떠났어도 서버에는 남았다. 다시 들어오면 openMaker 가 받아 온다
   if(!mk||mk.id!==id) return;
   mk.busy=false; mk.chat.pop();
