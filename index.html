@@ -632,7 +632,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1239</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1240</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2173,7 +2173,7 @@ function drawMkPreview(){
   if(!mk.code){ mk.h=null; box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[mk.bot]||""}</span></div>`; return }
   const ver=mk.ver;
   mk.h=mountSandbox(box,mk.code,{
-    state:()=>({data:mk.data,me:mk.asOther?"f1":myId(),self:false,members:[{id:myId(),name:"나"},...FAKE]}),
+    state:()=>({data:mk.data,me:mk.asOther?"f1":myId(),self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]}),
     save:data=>{ mk.data=data; mk.h.push() },
     // 미리보기에서 오류가 나면 봇에게 한 번 알아서 고쳐 달라고 한다(같은 버전에 한 번만)
     error:text=>{ if(mk.ver!==ver||mk.fixed===ver||mk.busy) return; mk.fixed=ver; mkSend("미리보기에서 오류가 났어: "+text+" — 고쳐줘",true) },
