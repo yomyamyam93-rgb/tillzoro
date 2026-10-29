@@ -302,6 +302,11 @@
   .compose::after{content:"";position:absolute;left:0;right:0;top:100%;height:420px;background:var(--paper-2);pointer-events:none}
   /* 키보드가 올라오면 아래 여백이 필요 없다 */
   .phone.kb .compose{padding-bottom:6px}
+  .phone{--kb:0px}
+  .screen:not(#chat){padding-bottom:var(--kb);transition:transform var(--dur) var(--ease-soft),padding-bottom .25s cubic-bezier(.4,0,.2,1)}
+  .phone.kbapp .confirm{bottom:calc(16px + var(--kb))}
+  .phone.kbapp .menu:not(.pop){bottom:calc(16px + var(--kb))}
+  .phone.kbapp .sheet{bottom:var(--kb)}
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
@@ -364,12 +369,15 @@
   .tlist .tnone{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px}
   .tzbox{display:block;width:100%;height:100%;border:0;background:transparent}
   .roomtool.user{padding:10px 14px}
-  .hscroll{display:flex;gap:10px;overflow-x:auto;margin:0 -22px;padding:2px 0 4px 22px;scroll-padding:0 22px;scrollbar-width:none;overscroll-behavior-x:contain}
-  .hscroll::-webkit-scrollbar{display:none}
-  .hscroll>:last-child{margin-right:22px}   /* 끝 여백은 마지막 칸에: 오른쪽 안쪽 여백은 브라우저마다 스크롤 끝에서 무시되기도 한다 */
+  .seg{display:flex;gap:4px;padding:4px;background:var(--card);border-radius:14px;flex:none}
+  .seg button{flex:1;height:38px;border-radius:10px;font-size:14px;color:var(--ink-3);white-space:nowrap;transition:background-color .15s,color .15s}
+  .seg button.on{background:var(--ink);color:var(--paper);font-weight:500}
+  .tpane{display:flex;flex-direction:column;gap:14px}
+  .tpane[hidden]{display:none}
+  .tempty{color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0}
   .btile,.mtile{border-radius:var(--r-card);background:var(--card);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;padding:14px;text-align:left;min-width:0;transition:transform .12s}
   .btile:active,.mtile:active{transform:scale(.97)}
-  .btile{flex:none;width:112px;height:112px}
+  .btile{height:112px}
   .mtile{height:112px}
   .btile .ic,.mtile .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);color:var(--ink);flex:none}
   .btile svg,.mtile svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -571,14 +579,14 @@
   <section class="screen" id="s-tools">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
     <div class="pad">
-      <div id="makerArea" style="display:none">
-        <div class="lbl sect">Make</div><div class="hscroll" id="botRow"></div>
-        <div id="mineWrap" style="display:none"><div class="lbl sect">Mine</div><div class="mgrid" id="mineList"></div></div>
-        <div class="lbl sect">Browse</div>
+      <div class="seg" id="toolSeg" style="display:none"><button data-s="browse" class="on">둘러보기</button><button data-s="make">만들기</button><button data-s="mine">내 도구</button></div>
+      <div class="tpane" id="paneBrowse">
+        <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
+        <div id="toolList"></div>
+        <p id="toolEmpty" class="tempty" style="display:none">찾는 도구가 없어요</p>
       </div>
-      <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
-      <div id="toolList"></div>
-      <p id="toolEmpty" style="display:none;color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0">찾는 도구가 없어요</p>
+      <div class="tpane" id="paneMake" hidden><div class="mgrid" id="botRow"></div></div>
+      <div class="tpane" id="paneMine" hidden><div class="mgrid" id="mineList"></div><p id="mineEmpty" class="tempty">아직 만든 도구가 없어요</p></div>
     </div>
   </section>
 
@@ -643,7 +651,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1259</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1328</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2159,12 +2167,19 @@ const BOT_IC={
   memory:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   free:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
 };
+let toolPane="browse";
+function showToolPane(k){
+  toolPane=amMaker?k:"browse";
+  $$("#toolSeg button").forEach(b=>b.classList.toggle("on",b.dataset.s===toolPane));
+  $("#paneBrowse").hidden=toolPane!=="browse"; $("#paneMake").hidden=toolPane!=="make"; $("#paneMine").hidden=toolPane!=="mine";
+}
+$$("#toolSeg button").forEach(b=>b.addEventListener("click",()=>showToolPane(b.dataset.s)));
 function renderMakerArea(){
-  $("#makerArea").style.display=amMaker?"":"none"; if(!amMaker) return;
+  $("#toolSeg").style.display=amMaker?"":"none"; showToolPane(toolPane); if(!amMaker) return;
   const row=$("#botRow"); row.innerHTML="";
   Object.entries(BOT_NAME).forEach(([k,n])=>{ const b=document.createElement("button"); b.className="btile";
     b.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24">${BOT_IC[k]}</svg></span><b>${n}</b>`; b.onclick=()=>newTool(k); row.appendChild(b) });
-  const l=$("#mineList"); l.innerHTML=""; $("#mineWrap").style.display=myTools.length?"":"none";
+  const l=$("#mineList"); l.innerHTML=""; $("#mineEmpty").style.display=myTools.length?"none":"";
   myTools.forEach(m=>{ const it=document.createElement("button"); it.className="mtile";
     it.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24">${BOT_IC[m.bot]||BOT_IC.free}</svg></span><span class="tx"><b>${esc(m.name)}</b><i>${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</i></span>`;
     it.onclick=()=>openMaker(m.id); l.appendChild(it) });
@@ -2661,6 +2676,24 @@ if(!NATIVE&&"serviceWorker" in navigator) navigator.serviceWorker.register("./sw
    - resize 가 오면: 높이를 새 값으로 바꾸되, 입력줄과 목록을 transform 으로 "방금 보이던 자리"에 붙잡았다가
      다음 프레임에 제자리로 미끄러뜨린다(FLIP). 움직이는 건 transform 뿐이라 끊기지 않는다.
    - 자리는 공식이 아니라 실제로 재서(getBoundingClientRect) 쓴다. 여백·홈바가 바뀌어도 맞는다. */
+/* 모든 화면 공통: (1) 키보드가 뜨면 누른 입력칸을 화면 가운데로 (2) 입력칸이 아닌 곳을 누르면 키보드를 내린다
+   (3) 목록을 위아래로 끌어도 내린다. 대화·만들기의 아래 입력줄과 그 버튼, 방 코드 칸, 인증번호 칸은 눌러도 그대로 둔다 */
+const typing=()=>{ const a=document.activeElement; return a&&(/^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(a.tagName)||a.isContentEditable)?a:null };
+const KEEP_KB=".compose,.cbar,.joinrow,.otpbox,input,textarea,select,[contenteditable],.menu.pop,#msgMenuBg";
+function revealFocused(){
+  const a=typing(); if(!a||a.tagName==="IFRAME"||a.closest(".compose")) return;
+  setTimeout(()=>{ if(document.activeElement===a) a.scrollIntoView({block:"center",behavior:"smooth"}) },280);
+}
+document.addEventListener("pointerdown",e=>{
+  const a=typing(); if(!a||e.target.closest(KEEP_KB)) return;
+  a.blur();
+},true);
+let dragY=null;
+document.addEventListener("touchstart",e=>{ dragY=typing()?e.touches[0].clientY:null },{passive:true,capture:true});
+document.addEventListener("touchmove",e=>{
+  if(dragY===null) return; const a=typing(); if(!a){ dragY=null; return }
+  if(Math.abs(e.touches[0].clientY-dragY)>14&&e.target.closest(".pad,.rows,.days,.mkchat,.tlist,.mkhist")&&!e.target.closest(KEEP_KB)){ a.blur(); dragY=null }
+},{passive:true,capture:true});
 let kbLog=[];
 (function(){
   const vv=window.visualViewport; if(!vv) return;
@@ -2741,16 +2774,18 @@ let kbLog=[];
     const push=px=>{ chat.classList.add("kbmove");
       const t=px?`translateY(${-px}px)`:"";
       days.style.transform=t; comp.style.transform=t; };
-    K.addListener("keyboardWillShow",i=>{ kbMark(); log("willShow "+i.keyboardHeight);
-      push(Math.max(0,i.keyboardHeight-safeB())); track("show") });
-    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); push(0); track("hide") });
+    const inset=px=>{ ph.style.setProperty("--kb",px+"px"); ph.classList.toggle("kbapp",px>0) };
+    K.addListener("keyboardWillShow",i=>{ kbMark(); const px=Math.max(0,i.keyboardHeight-safeB()); log("willShow "+i.keyboardHeight);
+      if(chat.classList.contains("on")&&!$("#s-maker").classList.contains("on")){ push(px); inset(0) } else { push(0); inset(px); revealFocused() }
+      track("show") });
+    K.addListener("keyboardWillHide",()=>{ kbMark(); log("willHide"); push(0); inset(0); track("hide") });
     log("start app");
     return;
   }
   vv.addEventListener("resize",()=>{
     lastResizeAt=performance.now();
     if(vv.height>noKb()) fullH=vv.height;
-    kbMark(); log("resize"); flip(vv.height); unshift();
+    kbMark(); log("resize"); flip(vv.height); unshift(); revealFocused();
   });
   // 기록도 키보드가 움직일 때만 남긴다(끄는 동안 매번 화면을 다시 재면 버벅인다)
   vv.addEventListener("scroll",()=>{ if(!kbBusy()) return; if(Math.round(vv.offsetTop)!==lastOff){ lastOff=Math.round(vv.offsetTop); log("vvscroll") } unshift() });
