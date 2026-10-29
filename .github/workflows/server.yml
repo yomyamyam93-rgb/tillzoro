@@ -1,0 +1,39 @@
+# 서버: server/ 가 바뀌면 그대로 올리고 다시 띄운다.
+# 돌리기 전 파일을 한 벌 남겨 두니, 잘못 올라가도 서버에서 되돌릴 수 있다
+name: server
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server.yml"]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 열쇠 준비
+        env:
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+          ssh-keyscan -H 49.247.137.185 >> "$RUNNER_TEMP/known_hosts" 2>/dev/null
+      - name: 올리고 다시 띄우기
+        run: |
+          set -euo pipefail
+          SSH="ssh -i $RUNNER_TEMP/deploy_key -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts root@49.247.137.185"
+          # 지금 돌고 있는 것을 날짜 찍어 남겨 둔다
+          $SSH "cp /opt/tillzero/index.js /opt/tillzero/index.js.bak_\$(date +%y%m%d_%H%M)"
+          scp -i "$RUNNER_TEMP/deploy_key" -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
+            server/index.js server/schema.sql server/package.json server/package-lock.json \
+            root@49.247.137.185:/opt/tillzero/
+          # 쓰는 꾸러미가 늘었을 수 있으니 맞춰 둔다. 안 바뀌었으면 금방 끝난다
+          $SSH "cd /opt/tillzero && npm install --omit=dev --no-audit --no-fund && pm2 restart tillzero-api"
+      - name: 살아 있는지 확인
+        run: |
+          set -euo pipefail
+          sleep 3
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://49.247.137.185.sslip.io/health)
+          echo "health: $code"
+          [ "$code" = "200" ]
