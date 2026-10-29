@@ -381,10 +381,16 @@
   .tpane[hidden]{display:none}
   .tempty{color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0}
   .clist{display:flex;flex-direction:column;gap:var(--row-gap)}
-  .clist .card{cursor:pointer;transition:transform .15s ease}
-  .clist .card:active{transform:scale(.98)}
-  .clist .photo .bic{position:absolute;right:14px;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;display:grid;place-items:center;background:var(--card);color:var(--ink);z-index:1}
-  .clist .photo .bic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .bbox{height:var(--tool-h);background:var(--card);border-radius:var(--r-card);padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s ease}
+  .bbox:active,.mine:active{transform:scale(.98)}
+  .bbox .bic{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2) center/cover;color:var(--ink)}
+  .bbox .bic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .bbox .bt{min-width:0;flex:1}
+  .bbox b{display:block;font:600 15px var(--font-body);color:var(--ink)}
+  .bbox .d{display:block;margin-top:3px;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mine{margin-top:0;cursor:pointer;transition:transform .15s ease}
+  .mine .roomtool{display:flex;margin:0}
+  .mine .roomtool iframe{pointer-events:none}   /* 상자는 보기만. 누르면 고치기로 간다 */
   .tool .remix{margin-left:auto;font:500 12px var(--font-body);color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:5px 10px;white-space:nowrap}
   #s-maker .bar .mkact{display:flex;gap:8px;align-items:center}
   #s-maker .bar .attach{height:40px;padding:0 16px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
@@ -579,7 +585,7 @@
   <section class="screen" id="s-tools">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
     <div class="pad">
-      <div class="seg" id="toolSeg" style="display:none"><button data-s="browse" class="on">둘러보기</button><button data-s="make">만들기</button><button data-s="mine">내 도구</button></div>
+      <div class="seg" id="toolSeg" style="display:none"><button data-s="browse" class="on">탐색</button><button data-s="make">만들기</button><button data-s="mine">내 도구</button></div>
       <div class="tpane" id="paneBrowse">
         <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
         <div id="toolList"></div>
@@ -651,7 +657,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1353</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1621</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2173,13 +2179,22 @@ const BOT_IC={
   memory:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   free:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
 };
-const BOT_TAGS={play:"강화 · 퀴즈 · 내기",pick:"룰렛 · 사다리 · 팀 나누기",money:"정산 · 회비 · 가계부",meet:"공지 · 투표 · 일정",two:"기념일 · 안부 · 버킷리스트",memory:"타임캡슐 · 하루 한 줄",free:"무엇이든"};
-const BOT_IMG={};   // 봇 그림(사장님이 따로 만들어 주기로 함). 넣으면 친구 사진처럼 사진 칸에 깔린다
-// 친구 카드와 같은 생김새: 사진 칸(그림, 없으면 회색) 위에 이름, 아래 한 줄
-function toolCard(name,bot,line){
-  const img=BOT_IMG[bot], el=document.createElement("div"); el.className="card"+(img?"":" text");
-  el.innerHTML=`<div class="photo" style="${img?`background-image:url(${img})`:""}">${img?"":`<span class="bic"><svg viewBox="0 0 24 24">${BOT_IC[bot]||BOT_IC.free}</svg></span>`}<span class="name">${esc(name)}</span></div>
-    <div class="last"><span class="txt dim">${line}</span></div>`;
+// 무엇에 강한 봇인지(사장님 요청으로 한 줄 소개를 둔다)
+const BOT_DESC={play:"게임과 내기에 강해요",pick:"공정한 뽑기에 강해요",money:"계산과 정산에 강해요",meet:"공지와 일정 정리에 강해요",two:"두 사람만의 도구에 강해요",memory:"기록과 추억 쌓기에 강해요",free:"무엇이든 만들어요"};
+const BOT_IMG={};   // 봇 그림(사장님이 따로 만들어 주기로 함). 넣으면 동그라미 안에 깔린다
+// 만들기 탭의 봇: 도구 상자와 같은 크기
+function botBox(k){
+  const el=document.createElement("div"); el.className="bbox"; const img=BOT_IMG[k];
+  el.innerHTML=`<span class="bic" style="${img?`background-image:url(${img})`:""}">${img?"":`<svg viewBox="0 0 24 24">${BOT_IC[k]}</svg>`}</span><span class="bt"><b>${BOT_NAME[k]}</b><span class="d">${BOT_DESC[k]}</span></span>`;
+  return el;
+}
+// 내 도구: 탐색 탭의 도구처럼 이름 줄 + 실제로 만든 상자(보기만)
+function mineCard(m){
+  const el=document.createElement("div"); el.className="tool mine";
+  el.innerHTML=`<div class="nm">${esc(m.name)}<span class="slot">${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</span></div><div class="roomtool user"></div>`;
+  const box=el.querySelector(".roomtool");
+  if(m.ver) fetchToolCode(m.id,m.ver).then(code=>{ if(code&&el.isConnected) mountSandbox(box,code,{state:()=>({data:{},me:myId(),self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]}),save:()=>{}}) });
+  else box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[m.bot]||""}</span></div>`;
   return el;
 }
 let toolPane="browse";
@@ -2192,9 +2207,9 @@ $$("#toolSeg button").forEach(b=>b.addEventListener("click",()=>showToolPane(b.d
 function renderMakerArea(){
   $("#toolSeg").style.display=amMaker?"":"none"; showToolPane(toolPane); if(!amMaker) return;
   const row=$("#botRow"); row.innerHTML="";
-  Object.entries(BOT_NAME).forEach(([k,n])=>{ const b=toolCard(n,k,BOT_TAGS[k]); b.onclick=()=>newTool(k); row.appendChild(b) });
+  Object.keys(BOT_NAME).forEach(k=>{ const b=botBox(k); b.onclick=()=>newTool(k); row.appendChild(b) });
   const l=$("#mineList"); l.innerHTML=""; $("#mineEmpty").style.display=myTools.length?"none":"";
-  myTools.forEach(m=>{ const it=toolCard(m.name,m.bot,`${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}`);
+  myTools.forEach(m=>{ const it=mineCard(m);
     longPress(it,()=>popMenu(it,[["edit","수정",()=>openMaker(m.id)],["del","삭제",()=>deleteTool(m),"danger"]],false));
     it.onclick=()=>{ if(!it.dataset.held) openMaker(m.id) }; l.appendChild(it) });
 }
