@@ -66,13 +66,11 @@
   /* 모션: 짧게(0.15~0.25초), 위치·크기·투명도만 움직인다(버벅임 없음). 휴대폰의 '동작 줄이기'가 켜져 있으면 모두 끈다 */
   @keyframes fadein{from{opacity:0}}
   @keyframes popin{from{opacity:0;transform:scale(.9)}}
-  @keyframes liftin{to{transform:scale(1.03)}}
   @keyframes risein{from{opacity:0;transform:translateY(14px)}}
   @keyframes bubin{from{opacity:0;transform:translateY(10px) scale(.97)}}
   @keyframes zoomin{from{opacity:0;transform:scale(.94)}}
-  #msgMenuBg.on{animation:fadein .16s ease both}
+  #msgMenuBg.on{background:transparent}   /* 어둡게 하는 건 .spot 이 한다. 이 막은 바깥을 누르면 닫는 일만 */
   .menu.pop.on{animation:popin .18s cubic-bezier(.2,.9,.3,1.2) both}
-  .lift{animation:liftin .18s ease-out both}
   .menu:not(.pop).on,.confirm.on{animation:risein .26s var(--ease-soft) both}
   .enter{animation:bubin .28s var(--ease-soft) both}
   /* 삭제: 한 점으로 빨려들며 사라지고, 그 높이만큼 아래 글이 올라와 자리를 메운다 */
@@ -495,8 +493,9 @@
   .menu.pop button{height:46px;display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;font-size:15px;color:var(--ink);text-align:left;white-space:nowrap;background:none;width:100%}
   .menu.pop button svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
   .menu.pop button.danger{color:var(--zero)}
-  #msgMenuBg.on{background:rgba(0,0,0,.25)}
-  .lift{position:absolute;z-index:28;margin:0;pointer-events:none;box-sizing:border-box}
+  /* 길게 누르기: 누른 것 자리만 뚫린 어두운 막(복사본을 띄우지 않는다 → 겹쳐 보이거나 도구 상자가 비는 일이 없다) */
+  .spot{position:absolute;z-index:28;pointer-events:none;box-shadow:0 0 0 200vmax rgba(0,0,0,.25);animation:fadein .16s ease both}
+  .lifted{transform:scale(1.02);transition:transform .18s ease-out}
   .quote{display:block;max-width:100%;font-size:12.5px;line-height:1.4;padding:1px 0 1px 8px;margin:1px 0 5px;border-left:2px solid currentColor;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .quote b{font-weight:600;margin-right:5px}
   .msg.media .quote{color:var(--ink-3);opacity:1;margin:0 0 5px}
@@ -663,7 +662,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1746</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1751</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1603,10 +1602,13 @@ function popMenu(bub,items,right){
   const mine=right;
   const box=$("#msgMenu"), bg=$("#msgMenuBg"), host=box.parentNode, hr=host.getBoundingClientRect();
   box.innerHTML="";
-  const lift=bub.cloneNode(true), r=bub.getBoundingClientRect();
-  lift.classList.add("lift"); lift.style.transformOrigin=(mine?"right":"left")+" center"; Object.assign(lift.style,{left:r.left-hr.left+"px",top:r.top-hr.top+"px",width:r.width+"px",height:r.height+"px"});
-  host.appendChild(lift);
-  const close=()=>{ box.classList.remove("on"); bg.classList.remove("on"); lift.remove() };
+  // 누른 것은 제자리에서 살짝 커지고, 그 자리만 뚫린 어두운 막이 나머지를 덮는다
+  const r=bub.getBoundingClientRect(), pad=4, rad=parseFloat(getComputedStyle(bub).borderTopLeftRadius)||14;
+  const spot=document.createElement("div"); spot.className="spot";
+  Object.assign(spot.style,{left:r.left-hr.left-pad+"px",top:r.top-hr.top-pad+"px",width:r.width+pad*2+"px",height:r.height+pad*2+"px",borderRadius:rad+pad+"px"});
+  host.appendChild(spot);
+  bub.style.transformOrigin=(mine?"right":"left")+" center"; bub.classList.add("lifted");
+  const close=()=>{ box.classList.remove("on"); bg.classList.remove("on"); spot.remove(); bub.classList.remove("lifted") };
   items.forEach(([k,label,act,cls])=>{
     const b=document.createElement("button"); if(cls) b.className=cls;
     b.innerHTML=`<svg viewBox="0 0 24 24">${MI[k]}</svg><span>${label}</span>`;
