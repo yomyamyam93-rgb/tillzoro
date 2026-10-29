@@ -1350,9 +1350,15 @@ ${close}<script>
 let S={data:{},me:"",self:false,members:[]}; const __ui={}; const __box=document.getElementById("box");
 const __r=typeof render==="function"?render:null;
 const c={get data(){return S.data},get me(){return S.me},get self(){return S.self},get members(){return S.members},ui:__ui,
-  redraw:()=>__draw(), save:t=>{ __send({k:"save",data:JSON.parse(JSON.stringify(S.data)),text:t?String(t):""}); __draw() }, toast:t=>__send({k:"toast",text:String(t)})};
+  redraw:()=>__draw(), save:t=>{ __send({k:"save",data:JSON.parse(JSON.stringify(S.data)),text:t?String(t):""}); __draw() }, toast:t=>__send({k:"toast",text:String(t)}),
+  ask:(kind,opt)=>new Promise((ok,no)=>{ const id=++__aid; __asks[id]={ok,no};
+    __send({k:"ask",id,kind:String(kind),opt:opt||{}});
+    setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },15000); })};
+let __aid=0; const __asks={};
 function __draw(){ if(!__r){ __fail("render 함수가 없어요"); return } try{ __r(__box,c) }catch(e){ __fail(e) } }
-addEventListener("message",e=>{ const m=e.data; if(m&&m.tz&&m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[]}; __draw() } });
+addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
+  if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[]}; __draw() }
+  else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 __send({k:"ready"});
 ${close}</body></html>`;
 }
@@ -1363,7 +1369,33 @@ window.addEventListener("message",e=>{
   else if(m.k==="save") h.save(m.data,m.text);
   else if(m.k==="toast") toast(m.text);
   else if(m.k==="error"&&h.error) h.error(m.text);
+  else if(m.k==="ask") toolAsk(m,e.source);
 });
+/* 칸은 바깥과 끊겨 있다(CSP default-src 'none'). 위치·공유 같은 것은 앱이 대신 해 주고
+   결과만 돌려준다. 그래서 칸은 계속 갇혀 있고 권한은 앱이 쥔다 */
+async function toolAsk(m,win){
+  const back=(val,err)=>{ try{ win&&win.postMessage({tz:1,k:"askd",id:m.id,val,err},"*") }catch(e){} };
+  const opt=m.opt||{}, text=String(opt.text||"").slice(0,2000);
+  try{
+    if(m.kind==="location"){
+      let p;
+      if(NATIVE) p=await plug("Geolocation").getCurrentPosition({enableHighAccuracy:true,timeout:10000});
+      else if(navigator.geolocation) p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:10000}));
+      else throw new Error("이 기기에서는 위치를 쓸 수 없어요");
+      back({lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy});
+    }
+    else if(m.kind==="share"){
+      if(!text) throw new Error("보낼 글이 없어요");
+      if(NATIVE) await plug("Share").share({text});
+      else if(navigator.share) await navigator.share({text});
+      else { copyText(text); }
+      back(true);
+    }
+    else if(m.kind==="copy"){ if(!text) throw new Error("복사할 글이 없어요"); copyText(text); back(true) }
+    else if(m.kind==="buzz"){ if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{}); else navigator.vibrate&&navigator.vibrate(8); back(true) }
+    else throw new Error("모르는 부탁이에요");
+  }catch(e){ back(null,String(e&&e.message||e).slice(0,120)) }
+}
 function mountSandbox(host,code,{state,save,error}){
   const f=document.createElement("iframe"); f.className="tzbox"; f.setAttribute("sandbox","allow-scripts"); f.title="도구";
   host.innerHTML=""; host.appendChild(f);

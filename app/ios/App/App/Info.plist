@@ -70,6 +70,8 @@
 	<string>동영상 소리 녹음</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>사진과 동영상을 골라 보내기</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>도구가 거리를 재거나 만날 곳을 정할 때 씁니다</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>받은 사진과 동영상 저장</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
