@@ -419,6 +419,8 @@
   .mkbar button{height:28px;padding:0 12px;border-radius:14px;background:var(--card);font-size:12px;color:var(--ink-2);white-space:nowrap}
   .mkchat{flex:1;overflow:auto;padding:8px 14px 10px;display:flex;flex-direction:column;gap:6px;scrollbar-width:none;overscroll-behavior-y:contain}
   .mkchat .b{max-width:82%;padding:8px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;word-break:break-word;white-space:pre-wrap}
+  .mkchat .who{display:flex;align-items:center;gap:6px;align-self:flex-start;margin:6px 0 1px;font:500 12px var(--font-body);color:var(--ink-2)}
+  .mkchat .who i{width:22px;height:22px;border-radius:50%;flex:none;background:var(--line) center/cover;box-shadow:var(--tool-lift)}
   .mkchat .b.bot{align-self:flex-start;background:var(--card);color:var(--ink);border-bottom-left-radius:4px}
   .mkchat .b.me{align-self:flex-end;background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-right-radius:4px}
   .mkchat .b.wait{color:var(--ink-3)}
@@ -2309,6 +2311,13 @@ function drawMkPreview(){
 function drawMkChat(){
   const box=$("#mkChat"); box.innerHTML="";
   mk.chat.forEach((m,i)=>{
+    // 봇이 이어서 말할 때는 처음 한 번만 누구인지 보인다(대화방에서 이름이 한 번만 나오는 것과 같다)
+    if(m.role!=="user"&&(i===0||mk.chat[i-1].role==="user")){
+      const w=document.createElement("div"); w.className="who";
+      const a=document.createElement("i"); if(BOT_IMG[mk.bot]) a.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
+      const n=document.createElement("span"); n.textContent=BOT_NAME[mk.bot]||"봇";
+      w.append(a,n); box.appendChild(w);
+    }
     const b=document.createElement("div"); b.className="b "+(m.role==="user"?"me":"bot")+(m.wait?" wait":""); b.textContent=m.text; box.appendChild(b);
     // 버전 줄을 누르면 그 모습으로 돌아간다. 되돌리기도 새 버전이라 지워지는 건 없다
     if(m.ver){ const v=document.createElement("button"); v.className="v"; v.textContent=m.ver+"번 버전";
