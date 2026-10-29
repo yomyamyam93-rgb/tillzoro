@@ -4,4 +4,5 @@ const files = ["index.html", "tokens.css", "privacy.html", "terms.html", "icon-5
 rmSync("www", { recursive: true, force: true });
 mkdirSync("www");
 for (const f of files) cpSync("../" + f, "www/" + f);
+cpSync("../bots", "www/bots", { recursive: true });   // 봇 사진
 console.log("www:", files.length, "files");

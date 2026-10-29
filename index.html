@@ -386,6 +386,12 @@
   .bbox .bic{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2) center/cover;color:var(--ink)}
   .bbox .bic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
   .bbox .bt{min-width:0;flex:1}
+  .bbox.img{position:relative;overflow:hidden;background:#111 center/cover no-repeat}
+  .bbox.img::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 58%,rgba(0,0,0,0))}
+  .bbox.img .bt{position:relative;z-index:1}
+  .bbox.img b{color:#fff}
+  .bbox.img .d{color:rgba(255,255,255,.8)}
+  #s-maker .mkav{flex:none;width:40px;height:40px;border-radius:50%;background:var(--card) center/cover}
   .bbox b{display:block;font:600 15px var(--font-body);color:var(--ink)}
   .bbox .d{display:block;margin-top:3px;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mine{margin-top:0;cursor:pointer;transition:transform .15s ease}
@@ -657,7 +663,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1621</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1746</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -679,7 +685,7 @@
   </section>
 
   <section class="screen" id="s-maker">
-    <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
+    <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span class="mkav" id="mkAv"></span><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
       <div class="mkact"><button class="icon" id="mkUndo" aria-label="되돌리기"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="attach" id="mkAttach">붙이기</button></div></div>
     <div class="mkprev"><div class="roomtool user" id="mkBox"></div>
       <div class="mkbar"><span id="mkVer"></span><button id="mkAs">상대 화면</button><button id="mkHist">기록</button></div></div>
@@ -2181,11 +2187,16 @@ const BOT_IC={
 };
 // 무엇에 강한 봇인지(사장님 요청으로 한 줄 소개를 둔다)
 const BOT_DESC={play:"게임과 내기에 강해요",pick:"공정한 뽑기에 강해요",money:"계산과 정산에 강해요",meet:"공지와 일정 정리에 강해요",two:"두 사람만의 도구에 강해요",memory:"기록과 추억 쌓기에 강해요",free:"무엇이든 만들어요"};
-const BOT_IMG={};   // 봇 그림(사장님이 따로 만들어 주기로 함). 넣으면 동그라미 안에 깔린다
+// 봇 사진(사장님이 만든 인형 사진, bots/). y = 상자(84px 띠)에서 숫자 얼굴이 가운데 오게 하는 세로 기준점(%)
+const BOT_IMG={
+  play:{y:57},pick:{y:31},money:{y:43},meet:{y:22},two:{y:61},memory:{y:36},free:{y:31},
+};
 // 만들기 탭의 봇: 도구 상자와 같은 크기
 function botBox(k){
-  const el=document.createElement("div"); el.className="bbox"; const img=BOT_IMG[k];
-  el.innerHTML=`<span class="bic" style="${img?`background-image:url(${img})`:""}">${img?"":`<svg viewBox="0 0 24 24">${BOT_IC[k]}</svg>`}</span><span class="bt"><b>${BOT_NAME[k]}</b><span class="d">${BOT_DESC[k]}</span></span>`;
+  const el=document.createElement("div"), img=BOT_IMG[k];
+  el.className="bbox"+(img?" img":"");
+  if(img){ el.style.backgroundImage=`url(bots/${k}.jpg)`; el.style.backgroundPosition=`50% ${img.y}%` }
+  el.innerHTML=(img?"":`<span class="bic"><svg viewBox="0 0 24 24">${BOT_IC[k]}</svg></span>`)+`<span class="bt"><b>${BOT_NAME[k]}</b><span class="d">${BOT_DESC[k]}</span></span>`;
   return el;
 }
 // 내 도구: 탐색 탭의 도구처럼 이름 줄 + 실제로 만든 상자(보기만)
@@ -2243,6 +2254,7 @@ async function openMaker(id){
 }
 function drawMaker(){
   $("#mkName").textContent=mk.name; $("#mkVer").textContent=mk.ver?mk.ver+"번 버전":"";
+  const av=$("#mkAv"); av.style.display=BOT_IMG[mk.bot]?"":"none"; if(BOT_IMG[mk.bot]) av.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
   $("#mkUndo").disabled=!(mk.ver>1); $("#mkAttach").style.visibility=mk.ver?"":"hidden";
   $("#mkAs").textContent=mk.asOther?"내 화면":"상대 화면";
   drawMkPreview(); drawMkChat();
