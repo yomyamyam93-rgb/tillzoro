@@ -662,7 +662,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1755</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1758</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1309,7 +1309,7 @@ const josa=(w,a,b)=>{ const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c
 /* 사용자가 만든 도구("u…")는 격리된 칸(iframe sandbox)에서만 돈다. 바깥 인터넷·앱 화면·로그인 정보에 닿지 못하고
    (sandbox + Content-Security-Policy), 정해진 통로로만 앱과 이야기한다: 앱 → state(데이터·나·방 사람) / 칸 → save·toast·error.
    도구 코드 모양은 기본 도구와 같은 render(box, c) 라서, 퀘스트 같은 기본 도구를 그대로 가져와 고칠 수 있다 */
-const SANDBOX_VARS=["--ink","--ink-2","--ink-3","--paper","--paper-2","--card","--line","--zero","--r-pill","--bubble-me","--bubble-me-ink"];
+const SANDBOX_VARS=["--ink","--ink-2","--ink-3","--paper","--paper-2","--card","--line","--zero","--r-pill","--bubble-me","--bubble-me-ink","--font-num","--font-body"];
 const rtCss=()=>[...document.styleSheets].flatMap(x=>{ try{ return [...x.cssRules] }catch(e){ return [] } })
   .filter(r=>/^\.rt-/.test(r.selectorText||"")).map(r=>r.cssText).join("\n");
 function sandboxDoc(code){
@@ -1317,8 +1317,10 @@ function sandboxDoc(code){
   const vars=SANDBOX_VARS.map(v=>`${v}:${cs.getPropertyValue(v).trim()}`).join(";");
   const close="</"+"script>", safe=String(code||"").replace(/<\/script/gi,"<\\/script");
   return `<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:">
-<style>:root{${vars}} html,body{margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src data: blob:">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap">
+<style>:root{${vars}} html,body{margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
 ${rtCss()}</style></head><body><div id="box"></div>
