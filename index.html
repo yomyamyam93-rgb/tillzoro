@@ -308,7 +308,7 @@
   /* 키보드를 따라 밀어 올리는 칸들: 대화방(#chat.kbmove)과 같은 곡선 */
   .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .25s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
-  #s-maker .mkprev{position:relative;z-index:2;background:var(--paper-2)}
+  #s-maker .mkprev{position:relative;z-index:2;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 12px 22px -16px rgba(0,0,0,.55)}
   /* 키보드가 올라오면 대화가 transform 으로 올라간다. 머리말 위(상태바 여백)로 새지 않게 잘라낸다 */
   .mkchatwrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}
   @keyframes mkshine{to{background-position:-200% 0}}
@@ -388,7 +388,7 @@
   .seg{display:flex;gap:4px;padding:4px;background:var(--card);border-radius:14px;flex:none}
   .seg button{flex:1;height:38px;border-radius:10px;font-size:14px;color:var(--ink-3);white-space:nowrap;transition:background-color .15s,color .15s}
   .seg button.on{background:var(--ink);color:var(--paper);font-weight:500}
-  .tpane{display:flex;flex-direction:column;gap:14px}
+  .tpane{flex:none;display:flex;flex-direction:column;gap:14px}
   .tpane[hidden]{display:none}
   .tempty{color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0}
   .clist{display:flex;flex-direction:column;gap:var(--row-gap)}
@@ -2287,7 +2287,7 @@ async function openMaker(id){
   if(!mk.chat.length) mkPush("bot",{text:mk.code?"어떻게 고칠까요?":"무엇을 만들까요?"});
 }
 function drawMaker(){
-  $("#mkName").textContent=mk.name; $("#mkVer").textContent=mk.ver?mk.ver+"번 버전":"";
+  $("#mkName").textContent=mk.name; $("#mkVer").textContent=verWhen(mk.ver)||"";
   const av=$("#mkAv"); av.style.display=BOT_IMG[mk.bot]?"":"none"; if(BOT_IMG[mk.bot]) av.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
   $("#mkAttach").style.visibility=mk.ver?"":"hidden";
   $("#mkPub").classList.toggle("on",!!mk.public);
@@ -2308,6 +2308,14 @@ function drawMkPreview(){
   });
   mk.hs=[mountSandbox(box,mk.code,ctx(myId())), mountSandbox(other,mk.code,ctx("f1"))];
 }
+// 몇 번째 버전인지는 사람에게 쓸모가 없다. 언제 고친 것인지를 보여준다
+function verWhen(ver){
+  if(!ver) return "";
+  const x=(mk.versions||[]).find(z=>z.ver===ver);
+  if(!x||!x.at) return ver+"번";
+  const d=new Date(x.at);
+  return sepLabel(d)+" "+d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"});
+}
 function drawMkChat(){
   const box=$("#mkChat"); box.innerHTML="";
   mk.chat.forEach((m,i)=>{
@@ -2319,8 +2327,8 @@ function drawMkChat(){
       w.append(a,n); box.appendChild(w);
     }
     const b=document.createElement("div"); b.className="b "+(m.role==="user"?"me":"bot")+(m.wait?" wait":""); b.textContent=m.text; box.appendChild(b);
-    // 버전 줄을 누르면 그 모습으로 돌아간다. 되돌리기도 새 버전이라 지워지는 건 없다
-    if(m.ver){ const v=document.createElement("button"); v.className="v"; v.textContent=m.ver+"번 버전";
+    // 고친 때를 누르면 그 모습으로 돌아간다. 되돌리기도 새 버전이라 지워지는 건 없다
+    if(m.ver){ const v=document.createElement("button"); v.className="v"; v.textContent=verWhen(m.ver);
       if(m.ver===mk.ver) v.disabled=true; else v.onclick=()=>mkRevert(m.ver);
       box.appendChild(v) }
     if(i===mk.chat.length-1&&m.role!=="user"&&(m.options||[]).length&&!mk.busy){
