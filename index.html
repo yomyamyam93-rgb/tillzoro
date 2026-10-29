@@ -364,9 +364,9 @@
   .tlist .tnone{display:flex;align-items:center;gap:12px;padding:12px 6px;font-size:15px}
   .tzbox{display:block;width:100%;height:100%;border:0;background:transparent}
   .roomtool.user{padding:10px 14px}
-  .hscroll{display:flex;gap:10px;overflow-x:auto;margin:0 -22px;padding:2px 22px 4px;scroll-padding:0 22px;scrollbar-width:none;overscroll-behavior-x:contain}
+  .hscroll{display:flex;gap:10px;overflow-x:auto;margin:0 -22px;padding:2px 0 4px 22px;scroll-padding:0 22px;scrollbar-width:none;overscroll-behavior-x:contain}
   .hscroll::-webkit-scrollbar{display:none}
-  .hscroll::after{content:"";flex:0 0 12px}   /* 끝 여백: 스크롤 끝에서도 오른쪽이 화면 끝에 붙지 않게 */
+  .hscroll>:last-child{margin-right:22px}   /* 끝 여백은 마지막 칸에: 오른쪽 안쪽 여백은 브라우저마다 스크롤 끝에서 무시되기도 한다 */
   .btile,.mtile{border-radius:var(--r-card);background:var(--card);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;padding:14px;text-align:left;min-width:0;transition:transform .12s}
   .btile:active,.mtile:active{transform:scale(.97)}
   .btile{flex:none;width:112px;height:112px}
@@ -643,7 +643,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1258</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1259</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
