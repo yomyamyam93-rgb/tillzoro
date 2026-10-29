@@ -60,5 +60,5 @@ jobs:
           npx --yes firebase-tools@13 appdistribution:distribute \
             android/app/build/outputs/apk/release/app-release.apk \
             --app 1:528665036702:android:0899d1421db266efb6f88f \
-            --groups testers \
+            --groups tillzero-tester \
             --release-notes "빌드 ${{ github.run_number }}"
