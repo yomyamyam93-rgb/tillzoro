@@ -1270,6 +1270,21 @@ setInterval(() => sweep().catch((e) => console.error("sweep", e.message)), 36000
 
 app.get("/health", (_, res) => res.json({ ok: true, now: new Date().toISOString() }));
 
-server.listen(PORT, "127.0.0.1", () =>
-  console.log(`till zero server on 127.0.0.1:${PORT}`)
+/* 칸이 늘어난 날 잊지 않도록, 켜질 때 스스로 맞춘다.
+   모두 "없으면 만든다" 라 매번 돌아도 공짜다. schema.sql 의 같은 줄과 짝이 맞아야 한다 */
+const SCHEMA_PATCHES = [
+  "alter table user_tools add column if not exists public boolean not null default false",
+  "create index if not exists user_tools_public_idx on user_tools(public) where public",
+];
+async function ensureSchema() {
+  for (const sql of SCHEMA_PATCHES) {
+    try { await pool.query(sql); }
+    catch (e) { console.error("schema: " + e.message); }
+  }
+}
+
+ensureSchema().then(() =>
+  server.listen(PORT, "127.0.0.1", () =>
+    console.log(`till zero server on 127.0.0.1:${PORT}`)
+  )
 );
