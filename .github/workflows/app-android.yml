@@ -24,8 +24,26 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run sync
-      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
+      # 같은 열쇠로 서명해야 다음 APK 가 기존 설치 위에 깔린다.
+      # 서명이 다르면 안드로이드가 덮어쓰기를 거부하고, 지웠다 깔아야 해서 로그인도 날아간다
+      - name: 서명 열쇠 준비
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tillzero.jks"
+          ls -la "$RUNNER_TEMP/tillzero.jks"
+      - name: 릴리스 APK
+        env:
+          TZ_KEYSTORE: ${{ runner.temp }}/tillzero.jks
+          TZ_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TZ_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TZ_BUILD: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: tillzero-android
-          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          path: app/android/app/build/outputs/apk/release/app-release.apk

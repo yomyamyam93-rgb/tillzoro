@@ -7,7 +7,7 @@ android {
         applicationId "kr.tillzero.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode (System.getenv("TZ_BUILD") ?: "1") as int
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +16,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def ks = System.getenv("TZ_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storeType "PKCS12"
+                storePassword System.getenv("TZ_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("TZ_KEY_ALIAS")
+                keyPassword System.getenv("TZ_KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("TZ_KEYSTORE")) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
