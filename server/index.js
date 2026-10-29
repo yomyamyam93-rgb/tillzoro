@@ -1059,6 +1059,19 @@ app.get("/api/tools/:id/v/:ver", auth, async (req, res) => {
   if (!v) return res.sendStatus(404);
   res.json({ name: tool.name, code: v.code });
 });
+// 도구 삭제: 버전·대화가 함께 지워지고, 붙여 둔 방에서도 내려간다(그 방의 도구 데이터도 지운다)
+app.delete("/api/tools/:id", auth, makerOnly, async (req, res) => {
+  const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
+  if (!tool) return res.sendStatus(404);
+  const rooms = (await pool.query("delete from room_state where tool = $1 returning bond_id", ["u" + tool.id])).rows;
+  await pool.query("delete from user_tools where id = $1", [tool.id]);
+  for (const r of rooms) {
+    const who = (await pool.query(
+      "select user_id as id from bond_members where bond_id = $1 union select a_id from bonds where id = $1 union select b_id from bonds where id = $1", [r.bond_id])).rows;
+    notify(who.map((x) => x.id), { type: "room", bondId: r.bond_id, tool: "u" + tool.id });
+  }
+  res.json({ ok: true });
+});
 // 예전 버전으로: 그 코드로 새 버전을 만든다(기록은 지워지지 않는다)
 app.post("/api/tools/:id/revert", auth, makerOnly, async (req, res) => {
   const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);

@@ -37,7 +37,8 @@
     --zero:#FF2D3A; --bubble-me:#F2F2EF; --bubble-me-ink:#0C0C0E; --bubble-you:#1E1E22;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45);
   }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
   *{touch-action:manipulation}   /* 두 번 탭 확대 없음. 끌기·꼬집기는 그대로 */
   /* 끝까지 끌어도 페이지 전체(입력줄 포함)가 고무줄처럼 딸려가지 않게. 튕김은 대화 목록 안에서만 */
   html,body{overscroll-behavior:none}
@@ -651,7 +652,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1328</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1029-1344</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1582,7 +1583,13 @@ function msgMenu(m,bub){
   }
   if(!items.length) return;
   if(!text&&live) prefetchMedia(m);
+  popMenu(bub,items,mine);
+}
+// 누른 것을 어두운 배경 위로 들어 올리고 바로 옆에 메뉴를 띄운다. items: [아이콘, 글, 할 일, class]
+// right 면 오른쪽 끝을 맞춘다(내 말풍선), 아니면 왼쪽
+function popMenu(bub,items,right){
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{}); else if(navigator.vibrate) navigator.vibrate(8);
+  const mine=right;
   const box=$("#msgMenu"), bg=$("#msgMenuBg"), host=box.parentNode, hr=host.getBoundingClientRect();
   box.innerHTML="";
   const lift=bub.cloneNode(true), r=bub.getBoundingClientRect();
@@ -2182,7 +2189,22 @@ function renderMakerArea(){
   const l=$("#mineList"); l.innerHTML=""; $("#mineEmpty").style.display=myTools.length?"none":"";
   myTools.forEach(m=>{ const it=document.createElement("button"); it.className="mtile";
     it.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24">${BOT_IC[m.bot]||BOT_IC.free}</svg></span><span class="tx"><b>${esc(m.name)}</b><i>${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</i></span>`;
-    it.onclick=()=>openMaker(m.id); l.appendChild(it) });
+    longPress(it,()=>popMenu(it,[["edit","수정",()=>openMaker(m.id)],["del","삭제",()=>deleteTool(m),"danger"]],false));
+    it.onclick=()=>{ if(!it.dataset.held) openMaker(m.id) }; l.appendChild(it) });
+}
+// 길게 누르기(0.5초). 끌거나 손을 떼면 취소. 길게 눌렀으면 바로 뒤의 눌림(click)은 무시한다
+function longPress(el,fn){
+  let t=null;
+  el.addEventListener("pointerdown",()=>{ delete el.dataset.held; t=setTimeout(()=>{ el.dataset.held=1; fn() },500) });
+  ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(t)));
+  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(t); el.dataset.held=1; fn() });
+}
+function deleteTool(m){
+  confirmBox(`${josa(m.name,"을","를")} 삭제할까요? 붙여 둔 방에서도 사라져요.`,async()=>{
+    try{ await api("/api/tools/"+m.id,{method:"DELETE"}) }catch(e){ toast(e.message); return }
+    if(roomData[m.id]){ delete roomData[m.id]; renderRoomTool(); renderMsgs() }
+    loadMyTools();
+  },{ok:"삭제"});
 }
 async function loadMyTools(){ if(!amMaker) return; try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} renderMakerArea() }
 async function newTool(bot,from){
