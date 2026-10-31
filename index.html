@@ -1400,7 +1400,7 @@ async function toolAsk(m,win){
     else if(m.kind==="copy"){ if(!text) throw new Error("복사할 글이 없어요"); copyText(text); back(true) }
     else if(m.kind==="buzz"){ if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{}); else navigator.vibrate&&navigator.vibrate(8); back(true) }
     else throw new Error("모르는 부탁이에요");
-  }catch(e){ back(null,String(e&&e.message||e).slice(0,120)) }
+  }catch(e){ const msg=String(e&&e.message||e).slice(0,120); if(m.kind==="location") toast("위치: "+msg); back(null,msg) }
 }
 function mountSandbox(host,code,{state,save,error,onReady}){
   const f=document.createElement("iframe"); f.className="tzbox"; f.setAttribute("sandbox","allow-scripts"); f.title="도구";
@@ -2117,7 +2117,7 @@ function goTab(id){
   const dir=TAB_ORDER.indexOf(id)>TAB_ORDER.indexOf(cur)?1:-1;   // 1이면 오른쪽 탭으로
 
   if(id==="settings"){ renderSettings(); showGeo() }
-  if(id==="s-tools"){ $("#toolSearch").value=""; renderTools(); loadToolStates() }
+  if(id==="s-tools"){ $("#toolSearch").value=""; renderTools(); loadToolStates(); loadPublic() }
   if(id==="till") renderTill();
 
   // 현재 탭 위에 쌓인 화면은 애니메이션 없이 걷어낸다
@@ -2277,22 +2277,41 @@ const SLOT={top:"대화방 위", bubble:"말풍선"};
 function renderTools(q=""){
   const list=$("#toolList"); list.innerHTML="";
   const key=q.trim().toLowerCase();
-  const found=TOOLS.filter(t=>!key||t.name.toLowerCase().includes(key));
-  $("#toolSearch").style.display=TOOLS.length?"":"none";
+  // 기본 도구 + 탐색에 공개된 도구(내가 올린 것도 여기 보인다)
+  const pub=pubTools.map(t=>({...t,user:true}));
+  const all=TOOLS.concat(pub).filter(t=>!key||t.name.toLowerCase().includes(key));
+  $("#toolSearch").style.display=(TOOLS.length+pub.length)?"":"none";
   const empty=$("#toolEmpty");
-  empty.style.display=found.length?"none":"block";
-  empty.textContent=TOOLS.length?"찾는 도구가 없어요":"아직 도구가 없어요";
-  found.forEach(t=>{
+  empty.style.display=all.length?"none":"block";
+  empty.textContent=(TOOLS.length+pub.length)?"찾는 도구가 없어요":"아직 도구가 없어요";
+
+  const card=t=>{
     const el=document.createElement("div"); el.className="tool";
     const on=!!toolOn[t.id];
     el.classList.toggle("off",!on);
-    el.innerHTML=`<div class="nm">${esc(t.name)}<span class="slot">${SLOT[t.slot]}</span>${amMaker?`<button class="remix">고쳐 만들기</button>`:""}</div>
+    const tag=t.user?`<span class="slot">${esc(t.by||"누군가")} 만듦</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
+    el.innerHTML=`<div class="nm">${esc(t.name)}${tag}${(amMaker&&!t.user)?`<button class="remix">고쳐 만들기</button>`:""}</div>
       <div class="slide"><div class="roomtool on knob"></div></div>`;
-    t.render(el.querySelector(".knob"),previewCtx(t));
+    // 남의 도구는 코드를 받아 와야 그려진다. 목록에서는 이름만 보이고, 방에 붙이면 진짜가 뜬다
+    if(!t.user) t.render(el.querySelector(".knob"),previewCtx(t));
     slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
     const rx=el.querySelector(".remix"); if(rx) rx.onclick=()=>newTool("free",{name:t.name,code:"function "+t.render.toString()});
-    list.appendChild(el);
-  });
+    return el;
+  };
+  // 켠 것과 아직 안 켠 것을 나눠 둔다. 섞여 있으면 무엇이 쓰이는 중인지 알 수가 없다
+  const on=all.filter(t=>toolOn[t.id]), off=all.filter(t=>!toolOn[t.id]);
+  const sect=(title,arr)=>{
+    if(!arr.length) return;
+    const h=document.createElement("div"); h.className="lbl sect"; h.textContent=title; list.appendChild(h);
+    arr.forEach(t=>list.appendChild(card(t)));
+  };
+  sect("켜둔 도구",on);
+  sect("더 있어요",off);
+}
+let pubTools=[];
+async function loadPublic(){
+  try{ pubTools=(await api("/api/tools/public")).tools||[] }catch(e){ pubTools=[] }
+  renderTools($("#toolSearch")?.value||"");
 }
 
 /* 도구 만들기(운영자만, tools-maker-plan.md 3단계). 봇을 고르면 새 도구가 생기고 대화 화면이 열린다 */
@@ -2981,10 +3000,20 @@ let kbLog=[];
 
 $("#askGeo").addEventListener("click",async()=>{
   try{
-    if(NATIVE){ const r=await plug("Geolocation").requestPermissions(); toast(r.location==="granted"?"위치를 쓸 수 있어요":"아이폰 설정 > Till Zero 에서 바꿀 수 있어요") }
-    else if(navigator.geolocation){ await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{timeout:10000})); toast("위치를 쓸 수 있어요") }
-    else toast("이 기기에서는 위치를 쓸 수 없어요");
-  }catch(e){ toast("위치를 끄셨어요. 기기 설정에서 바꿀 수 있어요") }
+    if(!NATIVE){
+      if(!navigator.geolocation) return toast("이 기기에서는 위치를 쓸 수 없어요");
+      await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{timeout:10000}));
+      return toast("위치를 쓸 수 있어요");
+    }
+    // 한 번 정하고 나면 앱은 그 답을 바꿀 수 없다. 끄고 켜는 건 기기 설정에서만 된다
+    const now=(await plug("Geolocation").checkPermissions()).location;
+    if(now==="prompt"||now==="prompt-with-rationale"){
+      const r=await plug("Geolocation").requestPermissions();
+      toast(r.location==="granted"?"위치를 쓸 수 있어요":"껐어요");
+    } else {
+      await plug("App").openUrl({url:"app-settings:"});
+    }
+  }catch(e){ toast(String(e&&e.message||e).slice(0,80)) }
   showGeo();
 });
 $("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
