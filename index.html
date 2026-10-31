@@ -618,6 +618,7 @@
         <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
         <div id="toolList"></div>
         <p id="toolEmpty" class="tempty" style="display:none">찾는 도구가 없어요</p>
+        <p id="toolProbe" style="font:11px/1.4 ui-monospace,monospace;color:var(--ink-3);margin:10px 0 0"></p>
       </div>
       <div class="tpane" id="paneMake" hidden><div class="clist" id="botRow"></div></div>
       <div class="tpane" id="paneMine" hidden><div class="clist" id="mineList"></div><p id="mineEmpty" class="tempty">아직 만든 도구가 없어요</p></div>
@@ -2312,6 +2313,14 @@ function renderTools(q=""){
   };
   sect("켜둔 도구",on);
   sect("더 있어요",off);
+  setTimeout(showProbe,0);
+}
+/* 원인 찾는 중: 이 화면이 실제로 스크롤되는 틀인지 폰에서 바로 읽는다 */
+function showProbe(){
+  const el=$("#toolProbe"), pad=$("#s-tools .pad"); if(!el||!pad) return;
+  el.textContent=`보임 ${pad.clientHeight} · 속 ${pad.scrollHeight} · 화면 ${window.innerHeight} · 틀 ${$("#phone").getBoundingClientRect().height|0}`
+    +`
+켜둔 것: ${Object.keys(toolOn).join(",")||"없음"}`;
 }
 let pubTools=[];
 async function loadPublic(){
