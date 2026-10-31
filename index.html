@@ -48,7 +48,9 @@
   .stage{min-height:100dvh;display:flex;flex-direction:column;align-items:center;background:var(--ground)}
   .note{font:12px/1.6 var(--font-body);color:var(--ink-3);text-align:center;max-width:440px}
   .note b{color:var(--ink-2);font-weight:500}
-  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;background:var(--paper);overflow:hidden;overflow:clip;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
+  /* 100dvh 가 실제로 보이는 높이보다 클 때가 있다(아이폰). 그러면 이 틀이 화면 밖까지 늘어나고,
+     그 안의 스크롤 칸도 같이 늘어나 "내용이 다 들어간다"고 착각해 스크롤이 죽는다. 그래서 재서 넣는다 */
+  .phone{width:100%;max-width:520px;height:100vh;height:100dvh;height:var(--appH,100dvh);background:var(--paper);overflow:hidden;overflow:clip;position:relative;padding-bottom:env(safe-area-inset-bottom,0px)}
 
   .screen{position:absolute;inset:0;background:var(--paper-2);display:flex;flex-direction:column;padding-top:var(--statusbar);transform:translateX(100%);transition:transform var(--dur) var(--ease-soft);visibility:hidden}
   .screen.on{transform:translateX(0);visibility:visible}
@@ -889,6 +891,10 @@ const BUILD=(()=>{
   return isNaN(d.getTime())?"----":`${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
 })();
 $("#ver").textContent="버전 "+BUILD;
+/* 틀 높이는 실제로 보이는 높이로 박아 둔다. 키보드가 올라와도 innerHeight 는 안 변하니 틀은 그대로다 */
+const setAppH=()=>document.documentElement.style.setProperty("--appH",window.innerHeight+"px");
+setAppH();
+window.addEventListener("orientationchange",()=>setTimeout(setAppH,350));
 let stack=[];
 function go(id,{replace=false}={}){
   const cur=stack[stack.length-1];
@@ -2370,6 +2376,7 @@ let toolPane="browse";
 function showToolPane(k){
   toolPane=amMaker?k:"browse";
   $$("#toolSeg button").forEach(b=>b.classList.toggle("on",b.dataset.s===toolPane));
+  if(toolPane==="browse") loadPublic();
   $("#paneBrowse").hidden=toolPane!=="browse"; $("#paneMake").hidden=toolPane!=="make"; $("#paneMine").hidden=toolPane!=="mine";
 }
 $$("#toolSeg button").forEach(b=>b.addEventListener("click",()=>showToolPane(b.dataset.s)));
@@ -2526,7 +2533,7 @@ $("#mkName").addEventListener("click",()=>{
 $("#mkPub").addEventListener("click",async()=>{
   if(!mk) return; const t=$("#mkPub"), on=!t.classList.contains("on");
   t.classList.toggle("on",on);
-  try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{public:on}}); mk.public=on; toast(on?"탐색에 올렸어요":"탐색에서 내렸어요") }
+  try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{public:on}}); mk.public=on; loadPublic(); toast(on?"탐색에 올렸어요":"탐색에서 내렸어요") }
   catch(e){ t.classList.toggle("on",!on); toast(e.message) }
 });
 /* 완료하면 내 도구에 담긴다. 어느 방에 띄울지는 방에 들어가서 고르면 된다 */
