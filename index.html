@@ -2102,6 +2102,14 @@ function syncTabs(){
 }
 const TAB_ORDER=["till","s-tools","settings"];
 let tabBusy=false;
+/* 아이폰은 앱이 한 번이라도 물어본 권한만 설정에 보여준다. 여기서 한 번 물어 둔다 */
+const GEO_WORD={granted:"허용함",denied:"꺼둠",prompt:"안 물어봄","prompt-with-rationale":"안 물어봄"};
+async function showGeo(){
+  const v=$("#geoVal"); if(!v) return;
+  if(!NATIVE&&!navigator.geolocation){ v.textContent="쓸 수 없음"; return }
+  try{ v.textContent=NATIVE?(GEO_WORD[(await plug("Geolocation").checkPermissions()).location]||"") : "" }
+  catch(e){ v.textContent="" }
+}
 function goTab(id){
   const from=stack[stack.length-1];
   const cur=TAB_OF[from]||from;
@@ -2971,14 +2979,6 @@ let kbLog=[];
   const kbMark=()=>{ kbUntil=performance.now()+1200 };
   const unshift=()=>{ if(window.scrollY&&kbBusy()) window.scrollTo(0,0) };
 
-  /* 아이폰은 앱이 한 번이라도 물어본 권한만 설정에 보여준다. 여기서 한 번 물어 둔다 */
-const GEO_WORD={granted:"허용함",denied:"꺼둠",prompt:"안 물어봄","prompt-with-rationale":"안 물어봄"};
-async function showGeo(){
-  const v=$("#geoVal"); if(!v) return;
-  if(!NATIVE&&!navigator.geolocation){ v.textContent="쓸 수 없음"; return }
-  try{ v.textContent=NATIVE?(GEO_WORD[(await plug("Geolocation").checkPermissions()).location]||"") : "" }
-  catch(e){ v.textContent="" }
-}
 $("#askGeo").addEventListener("click",async()=>{
   try{
     if(NATIVE){ const r=await plug("Geolocation").requestPermissions(); toast(r.location==="granted"?"위치를 쓸 수 있어요":"아이폰 설정 > Till Zero 에서 바꿀 수 있어요") }
