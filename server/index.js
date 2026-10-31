@@ -1050,9 +1050,9 @@ app.get("/api/tools/mine", auth, makerOnly, async (req, res) => {
 // 탐색에 보이는 남의 도구. 공개한 것만, 코드가 있는 것만. :id 보다 먼저 와야 "public" 이 id 로 잡히지 않는다
 app.get("/api/tools/public", auth, async (req, res) => {
   const { rows } = await pool.query(
-    `select t.id, t.name, t.bot, t.ver, u.nickname from user_tools t join users u on u.id = t.owner_id
+    `select t.id, t.name, t.bot, t.ver, t.owner_id, u.nickname from user_tools t join users u on u.id = t.owner_id
       where t.public and t.ver > 0 order by t.updated_at desc limit 60`);
-  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, by: r.nickname })) });
+  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, by: r.nickname, mine: r.owner_id === req.user.id })) });
 });
 // 이름 바꾸기·공개 여부. 내 도구만
 app.patch("/api/tools/:id", auth, makerOnly, async (req, res) => {

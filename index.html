@@ -113,7 +113,8 @@
   .field[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;line-height:var(--field-h)}
   .field:focus{box-shadow:0 0 0 2px var(--ink) inset}
   .lbl{font:400 10px var(--font-body);letter-spacing:var(--track-label);color:var(--ink-3);text-transform:uppercase}
-  .pad{padding:var(--sp-2) 22px 32px;display:flex;flex-direction:column;gap:14px;flex:1;overflow:auto}
+  /* min-height:0 이 없으면 사파리가 이 칸을 내용만큼 늘려버려서 스크롤이 죽는다 */
+  .pad{padding:var(--sp-2) 22px 32px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
   .pad>*{flex:none}
   .pad>.spacer{flex:1}
   .mono{font-family:var(--font-body)}
@@ -380,6 +381,7 @@
   /* 켜고 끄는 스위치. 동그라미가 오른쪽이면 켜짐 */
   .slide{--r:40px;position:relative;border-radius:var(--r-card);background:var(--line);touch-action:pan-y;cursor:pointer;transition:background .24s var(--ease)}
   .slide.on{background:var(--ink)}
+  .slide.fixed{cursor:default}
   .slide::before{content:"";position:absolute;left:calc(var(--r) / 2 - 6px);top:50%;width:12px;height:7px;margin-top:-6px;border:solid var(--paper);border-width:0 0 2.2px 2.2px;transform:rotate(-45deg);opacity:0;transition:opacity .22s var(--ease)}
   .slide.on::before{opacity:1}
   .slide>.knob{position:relative;margin:0 var(--r) 0 0!important;transition:transform .28s var(--ease-spring)}
@@ -2287,19 +2289,22 @@ function renderTools(q=""){
 
   const card=t=>{
     const el=document.createElement("div"); el.className="tool";
-    const on=!!toolOn[t.id];
+    const on=t.mine||!!toolOn[t.id];       // 내가 만든 것은 늘 켜져 있다. 끌 이유가 없다
     el.classList.toggle("off",!on);
-    const tag=t.user?`<span class="slot">${esc(t.by||"누군가")} 만듦</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
+    const tag=t.user?`<span class="slot">${t.mine?"내 도구":esc(t.by||"누군가")+" 만듦"}</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
     el.innerHTML=`<div class="nm">${esc(t.name)}${tag}${(amMaker&&!t.user)?`<button class="remix">고쳐 만들기</button>`:""}</div>
       <div class="slide"><div class="roomtool on knob"></div></div>`;
-    // 남의 도구는 코드를 받아 와야 그려진다. 목록에서는 이름만 보이고, 방에 붙이면 진짜가 뜬다
-    if(!t.user) t.render(el.querySelector(".knob"),previewCtx(t));
-    slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
+    const knob=el.querySelector(".knob");
+    // 만든 도구는 코드를 받아 와야 모양이 나온다. 기본 도구는 그릴 함수를 이미 들고 있다
+    if(t.user){ if(t.ver) fetchToolCode(t.id,t.ver).then(code=>{ if(code&&el.isConnected) mountSandbox(knob,code,{state:previewState,save:()=>{}}) }) }
+    else t.render(knob,previewCtx(t));
+    if(t.mine) el.querySelector(".slide").classList.add("on","fixed");
+    else slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
     const rx=el.querySelector(".remix"); if(rx) rx.onclick=()=>newTool("free",{name:t.name,code:"function "+t.render.toString()});
     return el;
   };
   // 켠 것과 아직 안 켠 것을 나눠 둔다. 섞여 있으면 무엇이 쓰이는 중인지 알 수가 없다
-  const on=all.filter(t=>toolOn[t.id]), off=all.filter(t=>!toolOn[t.id]);
+  const on=all.filter(t=>t.mine||toolOn[t.id]), off=all.filter(t=>!(t.mine||toolOn[t.id]));
   const sect=(title,arr)=>{
     if(!arr.length) return;
     const h=document.createElement("div"); h.className="lbl sect"; h.textContent=title; list.appendChild(h);
@@ -3011,7 +3016,7 @@ $("#askGeo").addEventListener("click",async()=>{
       const r=await plug("Geolocation").requestPermissions();
       toast(r.location==="granted"?"위치를 쓸 수 있어요":"껐어요");
     } else {
-      await plug("App").openUrl({url:"app-settings:"});
+      await plug("AppLauncher").openUrl({url:"app-settings:"});
     }
   }catch(e){ toast(String(e&&e.message||e).slice(0,80)) }
   showGeo();
