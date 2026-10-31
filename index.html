@@ -3021,7 +3021,14 @@ $("#askGeo").addEventListener("click",async()=>{
   }catch(e){ toast(String(e&&e.message||e).slice(0,80)) }
   showGeo();
 });
-$("#kbLogBtn").addEventListener("click",()=>{ const el=$("#kbLog"); el.textContent=kbLog.join("\n")||"(아직 없음)"; el.style.display=el.style.display==="none"?"block":"none" });
+$("#kbLogBtn").addEventListener("click",()=>{
+  const el=$("#kbLog");
+  // 도구 화면이 스크롤되는 틀인지 폰에서 직접 재 본다
+  const pad=$("#s-tools .pad"), cs=pad?getComputedStyle(pad):null;
+  const probe=pad?`도구칸 보임 ${pad.clientHeight} / 속 ${pad.scrollHeight} / overflow ${cs.overflowY} / 지금 ${pad.scrollTop}`:"도구칸 없음";
+  el.textContent=probe+"\n\n"+(kbLog.join("\n")||"(키보드 기록 없음)");
+  el.style.display=el.style.display==="none"?"block":"none";
+});
   if(PLATFORM==="ios"){
     /* 2026-10-29: 화면을 줄이지 않는다. 줄이면 배경이 잘리는 선이 생기고, 그 선은
        레이아웃이라 애니메이션이 안 된다. 그래서 틀은 그대로 두고 대화와 입력줄만

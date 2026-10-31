@@ -921,6 +921,12 @@ app.get("/api/room/:bondId", auth, async (req, res) => {
   const { rows } = await pool.query("select tool, data from room_state where bond_id = $1", [bond.id]);
   const tools = {};
   rows.forEach((r) => (tools[r.tool] = r.data));
+  // 만든 도구는 늘 최신 판으로 보여 준다. 붙일 때의 번호를 그대로 쓰면 고쳐도 방은 옛 모습이다
+  const ids = Object.keys(tools).filter((k) => /^u\d+$/.test(k)).map((k) => Number(k.slice(1)));
+  if (ids.length) {
+    const cur = await pool.query("select id, ver, name from user_tools where id = any($1::int[])", [ids]);
+    cur.rows.forEach((t) => { const k = "u" + t.id; if (tools[k] && t.ver) { tools[k].ver = t.ver; tools[k].name = t.name } });
+  }
   res.json({ tools });
 });
 
