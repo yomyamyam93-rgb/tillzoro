@@ -397,7 +397,10 @@
   .seg{display:flex;gap:4px;padding:4px;background:var(--card);border-radius:14px;flex:none}
   .seg button{flex:1;height:38px;border-radius:10px;font-size:14px;color:var(--ink-3);white-space:nowrap;transition:background-color .15s,color .15s}
   .seg button.on{background:var(--ink);color:var(--paper);font-weight:500}
-  .tpane{flex:none;display:flex;flex-direction:column;gap:14px}
+  /* 사파리는 overflow 칸 안의 flex 자식 높이를 안 세는 때가 있다(크롬은 샌다).
+     그래서 도구 화면만 가장 평범한 배치로 둔다: 스크롤 칸은 블록, 그 안은 블록 하나 */
+  #s-tools .pad{display:block}
+  .tpane{display:flex;flex-direction:column;gap:14px}
   .tpane[hidden]{display:none}
   .tempty{color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0}
   .clist{display:flex;flex-direction:column;gap:var(--row-gap)}
