@@ -264,9 +264,13 @@
             height:var(--tool-h);padding:10px 14px;display:none;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
   .roomtool.on{display:flex}
   #roomTool{touch-action:none}
-  .rtkeep{flex:none;margin:0 16px;height:0;border-radius:var(--r-card);background:var(--card);overflow:hidden;padding:0 14px;
-    transition:height .34s cubic-bezier(.4,0,.2,1),margin .34s cubic-bezier(.4,0,.2,1),box-shadow .34s}
-  .rtkeep.on{height:calc(var(--tool-h) * 2 + 8px);margin-bottom:8px;padding:10px 14px;box-shadow:var(--tool-lift)}
+  /* 도구와 펼침은 한 상자다. 펼치면 상자가 아래로 늘어난다 */
+  .rtcard{flex:none;margin:0 16px 8px;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
+    background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden}
+  .rtcard:has(> .roomtool:not(.on)){display:none}
+  .rtcard .roomtool{margin:0;box-shadow:none;background:none}
+  .rtkeep{height:0;overflow:hidden;padding:0 14px;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1)}
+  .rtkeep.on{height:calc(var(--tool-h) * 2);padding:0 14px 10px}
   .rtmore{display:none;align-self:center;width:44px;height:18px;margin:-6px 0 2px;color:var(--ink-3);flex:none}
   .rtmore.on{display:grid;place-items:center}
   .rtmore svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .34s cubic-bezier(.4,0,.2,1)}
@@ -635,8 +639,7 @@
       <button class="sq" id="chatTools" aria-label="도구"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
-    <div class="roomtool" id="roomTool"></div>
-    <div class="rtkeep" id="rtKeep"></div>
+    <div class="rtcard"><div class="roomtool" id="roomTool"></div><div class="rtkeep" id="rtKeep"></div></div>
     <button class="rtmore" id="rtMore" aria-label="펼치기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
     </div>
     <div class="roominvite" id="roomInvite" hidden><div class="codebox" id="riCode">· · · · · ·</div><div class="row2b"><button class="btn" id="riShare">링크 보내기</button><button class="btn ghost" id="riCopy">코드 복사</button></div></div>
@@ -732,7 +735,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1448</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1450</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -863,7 +866,7 @@ async function syncTill(){
   else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
-    id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null,
+    id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null, other:b.other||null,
     bondAt:NOW()-b.days*DAY,
     lastResetAt:NOW()-(30-b.dday)*DAY,
     mySent:b.waiting, unread:b.unread,
