@@ -244,6 +244,9 @@
   #chat{z-index:6;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
   #s-chat,#s-media{z-index:7;box-shadow:-12px 0 32px rgba(0,0,0,.12)}
   #chat{background:var(--paper-2)}
+  /* 머리말과 도구를 한 판에 얹어 대화와 나눈다: 아래만 둥글고 살짝 뜬다 */
+  .ctop{flex:none;display:flex;flex-direction:column;position:relative;z-index:2;background:var(--paper);border-radius:0 0 26px 26px;box-shadow:0 8px 20px -10px rgba(0,0,0,.22);padding-bottom:6px}
+  .ctop .chead{background:transparent}
   .chead{flex:none;display:flex;align-items:center;gap:10px;padding:6px 12px 7px;background:var(--paper-2)}
   .chead .sq{width:40px;height:40px;background:transparent;display:grid;place-items:center;color:var(--ink);flex:none}
   .chead .sq svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -261,17 +264,17 @@
             height:var(--tool-h);padding:10px 14px;display:none;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
   .roomtool.on{display:flex}
   #roomTool{touch-action:pan-y}
+  .rtkeep{flex:none;margin:0 16px;height:0;border-radius:var(--r-card);background:var(--card);overflow:hidden;padding:0 14px;
+    transition:height .34s cubic-bezier(.4,0,.2,1),margin .34s cubic-bezier(.4,0,.2,1),box-shadow .34s}
+  .rtkeep.on{height:calc(var(--tool-h) * 2 + 8px);margin-bottom:8px;padding:10px 14px;box-shadow:var(--tool-lift)}
+  .rtmore{display:none;align-self:center;width:44px;height:18px;margin:-6px 0 2px;color:var(--ink-3);flex:none}
+  .rtmore.on{display:grid;place-items:center}
+  .rtmore svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .34s cubic-bezier(.4,0,.2,1)}
+  .rtmore.up svg{transform:rotate(180deg)}
   .rtdots{display:none;justify-content:center;gap:5px;height:5px;margin:-2px 0 6px;flex:none}
   .rtdots.on{display:flex}
   .rtdots i{width:5px;height:5px;border-radius:50%;background:var(--line);transition:background .2s,width .2s}
   .rtdots i.on{width:12px;border-radius:3px;background:var(--ink-3)}
-  /* 서랍: 기록과 고른 것이 같은 크기로 한 줄에 선다 */
-  .drawer{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-  .drawer::-webkit-scrollbar{display:none}
-  .dcard{flex:none;width:150px;height:calc(var(--tool-h) * 2 + 8px);border-radius:var(--r-card);overflow:hidden;position:relative;background:var(--card);box-shadow:var(--tool-lift)}
-  .dcard img{width:100%;height:100%;object-fit:cover;display:block}
-  .dcard .roomtool{margin:0;height:100%;width:100%;box-shadow:none;background:none}
-  .dcard .x{position:absolute;right:6px;top:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
   .rt-row{display:flex;align-items:center;gap:8px;min-width:0}
   .rt-title{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .rt-title.none{font-weight:400;color:var(--ink-3);cursor:default}
@@ -628,16 +631,19 @@
 
   <!-- 3. Chat -->
   <section class="screen" id="chat">
+    <div class="ctop">
     <div class="chead" id="chead">
       <button class="sq" data-back="till" id="chatBack" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="av" id="cavatar"></div>
       <div class="who"><div class="cname" id="cname">이름<small>KEEP 0 · DAYS 1</small></div></div>
-      <button class="sq" id="chatDrawer" aria-label="서랍"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor" stroke="none"/></svg></button>
       <button class="sq" id="chatTools" aria-label="도구"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button class="sq" id="chatMenu" aria-label="대화방 설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
     <div class="roomtool" id="roomTool"></div>
+    <div class="rtkeep" id="rtKeep"></div>
+    <button class="rtmore" id="rtMore" aria-label="펼치기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
     <div class="rtdots" id="rtDots"></div>
+    </div>
     <div class="roominvite" id="roomInvite" hidden><div class="codebox" id="riCode">· · · · · ·</div><div class="row2b"><button class="btn" id="riShare">링크 보내기</button><button class="btn ghost" id="riCopy">코드 복사</button></div></div>
     <div class="dayswrap"><div class="days" id="days"></div></div>
     <div class="compose" id="compose">
@@ -653,7 +659,6 @@
     <div class="scrim" id="scrim"></div>
 
     <div class="sheet" id="toolSheet"><button class="sheetx" data-close aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="tlist" id="toolSheetList"></div></div>
-    <div class="sheet" id="drawerSheet"><div class="drawer" id="drawerRow"></div><p class="tempty" id="drawerEmpty" hidden>아직 비어 있어요</p></div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button></div></div>
     <input type="file" id="albumFile" accept="image/*,video/*" multiple hidden>
     <input type="file" id="captureFile" accept="image/*,video/*" capture="environment" hidden>
@@ -732,7 +737,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1431</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1438</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1398,6 +1403,7 @@ function sandboxDoc(code){
 <style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
+html.keep,html.keep body{overflow-y:auto} html.keep #box{height:auto;min-height:100%}
 ${rtCss()}</style></head><body><div id="box"></div>
 <script>
 const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -1414,7 +1420,7 @@ const c={get data(){return S.data},get me(){return S.me},get self(){return S.sel
     __send({k:"ask",id,kind:String(kind),opt:opt||{}});
     setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },15000); })};
 let __aid=0; const __asks={};
-function __draw(){ const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return } try{ f(__box,c) }catch(e){ __fail(e) } }
+function __draw(){ document.documentElement.classList.toggle("keep",S.mode==="keep"); const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return } try{ f(__box,c) }catch(e){ __fail(e) } }
 // 검사: 칸 밖으로 나간 것(잘림)과 오류를 모은다. 버튼은 최대 4개를 차례로 눌러 보고 그때마다 다시 잰다
 const __errs=[]; addEventListener("error",e=>__errs.push(String(e.message||e.error)));
 function __label(el){ const t=(el.textContent||"").trim().replace(/\s+/g," ").slice(0,14); return t?"'"+t+"'":el.tagName.toLowerCase() }
@@ -1437,7 +1443,8 @@ addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
 const __down=(x,y)=>{ __sx=x; __sy=y }, __up=(x,y)=>{ if(__sx===null) return; const dx=x-__sx, dy=y-__sy; __sx=null;
-  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) __send({k:"swipe",dir:dx<0?1:-1}) };
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) __send({k:"swipe",dir:dx<0?1:-1});
+  else if(Math.abs(dy)>40&&Math.abs(dy)>Math.abs(dx)*2) __send({k:"vswipe",dir:dy>0?1:-1}) };
 addEventListener("touchstart",e=>__down(e.touches[0].clientX,e.touches[0].clientY),{capture:true,passive:true});
 addEventListener("touchend",e=>__up(e.changedTouches[0].clientX,e.changedTouches[0].clientY),{capture:true,passive:true});
 addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") __down(e.clientX,e.clientY) },true);
@@ -1455,6 +1462,7 @@ window.addEventListener("message",e=>{
   else if(m.k==="ask") toolAsk(m,e.source);
   else if(m.k==="checkd"&&h.checkd) h.checkd(m);
   else if(m.k==="swipe"&&h===roomBox?.h) swipeTool(m.dir);
+  else if(m.k==="vswipe"&&h===roomBox?.h) setKeep(m.dir>0);
 });
 /* 봇이 만든 코드를 붙이기 전에 검사한다. 위 칸과 같은 크기의 보이지 않는 칸에 방 사람들과 함께 그려 보고 결과를 받는다 */
 function checkTool(code){
@@ -1542,7 +1550,7 @@ function toolCtx(t){
   };
 }
 // 대화방 위 칸에는 한 번에 도구 하나
-// 방에 붙은 만든 도구가 받는 상태. 방 위 칸(render)과 서랍(keep)이 같은 것을 쓴다
+// 방에 붙은 만든 도구가 받는 상태. 방 위 칸(render)과 펼침(keep)이 같은 것을 쓴다
 const roomToolState=(id,mode="")=>({data:roomData[id]||{},me:myId(),self:!!cur.self,members:(cur.group?cur.members:[]).map(m=>({id:String(m.id),name:m.name})),mode});
 let roomBox=null;   // 위 칸에 떠 있는 만든 도구 {key, h}. 같은 버전이면 칸을 다시 만들지 않고 데이터만 보낸다(입력 중인 것이 안 날아가게)
 /* 방에는 도구를 여러 개 켜 둘 수 있다(방 사람 모두 같다). 위 칸에는 그중 하나가 보이고, 옆으로 밀면 다음 것으로 넘어간다.
@@ -1551,13 +1559,31 @@ const toolView={};   // 방 → 내가 보고 있는 도구
 const onTools=()=>cur?Object.keys(roomData).filter(k=>roomData[k]?.on&&(isUserTool(k)||TOOLS.some(t=>t.id===k&&t.slot==="top")))
   .sort((a,b)=>(isUserTool(a)-isUserTool(b))||(Number(a.slice(1))-Number(b.slice(1)))||a.localeCompare(b)):[];
 const viewTool=()=>{ const ids=onTools(), v=cur&&toolView[cur.id]; return ids.includes(v)?v:ids[0] };
+let keepOpen=false, keepBox=null;   // 펼침은 나만의 것. 다른 도구로 넘기면 접힌다
+function setKeep(on){ if(on&&!roomBox?.h?.hasKeep) return; keepOpen=on; syncKeep() }
+function syncKeep(){
+  const id=viewTool(), h=roomBox?.h, has=!!(id&&isUserTool(id)&&h&&h.hasKeep);
+  const btn=$("#rtMore"), panel=$("#rtKeep");
+  if(!has) keepOpen=false;
+  btn.classList.toggle("on",has); btn.classList.toggle("up",keepOpen);
+  if(keepOpen){
+    if(!keepBox||keepBox.key!==roomBox.key){ const k=roomBox.key;
+      keepBox={key:k,h:mountSandbox(panel,codeCache.get(k),{state:()=>roomToolState(id,"keep"),save:()=>{}})} }
+    else keepBox.h.push();
+    panel.classList.add("on");
+  } else if(panel.classList.contains("on")||keepBox){
+    panel.classList.remove("on"); const kb=keepBox; keepBox=null;
+    setTimeout(()=>{ if(!keepBox&&kb&&panel.contains(kb.h.frame)) panel.innerHTML="" },360);
+  }
+}
+$("#rtMore").addEventListener("click",()=>setKeep(!keepOpen));
 let swiping=false;
 async function swipeTool(dir){
   const ids=onTools(); if(ids.length<2||swiping) return; swiping=true;
   const box=$("#roomTool"), bid=cur.id;
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{});
   await box.animate([{transform:"none",opacity:1},{transform:`translateX(${-dir*60}%)`,opacity:0}],{duration:220,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
-  if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; renderRoomTool() }
+  if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; keepOpen=false; renderRoomTool() }
   const a=box.animate([{transform:`translateX(${dir*60}%)`,opacity:0},{transform:"none",opacity:1}],{duration:380,easing:"cubic-bezier(0,0,.2,1)"});
   box.getAnimations().forEach(x=>{ if(x!==a) x.cancel() });
   await a.finished.catch(()=>{});
@@ -1566,12 +1592,14 @@ async function swipeTool(dir){
 // 기본 도구(앱이 직접 그림)는 칸 위의 손가락을 앱이 받는다
 { let sx=null,sy=0; const tb=$("#roomTool");
   const down=(x,y)=>{ sx=x; sy=y }, up=(x,y)=>{ if(sx===null) return; const dx=x-sx, dy=y-sy; sx=null;
-    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) swipeTool(dx<0?1:-1) };
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) swipeTool(dx<0?1:-1);
+    else if(Math.abs(dy)>40&&Math.abs(dy)>Math.abs(dx)*2) setKeep(dy>0) };
   tb.addEventListener("touchstart",e=>down(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
   tb.addEventListener("touchend",e=>up(e.changedTouches[0].clientX,e.changedTouches[0].clientY),{passive:true});
   tb.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") down(e.clientX,e.clientY) });
   tb.addEventListener("pointerup",e=>{ if(e.pointerType==="mouse") up(e.clientX,e.clientY) }); }
-function renderRoomTool(){
+function renderRoomTool(){ drawRoomTool(); syncKeep() }
+function drawRoomTool(){
   const box=$("#roomTool"), ids=onTools();
   const id=viewTool();
   const dots=$("#rtDots"); dots.classList.toggle("on",ids.length>1);
@@ -1588,7 +1616,8 @@ function renderRoomTool(){
     state:()=>roomToolState(id),
     save:(data,text)=>{ if(!cur||cur.id!==bid) return;
       const old=roomData[id]||{}; roomData[id]={...data,on:old.on,ver:old.ver,name:old.name,log:old.log};
-      if(text){ addLog(roomData[id],text); renderMsgs() } saveTool(id); h.push() },
+      if(text){ addLog(roomData[id],text); renderMsgs() } saveTool(id); h.push(); if(keepBox) keepBox.h.push() },
+    onReady:()=>syncKeep(),
   });
   roomBox={key,h};
 }
@@ -1771,7 +1800,6 @@ function msgMenu(m,bub){
     if(live) items.push(["reply","답장",()=>startCompose("reply",m)]);
     if(text) items.push(["copy","복사",()=>copyText(m.text)]);
     if(!text&&live) items.push(["save","저장",()=>saveMedia(m)]);
-    if(!text&&live) items.push(["keep","서랍에 넣기",()=>drawerAdd(m)]);
     if(text&&mine&&live) items.push(["edit","수정",()=>startCompose("edit",m)]);
     if(!mine&&live&&!cur.self) items.push(["report","신고",()=>reportMsg(m)]);
     // 아직 보내는 중인 내 글은 나눌 것이 없다. 보내기를 멈추고 치운다
@@ -2279,7 +2307,7 @@ scrim.addEventListener("click",closeSheets);
 $("#toolSheet [data-close]").addEventListener("click",closeSheets);
 
 /* 대화방 설정 — 글자 크기와 글꼴 */
-function closeSheets(){["#sheet","#toolSheet","#drawerSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
+function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule","s-maker"];   // 만들기 화면은 아래 입력칸이 있어 탭을 숨긴다
 const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
@@ -2342,52 +2370,6 @@ $$("#tabs button").forEach(b=>b.addEventListener("click",()=>goTab(b.dataset.tab
 
 /* ＋ 메뉴에서 설치한 도구를 이 방으로 불러온다 */
 /* 대화방 머리말의 도구 버튼. 설치한 도구를 이 방에 띄우거나 내린다. 설치한 게 없으면 도구 탭으로 안내한다 */
-/* 서랍. 방에 속해 있어서 방이 Zero 로 끝나면 같이 사라진다.
-   기록은 도구가 자기 데이터를 다시 그린 것(keep 함수)이고, 뒤에 고른 사진·영상이 선다.
-   사진은 12칸까지. 넣으려면 하나를 빼야 한다 — 쌓는 게 아니라 고르는 것이다 */
-const DRAWER_MAX=12;
-const drawerIds=()=>((roomData.__drawer||{}).ids||[]).map(String);
-async function drawerSave(ids){
-  roomData.__drawer={ids};
-  try{ await api(`/api/room/${cur.id}/__drawer`,{method:"POST",body:{data:{ids}}}) }
-  catch(e){ toast(e.message) }
-}
-function openDrawer(){
-  const row=$("#drawerRow"); row.innerHTML="";
-  // 1) 도구 기록 — 서랍 그림을 가진 도구만 남는다
-  Object.keys(roomData).filter(k=>isUserTool(k)&&roomData[k]?.ver).forEach(k=>{
-    const card=document.createElement("div"); card.className="dcard";
-    const box=document.createElement("div"); box.className="roomtool user on"; card.appendChild(box);
-    row.appendChild(card);
-    fetchToolCode(k,roomData[k].ver).then(code=>{ if(!code||!card.isConnected) return;
-      mountSandbox(box,code,{
-        state:()=>roomToolState(k,"keep"),
-        save:()=>{}, onReady:h=>{ if(!h.hasKeep) card.remove(); emptyDrawer() } });
-    });
-  });
-  // 2) 고른 사진·영상
-  const ids=drawerIds();
-  ids.forEach(id=>{
-    const m=(cur.msgs||[]).find(x=>String(x.id)===id); if(!m||!m.media) return;
-    const card=document.createElement("div"); card.className="dcard";
-    const img=document.createElement("img"); img.loading="lazy"; img.src=mediaURL(m.media,true); card.appendChild(img);
-    const x=document.createElement("button"); x.className="x"; x.textContent="×";
-    x.onclick=()=>{ card.remove(); drawerSave(drawerIds().filter(v=>v!==id)); emptyDrawer() };
-    card.appendChild(x); row.appendChild(card);
-  });
-  emptyDrawer();
-  $("#drawerSheet").classList.add("on"); scrim.classList.add("on");
-}
-const emptyDrawer=()=>{ $("#drawerEmpty").hidden=!!$("#drawerRow").children.length };
-// 길게 누르기 메뉴에서 넣는다
-async function drawerAdd(m){
-  const ids=drawerIds(); const id=String(m.id);
-  if(ids.includes(id)){ toast("이미 서랍에 있어요"); return }
-  if(ids.length>=DRAWER_MAX){ toast(`서랍은 ${DRAWER_MAX}칸까지예요. 하나를 빼주세요`); openDrawer(); return }
-  await drawerSave(ids.concat(id)); toast("서랍에 넣었어요");
-}
-$("#chatDrawer").addEventListener("click",openDrawer);
-
 function openToolSheet(){
   const l=$("#toolSheetList"); l.innerHTML="";
   const made=myTools.filter(m=>m.ver).map(m=>({id:m.id,name:m.name,slot:"top",user:true,ver:m.ver}));

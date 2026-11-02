@@ -974,7 +974,7 @@ const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)(
 const AI_MODEL = "claude-opus-5-5";
 const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
 const AI_DAILY_USD = Number(process.env.AI_DAILY_USD || 3), AI_USER_CALLS = Number(process.env.AI_USER_CALLS || 40);
-const BOTS = require("./bot-playbooks");   // 봇별 교본(성격·원리·자주 오는 부탁·흔한 실수·서랍)
+const BOTS = require("./bot-playbooks");   // 봇별 교본(성격·원리·자주 오는 부탁·흔한 실수·펼침)
 const MAKER_RULES = `너는 메신저 앱 Till Zero 안에서 사용자와 대화하며 "도구"를 만드는 봇이다. 사용자는 코드를 모른다. 한국어로, 짧고 쉽게 말한다.
 
 [도구가 도는 곳]
@@ -1020,12 +1020,11 @@ function render(box, c) { ... }
 - 지금 도구 코드가 함께 오면 그걸 고치는 부탁이다. 말한 것만 바꾸고 나머지(데이터 칸 이름 포함)는 그대로 둔다 — 방에 쌓인 데이터가 이어져야 한다.
 - reply 는 한 문장: 무엇을 만들었고/바꿨고 어떻게 쓰는지 핵심만. 코드 이야기는 하지 않는다. options 는 빈 목록.
 - 도구를 바꿨으면 changed=true, code 에 render 함수 전체(keep 이 있으면 함께), note 에 무엇을 바꿨는지 한 줄(예: "실패하면 한 단계 내려감"). 못 만드는 부탁이면 changed=false, code·note 는 빈 글, reply 에 짧게 이유.
-- 서랍: keep(box, c) 함수를 두면 대화방 서랍에 이 도구의 기록이 남는다(없으면 안 남는다).
-  render 가 "지금"을 보여준다면 keep 은 "지금까지"를 한 덩어리로 보여준다 —
-  승률, 평균, 합계, 간단한 그래프처럼. 도구 두 개 높이의 작은 칸이니 한눈에 읽히게.
-  그러려면 통계는 목록으로 쌓지 말고 수로 세어 둔다: d.games/d.wins 는 되고
-  d.history=[...] 는 안 된다. 그래프가 필요하면 날짜별 한 점만 남기고 오래된 것은 묶는다.
-  서랍에 남길 만한 게 있으면 묻지 말고 알아서 만든다(교본의 [서랍] 참고). 없으면 만들지 않는다.
+- 펼침: keep(box, c) 함수를 두면 도구 아래에 꺾인 화살표가 생기고, 누르거나 도구를 아래로 쓸면 keep 이 그린 칸이 펼쳐진다(없으면 화살표도 없다).
+  칸은 도구 두 개 높이이고, 내용이 길면 안에서 스크롤된다. 용도는 도구에 맞게 정한다 —
+  공지·메모처럼 글이 있는 도구는 전체 내용, 게임·뽑기는 전적·현황(승률, 사람별 횟수), 정산은 누가 얼마 냈나, 습관은 연속 일수·달력처럼.
+  통계는 목록으로 쌓지 말고 수로 세어 둔다: d.games/d.wins 는 되고 d.history=[...] 는 안 된다(최근 몇 개만은 괜찮다).
+  펼칠 만한 게 있으면 묻지 말고 알아서 만든다(교본의 [펼침] 참고). 없으면 만들지 않는다.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
     await c.ask("location")        -> {lat, lon, acc}   위치 한 번. 거절되면 예외
     await c.ask("share", {text})   -> 공유 시트
