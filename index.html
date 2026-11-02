@@ -267,7 +267,7 @@
     background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden}
   .rtcard:has(> .roomtool:not(.on)){display:none}
   .rtcard .roomtool{margin:0;box-shadow:none;background:none;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .2s}
-  .rtcard.open .roomtool{height:0;padding-top:0;padding-bottom:0;opacity:0}
+  .rtcard.open .roomtool,.rtcard.open .roomtool.user{height:0;padding-top:0;padding-bottom:0;opacity:0}
   .rtkeep{height:0;overflow:hidden;padding:0 14px;opacity:0;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .25s .1s}
   .rtkeep.on{height:calc(var(--tool-h) * 3);padding:10px 14px;opacity:1}
   .rtmore{display:none;align-self:center;width:44px;height:18px;margin:-6px 0 2px;color:var(--ink-3);flex:none}
@@ -351,7 +351,7 @@
   .phone.kb .compose{padding-bottom:6px}
   .phone{--kb:0px}
   /* 키보드를 따라 밀어 올리는 칸들: 대화방(#chat.kbmove)과 같은 곡선 */
-  .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .36s cubic-bezier(.4,0,.2,1)}
+  .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .3s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
   #s-maker,#s-maker>.bar{background:var(--paper)}
   #s-maker .mkchat{background:var(--paper-2)}
@@ -376,7 +376,8 @@
   /* 2026-10-29 폰 기록으로 고른 값. 앞이 빠른 곡선(.2,.8,.2,1 / .38,.7,.125,1)은
      시간의 20%에 거리의 90%를 가버려서, 눈에는 뚝 갔다가 기어가는 것으로 보인다.
      이 곡선은 천천히 떠나 천천히 멈춘다: 시간 35%에 거리 50%, 51%에 78% */
-  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .36s cubic-bezier(.4,0,.2,1)}
+  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead{transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  #chat.kbmove .roomtool{transition:transform .3s cubic-bezier(.4,0,.2,1),height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .2s}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
   .compose .icon[hidden]{display:none}
@@ -734,7 +735,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1504</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1537</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1594,12 +1595,12 @@ $("#rtMore").addEventListener("click",()=>setKeep(!keepOpen));
 let swiping=false;
 async function swipeTool(dir){
   const ids=onTools(); if(ids.length<2||swiping) return; swiping=true;
-  const box=$("#roomTool"), bid=cur.id;
+  const box=$("#roomTool").parentNode, bid=cur.id;   // 글씨만이 아니라 상자째
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{});
   await box.animate([{transform:"none",opacity:1},{transform:`translateX(${-dir*60}%)`,opacity:0}],{duration:220,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
   if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; keepOpen=false; renderRoomTool() }
   const a=box.animate([{transform:`translateX(${dir*60}%)`,opacity:0},{transform:"none",opacity:1}],{duration:380,easing:"cubic-bezier(0,0,.2,1)"});
-  box.getAnimations().forEach(x=>{ if(x!==a) x.cancel() });
+  box.getAnimations().forEach(x=>{ if(x!==a&&!(x instanceof CSSTransition)) x.cancel() });
   await a.finished.catch(()=>{});
   swiping=false;
 }
