@@ -264,6 +264,7 @@
   #roomTool{touch-action:none}
   /* 도구와 펼침은 한 상자다. 펼치면 상자가 아래로 늘어난다 */
   .dayswrap{position:relative}
+  #chat.self [data-tag]::after{content:attr(data-tag);display:block;margin-top:3px;font-size:11px;font-weight:400;opacity:.55}
   .rtcard{position:absolute;top:4px;left:16px;right:16px;z-index:2;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
     background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden}
   .rtcard:has(> .roomtool:not(.on)){display:none}
@@ -317,15 +318,7 @@
   .msg .txts>div+div{margin-top:3px}
   .msg.failed{outline:1px solid var(--zero);cursor:pointer}
   .msg.failed .stamp{color:var(--zero);opacity:1;font-weight:500}
-  .botpick{position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);z-index:6;max-height:min(296px,46vh);overflow-y:auto;overscroll-behavior:contain;
-    background:var(--card);border-radius:var(--r-card);box-shadow:0 8px 28px rgba(0,0,0,.16);padding:6px 0;animation:pickin .16s ease both}
-  .botpick[hidden]{display:none}
   @keyframes pickin{from{opacity:0;transform:translateY(6px)}}
-  .botpick button{display:flex;align-items:center;gap:12px;width:100%;height:46px;padding:0 16px;text-align:left;color:var(--ink)}
-  .botpick button:active{background:var(--paper-2)}
-  .botpick .bface{width:32px;height:32px}
-  .botpick b{font:600 15px var(--font-body);flex:none}
-  .botpick .d{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .bface{flex:none;width:28px;height:28px;border-radius:50%;background:var(--card) center/cover no-repeat}
   .botmsg{flex:none;align-self:flex-start;display:flex;gap:8px;max-width:86%;align-items:flex-start}
   .botmsg .bface{width:34px;height:34px}
@@ -642,7 +635,6 @@
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
       <div class="cbar" id="cbar" hidden><div class="cbt"><b id="cbarK"></b><span id="cbarT"></span></div><button class="icon" id="cbarX" aria-label="취소"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-      <div class="botpick" id="botPick" hidden></div>
       <div class="bar2">
         <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
@@ -682,6 +674,7 @@
         <div class="lbl">People</div>
         <div class="list" id="mMembers"></div>
       </div>
+      <div class="list" id="sChatOrg" style="margin-top:10px"><div class="item" style="cursor:default;border-bottom:0"><div class="t">이 방도 정리</div><div class="toggle" id="mOrganize"></div></div></div>
       <div class="lbl" style="margin-top:10px">Export</div>
       <div class="list">
         <div class="item" id="mMedia"><div class="t">사진·동영상<div class="sub" id="mMediaSub"></div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
@@ -711,7 +704,6 @@
         <div class="item"><div class="t">알림 받기<div class="sub" id="pushSub"></div></div><div class="toggle" id="pushToggle"></div></div>
         <div class="item"><div class="t">메시지</div><div class="toggle on" data-k="n_msg"></div></div>
         <div class="item"><div class="t">들어온 사람</div><div class="toggle on" data-k="n_req"></div></div>
-        <div class="item"><div class="t">D-DAY 7일 · 1일</div><div class="toggle on" data-k="n_dday"></div></div>
         <div class="item"><div class="t">방해 금지<div class="sub">23:00 – 08:00</div></div><div class="toggle" data-k="n_dnd"></div></div>
       </div>
       <div class="lbl sect">Data & Safety</div>
@@ -730,7 +722,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1657</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1720</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -790,7 +782,6 @@
   <div class="menu pop" id="msgMenu"></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
-      <button id="tabTools" data-tab="s-tools" aria-label="Tools"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button id="tabSettings" data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
   </div>
   <div class="toast" id="toast"></div>
@@ -842,16 +833,14 @@ function requireLogin(){
 }
 
 let me = null;
-let people = [];
+let people = [], todayN = store.get("today",0);   // todayN: 오늘 나챗방에 던진 것(받아 적은 항목) 수
 let prefs = store.get("prefs",{n_msg:true,n_req:true,n_dday:true,n_dnd:false});
 
 function uid(){return Math.random().toString(36).slice(2,10)}
-function dday(p){return Math.max(0,30-Math.floor((NOW()-p.lastResetAt)/DAY))}
 function daysOf(p){return Math.max(1,Math.floor((NOW()-p.bondAt)/DAY))}
-function tier(c){return c>=15?"calm":c>=8?"dim":c>=4?"warn":"zero"}
 function savePeople(){return true}   // 기록은 서버가 갖는다
 
-/* 서버의 Bond를 화면이 쓰던 모양으로 옮긴다. dday·daysOf 계산이 그대로 맞도록 시각을 거꾸로 만든다. */
+/* 서버의 Bond를 화면이 쓰던 모양으로 옮긴다. daysOf 계산이 그대로 맞도록 시각을 거꾸로 만든다. */
 async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
@@ -861,10 +850,9 @@ async function syncTill(){
   else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
   people=d.bonds.map(b=>({
-    id:b.id, self:!!b.self, name:b.name, keep:b.keep, photo:b.photo||null, other:b.other||null,
+    id:b.id, self:!!b.self, name:b.name, photo:b.photo||null, other:b.other||null,
     bondAt:NOW()-b.days*DAY,
-    lastResetAt:NOW()-(30-b.dday)*DAY,
-    mySent:b.waiting, unread:b.unread,
+    unread:b.unread, unreadN:b.unreadN||0,
     group:!!b.group, members:b.members||[], history:!!b.history, named:!!b.named, lastFrom:b.lastFrom||"",
     created:b.created?new Date(b.created).getTime():0,
     msgs:b.lastMessage?[{id:"last",who:"you",type:"text",text:b.lastMessage,ts:new Date(b.lastAt).getTime(),ok:true}]:[]
@@ -873,7 +861,8 @@ async function syncTill(){
   if(prev&&chatOpen){ const n=people.find(p=>p.id===prev.id); if(n){ n.msgs=prev.msgs; cur=n } else { cur=null; back("till") } }
   else if(!chatOpen) cur=null;
   // 다음에 열 때 곧바로 보여주려고 목록을 기억해둔다.
-  // bondAt·lastResetAt은 절대 시각이라 나중에 다시 계산해도 값이 맞는다.
+  // bondAt 은 절대 시각이라 나중에 다시 계산해도 값이 맞는다.
+  todayN=d.today||0; store.set("today",todayN);
   store.set("bonds", people.map(p=>({...p, msgs:p.msgs.slice(-1)})));
   renderTill();
 }
@@ -898,6 +887,7 @@ function connectWS(){
       appendBubble(fromServer(d,false));
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
+    if(d.type==="items"){ (d.tools||[]).forEach(k=>loadItems(k)); loadTags(); return }
     if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot}:null; renderMsgs() } return }
     if(d.type==="report"){ if($("#s-admin").classList.contains("on")) renderAdmin(); else api("/api/admin/reports").then(x=>{ $("#adminVal").textContent=x.reports.filter(r=>!r.resolved).length||"" }).catch(()=>{}) }
     if(d.type==="edited"){ patchMsg(d.bondId,d.id,x=>{ x.text=d.body }) }
@@ -990,7 +980,7 @@ applyTheme();
   if(auth){
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
-    tryUrlCode(); connectWS(); loadToolStates(); syncPush();
+    tryUrlCode(); connectWS(); loadToolStates(); loadMyTools(); syncPush();
     if(linkAfterSplash||store.get("needPhone",0)) askPhoneLink(true);
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
@@ -1060,7 +1050,7 @@ async function verifyCode(){
       }
       const d=await api("/api/phone/link",{method:"POST",body:{ticket}});
       me.phone=d.phone; store.del("needPhone"); setPhoneMode("signin"); back("till"); toast("번호를 연결했어요");
-      syncTill().catch(()=>{}); connectWS(); loadToolStates(); syncPush();
+      syncTill().catch(()=>{}); connectWS(); loadToolStates(); loadMyTools(); syncPush();
       return;
     }
     if(r.existing){ await enter(await api("/api/phone/login",{method:"POST",body:{ticket}})); return }
@@ -1208,15 +1198,15 @@ async function enter(d){
 function renderTill(){
   if(!me) return;              // 로그인 전에는 그릴 것이 없다
   const rows=$("#rows"); rows.innerHTML="";
-  // Till 숫자는 방 수. 아직 아무도 안 들어온 방은 세지 않고 목록 맨 끝에 둔다
-  const live=people.filter(p=>!p.self && dday(p)>0 && (!p.group||p.members.length>=2));
+  // 큰 숫자는 "남은 것" = 아직 안 읽은 메시지 수. 0 이 되면 다 본 것(Till Zero). 아직 아무도 안 들어온 방은 목록 맨 끝에 둔다
+  const live=people.filter(p=>!p.self && (!p.group||p.members.length>=2));
   const lone=people.filter(p=>p.group && p.members.length<2);
-  $("#total").textContent=live.length; $("#tabCount").textContent=live.length; fitHero();
+  const left=live.reduce((a,p)=>a+(p.unreadN||0),0);
+  $("#total").textContent=left; $("#tabCount").textContent=left; fitHero();
   const lastTs=p=>p.msgs.length?p.msgs[p.msgs.length-1].ts:p.bondAt;
-  live.sort((a,b)=>dday(b)-dday(a)||lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
-  const myKeep=me.dob?Math.floor((NOW()-new Date(me.dob).getTime())/DAY):0;
+  live.sort((a,b)=>lastTs(b)-lastTs(a)||a.name.localeCompare(b.name,"ko"));
   const meRow=document.createElement("div"); meRow.className="row me";
-  meRow.innerHTML=`<div class="count"><span class="n">0</span><span class="k">d-day</span><span class="k2">${myKeep}</span><span class="k">keep</span></div>
+  meRow.innerHTML=`<div class="count"><span class="n">${todayN}</span><span class="k">today</span></div>
     <div class="card ${me.photo?"":"text"}"><div class="photo" style="${me.photo?`background-image:url(${me.photo})`:""}"><span class="name">${esc(me.name)}</span></div>
     <div class="last"><span class="txt dim">${selfLast()}</span><span class="t">ME</span></div></div>`;
   const selfBond=people.find(p=>p.self);
@@ -1227,10 +1217,10 @@ function renderTill(){
     const others=p.group?p.members.filter(m=>String(m.id)!==myId()):[];
     const photo=many?`<div class="tiles">${others.slice(0,4).map(m=>`<i style="${m.photo?`background-image:url(${m.photo})`:""}">${m.photo?"":esc((m.name||"?").slice(0,1))}</i>`).join("")}</div>`:"";
     const pre=last?(many&&p.lastFrom?esc(p.lastFrom)+": ":"")+preview(last):"";
-    const r=document.createElement("div"); r.className="row"; r.dataset.tier=tier(dday(p));
-    r.innerHTML=`<div class="count"><span class="n">${dday(p)}</span><span class="k">d-day</span><span class="k2">${p.keep}</span><span class="k">keep</span></div>
+    const r=document.createElement("div"); r.className="row";
+    r.innerHTML=`<div class="count"><span class="n">${p.unreadN||0}</span><span class="k">new</span></div>
       <div class="card ${p.photo||many?"":"text"}"><div class="photo" style="${p.photo?`background-image:url(${p.photo})`:""}">${photo}<span class="name">${esc(p.name)}</span></div>
-      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${pre}</span>${p.mySent?'<span class="wait">답 기다리는 중</span>':""}<span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
+      <div class="last">${p.unread?'<span class="dot"></span>':""}<span class="txt">${pre}</span><span class="t">${last?fmtD(last.ts):""}</span></div></div>`;
     r.addEventListener("click",()=>openChat(p.id)); rows.appendChild(r);
   });
   if(live.length) rows.appendChild(addPicker("add-slim"));
@@ -1320,11 +1310,18 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 /* ---------- Chat ---------- */
 let cur=null;
 // 머리말: 이름, 그 아래 작은 줄. 세 명 이상이면 인원도
-function headSub(p){ if(p.self) return "나와의 대화"; const n=p.group?p.members.length:2; return `${n>2?n+"명 · ":""}KEEP ${p.keep} · DAYS ${daysOf(p)}` }
+function headSub(p){ if(p.self) return "나와의 대화"; const n=p.group?p.members.length:2; return `${n>2?n+"명 · ":""}DAYS ${daysOf(p)}` }
 function headPhoto(p){ if(p.photo) return p.photo; const o=p.group&&p.members.find(m=>String(m.id)!==myId()&&m.photo); return o?o.photo:null }
 function drawHead(p){
   $("#cname").innerHTML=`${esc(p.name)}<small>${headSub(p)}</small>`;
   const ph=headPhoto(p); $("#cavatar").style.backgroundImage=ph?`url(${ph})`:"none";
+}
+let selfReady=false, selfTags={};
+async function loadTags(){ if(!cur||!cur.self) return; try{ selfTags=(await api("/api/self/tags")).tags||{} }catch(e){ return } applyTags() }
+function applyTags(){
+  if(!cur||!cur.self) return;
+  $$("#days [data-mid]").forEach(el=>{ const t=selfTags[el.dataset.mid]; if(t) el.dataset.tag=t; else delete el.dataset.tag });
+  $$("#days .msg[data-id]").forEach(el=>{ if(el.querySelector("[data-mid]")) return; const t=selfTags[el.dataset.id]; if(t) el.dataset.tag=t; else delete el.dataset.tag });
 }
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
@@ -1334,6 +1331,8 @@ async function openChat(id){
   drawHead(cur); showRoomInvite();
   roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   nodes.clear(); $("#days").replaceChildren(); pinned=true;
+  $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
+  if(cur.self){ loadTags(); if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   const dv=$("#days"); dv.style.visibility="hidden";
   renderMsgs(); go("chat");
   const show=()=>{ if(dv.style.visibility!=="hidden") return; dv.scrollTop=dv.scrollHeight; dv.style.visibility="" };
@@ -1347,13 +1346,11 @@ async function openChat(id){
   try{
     const d=await api("/api/messages/"+id);
     if(!cur||cur.id!==id) return;
-    cur.keep=d.bond.keep;
     if(d.bond.group){ cur.members=d.bond.members||cur.members; cur.history=!!d.bond.history; cur.name=d.bond.name; cur.named=!!d.bond.named }
     // 내 화면에서 지운 것은 다시 안 보이고, 못 보낸 것은 맨 아래에 남아 있다
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
     cur.msgs=d.messages.map(m=>fromServer(m,m.mine))
       .filter(m=>!hidden.has(String(m.id))).concat(failed.filter(x=>!live.includes(x)),live);
-    if(!cur.self){ cur.lastResetAt=NOW()-(30-d.bond.dday)*DAY; drawHead(cur) }
     showRoomInvite(); renderMsgs(); saveMsgs();
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
@@ -1398,7 +1395,7 @@ function sandboxDoc(code){
   const vars=SANDBOX_VARS.map(v=>`${v}:${cs.getPropertyValue(v).trim()}`).join(";");
   const close="</"+"script>", safe=String(code||"").replace(/<\/script/gi,"<\\/script");
   return `<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src data: blob:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src data: blob: ${API}; media-src ${API}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap">
 <style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
@@ -1415,7 +1412,7 @@ ${close}<script>${safe}
 ${close}<script>
 let S={data:{},me:"",self:false,members:[]}; const __ui={}; const __box=document.getElementById("box");
 const __r=typeof render==="function"?render:null; const __k=typeof keep==="function"?keep:null;
-const c={get data(){return S.data},get me(){return S.me},get self(){return S.self},get members(){return S.members},ui:__ui,
+const c={get data(){return S.data},get items(){return S.items||[]},get me(){return S.me},get self(){return S.self},get members(){return S.members},ui:__ui,
   redraw:()=>__draw(), save:t=>{ __send({k:"save",data:JSON.parse(JSON.stringify(S.data)),text:t?String(t):""}); __draw() }, toast:t=>__send({k:"toast",text:String(t)}),
   ask:(kind,opt)=>new Promise((ok,no)=>{ const id=++__aid; __asks[id]={ok,no};
     __send({k:"ask",id,kind:String(kind),opt:opt||{}});
@@ -1448,7 +1445,7 @@ async function __check(){ const found=new Set(), add=a=>a.forEach(x=>found.add(x
   __send({k:"checkd",issues:[...found].slice(0,6),errors:[...new Set(__errs)].slice(0,3).map(x=>"오류: "+x)}) }
 addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
   if(m.k==="check"){ m.keep?__checkKeep():__check(); return }
-  if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],mode:m.mode||""}; __draw() }
+  if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],items:m.items||[],mode:m.mode||""}; __draw() }
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
 const __down=(x,y)=>{ __sx=x; __sy=y }, __up=(x,y)=>{ if(__sx===null) return; const dx=x-__sx, dy=y-__sy; __sx=null;
@@ -1565,7 +1562,18 @@ function toolCtx(t){
 // 도구가 보는 방 사람들. 1:1 방도 두 사람을 다 준다(없으면 도구가 0명으로 본다)
 const roomMembers=()=>cur.group?cur.members.map(m=>({id:String(m.id),name:m.name}))
   :cur.other?[{id:myId(),name:auth?.me?.nickname||"나"},{id:String(cur.other),name:cur.name}]:[];
-const roomToolState=(id,mode="")=>({data:roomData[id]||{},me:myId(),self:!!cur.self,members:roomMembers(),mode});
+// 나챗방의 내 도구는 받아 적은 항목(c.items)을 함께 받는다
+const toolItems={};   // "u5" → 항목들
+async function loadItems(id){
+  if(!cur||!cur.self||!isUserTool(id)) return;
+  const r=await api(`/api/tools/${id}/items`).catch(()=>null); if(!r) return;
+  toolItems[id]=r.items.map(it=>({id:it.id,kind:it.kind,text:it.text,at:new Date(it.at).getTime(),room:it.room,data:it.data||{},
+    src:it.media?mediaURL(it.media,true):"",full:it.media?mediaURL(it.media):""}));
+  if(roomBox&&viewTool()===id) roomBox.h.push();
+  if(keepBox&&viewTool()===id) keepBox.h.push();
+}
+const roomToolState=(id,mode="")=>{ if(cur&&cur.self&&isUserTool(id)&&!toolItems[id]) loadItems(id);
+  return {data:roomData[id]||{},me:myId(),self:!!cur.self,members:roomMembers(),items:toolItems[id]||[],mode} };
 let roomBox=null;   // 위 칸에 떠 있는 만든 도구 {key, h}. 같은 버전이면 칸을 다시 만들지 않고 데이터만 보낸다(입력 중인 것이 안 날아가게)
 /* 방에는 도구를 여러 개 켜 둘 수 있다(방 사람 모두 같다). 위 칸에는 그중 하나가 보이고, 옆으로 밀면 다음 것으로 넘어간다.
    무엇을 보고 있는지는 나만의 것이다(남의 화면은 그대로) */
@@ -1716,6 +1724,7 @@ function renderMsgs(){
   nodes.clear(); keep.forEach((v,k)=>nodes.set(k,v));
   const kids=days.children;
   if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
+  applyTags();
   days.scrollTop=pinned?days.scrollHeight:top;
   // 묶인 말풍선에 한 줄이 더해진 거면 그 줄만, 아니면 말풍선 전체가 나타난다
   fresh.forEach(id=>{
@@ -2034,7 +2043,7 @@ async function send(el,bondId){
   try{
     const r=await api("/api/messages",{method:"POST",body:{bondId,body:el.text,replyTo:el.replyTo||undefined}});
     if(r.id) el.id=String(r.id);
-    if(cur&&cur.id===bondId){ cur.mySent=true; saveMsgs() }
+    if(cur&&cur.id===bondId) saveMsgs()
     if(r.reset) toast("30으로 돌아왔어요");
     syncTill().then(refreshChat).catch(()=>{});
   }catch(e){ el.ok=false; renderMsgs(); saveMsgs(); if(!requireLogin()) toast(e.message) }
@@ -2211,7 +2220,7 @@ async function upload(el,live){
     el.id=d.id; el.media=d.media; el.pending=false;
     // 미리보기는 원본을 올린 뒤에 따로 올린다(받는 쪽은 미리보기가 없으면 원본을 받는다)
     if(el.thumb) fetch(API+"/api/media/"+d.media+"/thumb",{method:"POST",headers:{authorization:"Bearer "+auth.token,"content-type":"image/jpeg"},body:el.thumb}).catch(()=>{});
-    if(cur&&cur.id===bondId){ cur.mySent=true; renderMsgs(); saveMsgs() }
+    if(cur&&cur.id===bondId){ renderMsgs(); saveMsgs() }
     if(d.reset) toast("30으로 돌아왔어요");
     syncTill().then(refreshChat).catch(()=>{});
   }catch(e){
@@ -2250,21 +2259,17 @@ function sendText(){
   const at=botCall(t);
   if(at) callBot(at.bot,at.text,rep&&rep.type==="bot"?rep.id:null);
   else if(rep&&rep.type==="bot") callBot(rep.bot.bot||"free",t,rep.id);
-  showBotPick();
 }
 sendBtn.addEventListener("click",sendText);
 /* 대화방에서 @봇 부르기. 봇은 부른 한 줄만 본다(방 대화는 읽지 않는다).
    만든 도구는 바로 위 칸에 붙고, 봇의 답은 방 모두에게 봇 말풍선으로 보인다. 고치기·되돌리기는 만든 사람만 */
 let botWork=null;
-const BOT_BY_NAME=()=>Object.fromEntries(Object.entries(BOT_NAME).map(([k,n])=>[n,k]));
-// "@놀이 내기 만들어줘" 는 그 봇, "@회식비 3만원 나눠" 처럼 이름 없이 쓰면 서버가 말을 보고 봇을 고른다
+// "@회식비 3만원 나눠" — @ 뒤에 할 일만. 틸봇이 알맞게 만든다
 function botCall(t){
   const m=t.match(/^@\s*([\s\S]+)$/); if(!m) return null;
-  const n=m[1].match(/^(\S+)\s+([\s\S]+)$/), k=n&&BOT_BY_NAME()[n[1]];
-  return k?{bot:k,text:n[2].trim()}:{bot:null,text:m[1].trim()};
+  return {bot:null,text:m[1].trim()};
 }
-const faceOf=k=>BOT_IMG[k]?`background-image:url(bots/${k}-face.jpg)`:"";
-const BOT_TAG={play:"게임·내기",pick:"뽑기·순서",money:"정산·회비",meet:"공지·투표·일정",two:"연인·친구 둘",memory:"기록·습관",free:"무엇이든"};
+const TILBOT="틸봇", faceOf=()=>"background-image:url(bots/free-face.jpg)";
 async function callBot(bot,text,replyTo){
   const bond=cur.id; botWork={bond,bot}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
   try{
@@ -2280,8 +2285,8 @@ function botBubble(m,late,undo){
   const b=m.bot, el=document.createElement("div"); el.className="botmsg"+(late?"":" old"); el.dataset.id=m.id;
   const chip=b.ver?`${esc(b.name)} · ${b.ver}번`:"";
   el.innerHTML=late
-    ?`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${BOT_NAME[b.bot]||"봇"}</span><div class="bt">${esc(m.text)}</div>${chip?`<div class="bchip">${chip}${undo?`<button class="undo">되돌리기</button>`:""}</div>`:""}</div>`
-    :`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${BOT_NAME[b.bot]||"봇"}${chip?" · "+chip:""}</span></div>`;
+    ?`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${TILBOT}</span><div class="bt">${esc(m.text)}</div>${chip?`<div class="bchip">${chip}${undo?`<button class="undo">되돌리기</button>`:""}</div>`:""}</div>`
+    :`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${TILBOT}${chip?" · "+chip:""}</span></div>`;
   const u=el.querySelector(".undo");
   if(u) u.onclick=e=>{ e.stopPropagation(); confirmBox(`${b.ver-1}번으로 되돌릴까요?`,async()=>{
     try{ await api(`/api/tools/u${b.tool}/revert`,{method:"POST",body:{ver:b.ver-1}}); loadRoomTools() }catch(e){ toast(e.message) } },{ok:"되돌리기"}) };
@@ -2292,22 +2297,9 @@ function botBubble(m,late,undo){
 }
 function botWorkEl(k){
   const el=document.createElement("div"); el.className="botmsg work";
-  el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${BOT_NAME[k]||"봇"}</span><div class="bt">만드는 중<i>.</i><i>.</i><i>.</i></div></div>`;
+  el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${TILBOT}</span><div class="bt">만드는 중<i>.</i><i>.</i><i>.</i></div></div>`;
   return el;
 }
-// "@" 로 시작해서 아직 띄어쓰기 전이면 봇 고르기 목록을 보인다. 남은 횟수는 보여 주지 않는다(넘으면 그때 알린다)
-function showBotPick(){
-  const v=msgIn.value, box=$("#botPick"), on=!!cur&&/^@\S*$/.test(v);
-  if(!on){ box.hidden=true; return }
-  const q=v.slice(1);
-  const ks=Object.keys(BOT_NAME).filter(k=>BOT_NAME[k].startsWith(q));
-  if(!ks.length){ box.hidden=true; return }
-  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span><b>${BOT_NAME[k]}</b><span class="d">${BOT_TAG[k]}</span></button>`).join("");
-  box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ msgIn.value="@"+BOT_NAME[b.dataset.k]+" "; fitIn(); box.hidden=true; msgIn.focus() });
-  box.hidden=false;
-}
-msgIn.addEventListener("input",showBotPick);
-document.addEventListener("pointerdown",e=>{ const b=$("#botPick"); if(!b.hidden&&!b.contains(e.target)&&e.target!==msgIn) b.hidden=true },true);
 // 입력줄의 버튼을 눌러도 키보드는 그대로 (C-5). 입력칸 자체는 건드리지 않는다
 $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDefault() });
 // 메시지 영역을 탭하면 키보드가 내려간다 (S-5)
@@ -2775,6 +2767,8 @@ $("#chatMenu").addEventListener("click",()=>{
   $("#sChatRoom").style.display=cur.group?"flex":"none"; $("#sChatLeave").style.display=cur.group?"":"none";
   $("#mBlock").style.display=cur.group?"none":"";
   if(cur.group) fillRoomSettings();
+  $("#sChatOrg").style.display=cur.self?"none":""; $("#mOrganize").classList.remove("on");
+  if(!cur.self){ const id=cur.id; api(`/api/rooms/${id}/organize`).then(r=>{ if(cur&&cur.id===id) $("#mOrganize").classList.toggle("on",!!r.on) }).catch(()=>{}) }
   const n=cur.msgs.filter(m=>m.type==="image"||m.type==="video").length;
   $("#mMediaSub").textContent = n ? `${n}개` : "";
   go("s-chat");
@@ -2819,6 +2813,10 @@ $("#mLeave").addEventListener("click",()=>confirmBox("방에서 나갈까요?",a
   cur=null; back("till"); syncTill().catch(()=>{});
 },{ok:"나가기"}));
 $("#mExport").addEventListener("click",exportChat);
+$("#mOrganize").addEventListener("click",async()=>{
+  if(!cur) return; const el=$("#mOrganize"), on=!el.classList.contains("on"); el.classList.toggle("on",on);
+  try{ await api(`/api/rooms/${cur.id}/organize`,{method:"POST",body:{on}}) }catch(e){ el.classList.toggle("on",!on); toast(e.message) }
+});
 
 function renderMedia(){
   const g=$("#mediaGrid"); g.innerHTML="";
@@ -2837,7 +2835,7 @@ function renderMedia(){
 function exportChat(){
   if(!cur) return;
   const two=n=>String(n).padStart(2,"0");
-  const out=[cur.group?cur.name:`${cur.name}와의 대화`,`KEEP ${cur.keep} · DAYS ${daysOf(cur)} · 남은 ${dday(cur)}일`];
+  const out=[cur.group?cur.name:`${cur.name}와의 대화`,`DAYS ${daysOf(cur)}`];
   let day="";
   cur.msgs.forEach(m=>{
     const d=new Date(m.ts), k=d.toDateString();
@@ -2883,7 +2881,7 @@ $("#viewerClose").addEventListener("click",closeViewer);
 
 
 function renderSettings(){
-  $("#meName").textContent=me.name; $("#meTill").textContent="TILL "+people.filter(p=>!p.self&&dday(p)>0).length; $("#mePhone").textContent=me.phone||""; $("#phoneVal").textContent=me.phone||"연결 안 됨"; const a=$("#meAvatar"); a.style.backgroundImage=me.photo?`url(${me.photo})`:"none";
+  $("#meName").textContent=me.name; $("#meTill").textContent="TILL "+people.filter(p=>!p.self).length; $("#mePhone").textContent=me.phone||""; $("#phoneVal").textContent=me.phone||"연결 안 됨"; const a=$("#meAvatar"); a.style.backgroundImage=me.photo?`url(${me.photo})`:"none";
   $$("#notiList .toggle").forEach(t=>t.classList.toggle("on",!!prefs[t.dataset.k]));
   api("/api/blocks").then(d=>{ $("#blockSub").textContent=`${d.blocks.length}명` }).catch(()=>{});
   renderPush(); loadNoti();

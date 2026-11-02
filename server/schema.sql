@@ -184,3 +184,24 @@ create table if not exists ai_usage (
   usd     numeric not null default 0,
   primary key (day, user_id)
 );
+
+-- 2026-11-02 받아 적기(개편-계획.md). 던진 것이 항목으로 쌓이고, 조건이 붙은 도구가 받아 간다
+alter table user_tools add column if not exists rule jsonb;   -- {on, kinds, ai, ask, fields}
+create table if not exists items (
+  id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+  bond_id bigint references bonds(id) on delete set null, msg_id bigint, kind text not null, body text not null default '',
+  media text, mime text, created_at timestamptz not null default now()
+);
+create index if not exists items_user_idx on items(user_id, id desc);
+create table if not exists item_hits (
+  item_id bigint not null references items(id) on delete cascade,
+  tool_id bigint not null references user_tools(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb, primary key (item_id, tool_id)
+);
+create index if not exists item_hits_tool_idx on item_hits(tool_id, item_id desc);
+-- "이 방도 정리"를 켠 방(사람마다)
+create table if not exists organize (
+  user_id bigint not null references users(id) on delete cascade,
+  bond_id bigint not null references bonds(id) on delete cascade, primary key (user_id, bond_id)
+);
+alter table ai_usage add column if not exists photos int not null default 0;

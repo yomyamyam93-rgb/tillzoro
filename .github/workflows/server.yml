@@ -30,7 +30,7 @@ jobs:
           # 지금 돌고 있는 것을 날짜 찍어 남겨 둔다
           $SSH "cp /opt/tillzero/index.js /opt/tillzero/index.js.bak_\$(date +%y%m%d_%H%M)"
           scp -i "$RUNNER_TEMP/deploy_key" -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
-            server/index.js server/bot-playbooks.js server/schema.sql server/package.json server/package-lock.json \
+            server/index.js server/bot-playbooks.js server/self-defaults.js server/schema.sql server/package.json server/package-lock.json \
             root@49.247.137.185:/opt/tillzero/
           # 쓰는 꾸러미가 늘었을 수 있으니 맞춰 둔다. 안 바뀌었으면 금방 끝난다
           $SSH "cd /opt/tillzero && npm install --omit=dev --no-audit --no-fund && pm2 restart tillzero-api"

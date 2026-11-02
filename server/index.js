@@ -37,7 +37,6 @@ try {
 } catch (e) { sms = null; }
 
 const PORT = Number(process.env.PORT || 8790);
-const CYCLE_DAYS = 30;
 const DAY = 86400000;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -58,10 +57,6 @@ app.use((req, res, next) => {
 /* ---------- 도우미 ---------- */
 
 const token = () => crypto.randomBytes(24).toString("base64url");
-
-// R-4.1: 남은 일수는 저장하지 않고 볼 때마다 계산한다.
-const ddayOf = (lastResetAt) =>
-  Math.max(0, CYCLE_DAYS - Math.floor((Date.now() - new Date(lastResetAt)) / DAY));
 
 const daysOf = (bondAt) =>
   Math.max(1, Math.floor((Date.now() - new Date(bondAt)) / DAY));
@@ -108,15 +103,13 @@ function shapeGroup(row, meId) {
   const others = ms.filter((m) => String(m.id) !== String(meId));
   const from = ms.find((m) => String(m.id) === String(row.last_sender));
   const seen = !!row.last_at && (row.show_history || !mine || new Date(row.last_at) >= new Date(mine.joined_at));
-  const sp = (row.speakers || []).map(String);
   return {
     id: row.id, group: true, self: false,
     name: row.name || others.map((m) => m.nickname).slice(0, 4).join(", ") || "새 방", named: !!row.name,
     photo: others.length === 1 ? others[0].photo : null,
     members: ms.map((m) => ({ id: m.id, name: m.nickname, photo: m.photo, joined: m.joined_at })),
     history: !!row.show_history, created: row.bond_at,
-    dday: ddayOf(row.last_reset_at), keep: row.keep, days: daysOf(row.bond_at),
-    waiting: sp.length === 1 && sp[0] === String(meId),
+    days: daysOf(row.bond_at),
     lastMessage: seen ? row.last_body : null, lastAt: seen ? row.last_at : null,
     lastFrom: seen && row.last_sender ? (String(row.last_sender) === String(meId) ? "나" : from?.nickname || "") : "",
     unread: seen && String(row.last_sender) !== String(meId) && (!mine || new Date(row.last_at) > new Date(mine.read_at)),
@@ -133,11 +126,7 @@ function shape(row, meId) {
     name: iAmA ? row.b_nickname : row.a_nickname,
     other: self ? null : String(iAmA ? row.b_id : row.a_id),   // 도구가 두 사람을 알 수 있게
     photo: iAmA ? row.b_photo : row.a_photo,
-    dday: self ? 0 : ddayOf(row.last_reset_at),   // 나는 나를 잃지 않는다
-    keep: row.keep,
     days: daysOf(row.bond_at),
-    // R-6.4: 내가 보내고 상대가 아직 안 보낸 상태
-    waiting: iAmA ? row.a_sent && !row.b_sent : row.b_sent && !row.a_sent,
     lastMessage: row.last_body,
     lastAt: row.last_at,
     // 마지막 말이 상대 것이고 내가 읽은 시각보다 나중이면 안 읽은 것이다
@@ -329,15 +318,18 @@ app.get("/api/till", auth, async (req, res) => {
   await ensureSelfBond(req.user.id);
   const { rows } = await pool.query(`${BOND_SELECT} where ${IN_ROOM}`, [req.user.id]);
   const bonds = (await withMembers(rows)).map((r) => shape(r, req.user.id));
-  // R-4.8: Count 높은 순, 같으면 마지막 대화가 최근인 순, 그다음 이름순
-  bonds.sort(
-    (x, y) =>
-      y.dday - x.dday ||
-      new Date(y.lastAt || 0) - new Date(x.lastAt || 0) ||
-      x.name.localeCompare(y.name)
-  );
+  // 안 읽은 수: 남이 보낸 것 중 내가 마지막으로 읽은 뒤의 것
+  const un = new Map((await pool.query(
+    `select b.id, count(m.id)::int n from bonds b join messages m on m.bond_id = b.id and m.sender_id <> $1 and m.kind <> 'bot'
+       and m.created_at > coalesce(case when b.kind = 'group' then (select read_at from bond_members x where x.bond_id = b.id and x.user_id = $1)
+                                        when b.a_id = $1 then b.a_read_at else b.b_read_at end, 'epoch')
+      where ${IN_ROOM} group by b.id`, [req.user.id])).rows.map((r) => [String(r.id), r.n]));
+  bonds.forEach((b) => { b.unreadN = un.get(String(b.id)) || 0 });
+  const today = (await pool.query("select count(*)::int n from items where user_id = $1 and created_at >= ($2::date)::timestamp at time zone 'Asia/Seoul'", [req.user.id, kstDay()])).rows[0].n;
+  // 마지막 대화가 최근인 순, 그다음 이름순
+  bonds.sort((x, y) => new Date(y.lastAt || 0) - new Date(x.lastAt || 0) || x.name.localeCompare(y.name));
   // sms: 문자가 실제로 나가는지. 준비되기 전에는 옛 계정에 번호 연결을 요구하지 않는다
-  res.json({ me: { ...meOf(req.user), photo: req.user.photo }, bonds, sms: !!sms, admin: isAdmin(req.user.id) });
+  res.json({ me: { ...meOf(req.user), photo: req.user.photo }, bonds, today, sms: !!sms, admin: isAdmin(req.user.id) });
 });
 
 app.post("/api/profile", auth, async (req, res) => {
@@ -817,60 +809,38 @@ async function sendMessage(req, res, bond, m) {
   const body = m.body;
   if (bond.kind === "group") return groupMessage(req, res, bond, m);
   const isSelf = String(bond.a_id) === String(bond.b_id);
-  // R-11: Zero 처리가 먼저면 메시지는 거부된다. 나와의 방은 Zero가 없다.
-  if (!isSelf && ddayOf(bond.last_reset_at) <= 0)
-    return res.status(410).json({ error: "이 대화는 끝났어요" });
-
   const { rows } = await pool.query(
     "insert into messages (bond_id, sender_id, body, kind, media, mime, size, w, h, reply_to) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id, created_at",
     [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null, m.w || null, m.h || null, m.replyTo || null]
   );
 
-  // R-4.2 / R-4.3: 양쪽이 각각 한 번 이상 보냈을 때만 Reset한다. 나와의 방은 셈하지 않는다.
+  collect(bond, rows[0], m, req.user.id);
   if (isSelf) {
     const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null, replyTo: m.replyTo ? String(m.replyTo) : null };
     notify([req.user.id], { type: "message", ...msg }, req.user.id);
-    return res.json({ ...msg, reset: false });
+    return res.json(msg);
   }
   const iAmA = bond.a_id === req.user.id;
-  const aSent = bond.a_sent || iAmA;
-  const bSent = bond.b_sent || !iAmA;
-  const reset = aSent && bSent;
-  await pool.query(
-    reset
-      ? `update bonds set keep = keep + 1, last_reset_at = now(),
-                          a_sent = false, b_sent = false, warned = null where id = $1`
-      : "update bonds set a_sent = $2, b_sent = $3 where id = $1",
-    reset ? [bond.id] : [bond.id, aSent, bSent]
-  );
-
   const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null, replyTo: m.replyTo ? String(m.replyTo) : null };
   notify([bond.a_id, bond.b_id], { type: "message", ...msg }, req.user.id);
   push(iAmA ? bond.b_id : bond.a_id, "msg", { title: req.user.nickname, body: body.slice(0, 120), tag: "bond-" + bond.id });
-  res.json({ ...msg, reset });
+  res.json(msg);
 }
 
-// 방 메시지. 마지막 Reset 이후 두 사람 이상이 말하면 Count 가 30 으로 돌아가고 Keep 이 오른다.
-// 두 명 방에서는 R-4.2 그대로(둘 다 한 번씩). Reset 을 만든 메시지는 다음 회차에 세지 않는다(R-4.4)
+// 방 메시지
 async function groupMessage(req, res, bond, m) {
   const body = m.body;
-  if (ddayOf(bond.last_reset_at) <= 0) return res.status(410).json({ error: "이 대화는 끝났어요" });
   const { rows } = await pool.query(
     "insert into messages (bond_id, sender_id, body, kind, media, mime, size, w, h, reply_to) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id, created_at",
     [bond.id, req.user.id, body, m.kind || "text", m.media || null, m.mime || null, m.size || null, m.w || null, m.h || null, m.replyTo || null]);
-  const sp = new Set((bond.speakers || []).map(String)); sp.add(String(req.user.id));
-  const reset = sp.size >= 2;
-  await pool.query(
-    reset ? "update bonds set last_reset_at = now(), keep = keep + 1, speakers = '[]'::jsonb, warned = null where id = $1"
-          : "update bonds set speakers = $2::jsonb where id = $1",
-    reset ? [bond.id] : [bond.id, JSON.stringify([...sp])]);
+  collect(bond, rows[0], m, req.user.id);
   await pool.query("update bond_members set read_at = now() where bond_id = $1 and user_id = $2", [bond.id, req.user.id]);
   const msg = { id: rows[0].id, body, at: rows[0].created_at, bondId: bond.id, from: String(req.user.id), kind: m.kind || "text", media: m.media || null, w: m.w || null, h: m.h || null, replyTo: m.replyTo ? String(m.replyTo) : null };
   const ids = memberIds(bond);
   notify(ids, { type: "message", ...msg }, req.user.id);
   for (const id of ids) if (id !== String(req.user.id))
     push(id, "msg", { title: roomName(bond, id), body: `${req.user.nickname}: ${body}`.slice(0, 120), tag: "bond-" + bond.id });
-  res.json({ ...msg, reset });
+  res.json(msg);
 }
 
 async function myBond(bondId, meId) {
@@ -1036,6 +1006,15 @@ function render(box, c) { ... }
   공지·메모는 전체 글, 게임·뽑기는 지금 판 + 전적(사람별 횟수), 정산은 지금 정산 + 누가 얼마 냈나, 습관은 오늘 + 연속 일수·달력처럼.
   통계는 목록으로 쌓지 말고 수로 세어 둔다: d.games/d.wins 는 되고 d.history=[...] 는 안 된다(최근 몇 개만은 괜찮다).
   펼칠 만한 게 있으면 묻지 말고 알아서 만든다(교본의 [펼침] 참고). 없으면 만들지 않는다.
+- 받아 가는 도구(나챗방에서만): 사용자가 무언가를 "모아", "정리", "기록"하길 원하면(가계부, 사진 모음, 강아지 사진만, 일정, 할 일, 링크, 읽을 책…)
+  rule.on=true 로 조건을 붙인다. 그러면 나챗방에 던진 것(글·사진·영상·파일·링크) 중 맞는 것이 이 도구로 들어온다. 다른 방에서 오는 사진·영상·파일·링크도 들어온다.
+  - rule.kinds: 받을 종류(text, link, photo, video, file). 가계부·일정·할 일은 text, 사진 모음은 photo.
+  - rule.ai: 종류만으로 되면 false("사진 전부", "링크 전부"). 내용을 봐야 고를 수 있으면 true("강아지 사진만", "돈 쓴 글만", "약속이 있는 글만").
+  - rule.ask: ai=true 일 때 고르는 조건 한 줄(예: "돈을 쓰거나 받은 내용"). rule.fields: 항목에서 뽑아 둘 값 이름(예: amount, date, time, place, item). 없으면 빈 목록.
+  - 코드에서는 c.items 로 받는다: [{id, kind, text, src(사진·영상 작은 것), full(원본), at(밀리초), room(방 이름), data:{뽑은 값}}], 새것이 앞.
+    data 의 숫자도 글이니 Number() 로 바꿔 쓴다. 사진은 <img src="${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
+  - 직접 적는 것(예: 가계부에 손으로 추가)이 필요하면 c.data 에 따로 쌓고 c.items 와 합쳐 보여 준다. 다 한 것 표시(할 일 체크 등)도 c.data 에 item id 로 둔다.
+  - 보통 도구(누르는 것: 게임·정산·투표 등)이거나 나챗방이 아니면 rule.on=false, kinds·fields 빈 목록, ai=false, ask 빈 글.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
     await c.ask("location")        -> {lat, lon, acc}   위치 한 번. 거절되면 예외
     await c.ask("share", {text})   -> 공유 시트
@@ -1047,7 +1026,11 @@ function render(box, c) { ... }
 - name 은 열 글자 안쪽의 재미있는 이름. 기능 설명이 아니라 별명처럼 짓는다.
   하는 일이 짐작되면서 한 번 웃기거나 정감 있게(예: "오늘의 빚쟁이", "누가 더 멀리", "칼퇴 적금").
   밋밋한 기능명("회식 정산", "거리 계산")은 쓰지 않는다.`;
+// 받아 가는 도구의 조건. on=false 면 보통 도구
+const KINDS = ["text", "link", "photo", "video", "file"];
+const RuleOut = z.object({ on: z.boolean(), kinds: z.array(z.enum(KINDS)), ai: z.boolean(), ask: z.string(), fields: z.array(z.string()) });
 const MakerOut = z.object({
+  rule: RuleOut,
   reply: z.string(),
   options: z.array(z.string()),
   changed: z.boolean(),
@@ -1321,6 +1304,86 @@ async function botAsk(userId, bot, content, count) {
   const good = out && out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
   return { out, good };
 }
+/* ---------- 받아 적기 ----------
+   던진 것은 항목(items)으로 쌓인다: 나챗방의 모든 것, 다른 방의 사진·영상·파일·링크, "이 방도 정리"를 켠 방의 글.
+   조건(rule)이 붙은 도구가 맞는 항목을 받아 간다(item_hits). 종류만 보면 되는 조건은 그냥 넣고,
+   말·그림을 봐야 하는 조건은 Haiku 가 한 번에 여러 항목을 보고 고른다 */
+const PHOTO_DAY = 200;   // 사람마다 하루에 AI 가 볼 사진 수
+const itemKind = (m) => m.media ? (/^image\//.test(m.mime || "") ? "photo" : /^video\//.test(m.mime || "") ? "video" : "file")
+  : /https?:\/\/\S+/.test(m.body || "") ? "link" : "text";
+const ruleTools = async (uid) => (await pool.query(
+  "select id, name, rule from user_tools where owner_id = $1 and rule is not null and (rule->>'on')::boolean", [uid])).rows;
+async function collect(bond, row, m, senderId) {
+  try {
+    if (!m.body && !m.media) return;
+    const kind = itemKind(m), self = bond.kind !== "group" && String(bond.a_id) === String(bond.b_id);
+    const org = self ? [] : (await pool.query("select user_id from organize where bond_id = $1", [bond.id])).rows.map((r) => String(r.user_id));
+    for (const uid of memberIds(bond)) {
+      if (kind === "text" && !self && !org.includes(uid)) continue;   // 글은 나챗방과 정리를 켠 방만
+      const tools = await ruleTools(uid);
+      if (!self && !tools.some((x) => x.rule.kinds.includes(kind))) continue;   // 받아 갈 도구가 없으면 남기지 않는다
+      const it = (await pool.query(
+        "insert into items (user_id, bond_id, msg_id, kind, body, media, mime) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+        [uid, bond.id, row.id, kind, m.body || "", m.media || null, m.mime || null])).rows[0];
+      await fileItems(uid, [it], tools);
+    }
+  } catch (e) { console.error("collect", e.message) }
+}
+async function fileItems(uid, items, tools) {
+  const hits = [], fit = (x, it) => x.rule.kinds.includes(it.kind);
+  for (const x of tools) if (!x.rule.ai) for (const it of items) if (fit(x, it)) hits.push([it.id, x.id, {}]);
+  const smart = tools.filter((x) => x.rule.ai);
+  const want = items.filter((it) => smart.some((x) => fit(x, it)));
+  for (let i = 0; i < want.length && ai; i += 20) hits.push(...await judge(uid, want.slice(i, i + 20), smart));
+  for (const [i, x, d] of hits)
+    await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, $3) on conflict (item_id, tool_id) do update set data = $3", [i, x, d]);
+  const touched = [...new Set(hits.map((h) => h[1]))];
+  if (touched.length) notify([String(uid)], { type: "items", tools: touched.map((x) => "u" + x) });
+}
+const JudgeOut = z.object({ hits: z.array(z.object({ item: z.number(), tool: z.number(), data: z.array(z.object({ k: z.string(), v: z.string() })) })) });
+async function judge(uid, items, tools) {
+  const day = kstDay();
+  const seen = (await pool.query("select coalesce(sum(photos), 0)::int n from ai_usage where day = $1 and user_id = $2", [day, uid])).rows[0].n;
+  let room = Math.max(0, PHOTO_DAY - seen), photos = 0;
+  const content = [{ type: "text", text: "[도구]\n" + tools.map((x) => `#${x.id} ${x.name}: ${x.rule.ask} (받는 것: ${x.rule.kinds.join(",")}${x.rule.fields.length ? " · 뽑을 값: " + x.rule.fields.join(",") : ""})`).join("\n") + "\n\n[항목]" }];
+  for (const it of items) {
+    const head = `#${it.id} ${it.kind} ${new Date(it.created_at).toISOString().slice(0, 10)}`;
+    if (it.kind === "photo") {
+      const f = path.join(MEDIA_DIR, it.media + ".t.jpg");
+      if (room <= 0 || !fs.existsSync(f)) continue;
+      room--; photos++;
+      content.push({ type: "text", text: head + " (사진)" + (it.body ? " " + it.body : "") });
+      content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: fs.readFileSync(f).toString("base64") } });
+    } else content.push({ type: "text", text: head + ": " + String(it.body || "").slice(0, 600) });
+  }
+  if (content.length < 2) return [];
+  try {
+    const r = await ai.beta.messages.parse({
+      model: PATCH_MODEL, max_tokens: 4000,
+      output_config: { format: betaZodOutputFormat(JudgeOut) },
+      system: `너는 받아 적는다. 각 항목이 어느 도구의 조건에 맞는지 고른다. 확실할 때만 넣는다(애매하면 넣지 않는다). 한 항목이 여러 도구에 맞을 수 있다.
+뽑을 값이 있으면 항목에서 그 값만 짧게 뽑는다: 금액은 숫자만(원 단위, "1.2만"→12000), 날짜는 YYYY-MM-DD(오늘은 ${day}, "토요일"은 다가오는 토요일), 시각은 HH:MM, 나머지는 짧은 낱말. 없으면 그 값은 뺀다.`,
+      messages: [{ role: "user", content }],
+    });
+    await spend(uid, usdOf(PATCH_MODEL, r.usage || {}), false);
+    if (photos) await pool.query("update ai_usage set photos = photos + $3 where day = $1 and user_id = $2", [day, uid, photos]);
+    const ids = new Set(items.map((x) => Number(x.id))), ts = new Set(tools.map((x) => Number(x.id)));
+    return (r.parsed_output?.hits || []).filter((h) => ids.has(h.item) && ts.has(h.tool))
+      .map((h) => [h.item, h.tool, Object.fromEntries(h.data.map((p) => [p.k.slice(0, 20), p.v.slice(0, 100)]))]);
+  } catch (e) { console.error("judge", e.status || "", e.message); return [] }
+}
+// 조건이 생기거나 바뀐 도구: 지난 항목을 다시 훑는다(최근 300개)
+async function refill(uid, toolId) {
+  try {
+    const x = (await pool.query("select id, name, rule from user_tools where id = $1", [toolId])).rows[0];
+    await pool.query("delete from item_hits where tool_id = $1", [toolId]);
+    if (!x?.rule?.on) return notify([String(uid)], { type: "items", tools: ["u" + toolId] });
+    const items = (await pool.query("select * from items where user_id = $1 order by id desc limit 300", [uid])).rows.reverse();
+    await fileItems(uid, items, [x]);
+    notify([String(uid)], { type: "items", tools: ["u" + toolId] });
+  } catch (e) { console.error("refill", e.message) }
+}
+
 const botFree = (bond, bot) => { botBusy.delete(bond.id); notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: false }) };
 // 오래 응답이 없으면(앱을 닫음 등) 만들던 것을 버린다
 setInterval(() => {
@@ -1332,7 +1395,6 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   if (!ai) return res.status(503).json({ error: "AI 준비 중이에요" });
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  if (ddayOf(bond.last_reset_at) <= 0 && String(bond.a_id) !== String(bond.b_id)) return res.status(410).json({ error: "이 대화는 끝났어요" });
   let bot = BOTS[req.body?.bot] ? req.body.bot : null;   // 이름 없이 부르면 아래에서: 고치는 거면 그 도구의 봇, 새로면 말로 고른다
   const text = String(req.body?.text || "").trim().slice(0, 500);
   if (!text) return res.status(400).json({ error: "무엇을 할지 적어주세요" });
@@ -1376,7 +1438,8 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   }
   if (!r) try {
     r = await botAsk(req.user.id, bot,
-      (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
+      (String(bond.a_id) === String(bond.b_id) && bond.kind !== "group" ? "[이 방: 나챗방(나와의 대화). 받아 가는 도구를 만들 수 있다]\n" : `[이 방: ${bond.kind === "group" ? (bond.members || []).length : 2}명 대화방. rule.on=false]\n`) +
+      (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${tool.rule ? "[지금 조건] " + JSON.stringify(tool.rule) + "\n" : ""}${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
       `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, !counted);
   } catch (e) {
     console.error("roombot", e.status || "", e.message);
@@ -1429,6 +1492,15 @@ async function botFinish(p, made) {
         fresh = true;
       }
       ver = await addVersion(tool, out.code, out.note.slice(0, 80) || (fresh ? "처음" : "고침"));
+      // 받아 가는 조건은 나챗방에서 만든 도구만. 작은 고치기(rule 없음)는 조건을 그대로 둔다
+      const selfRoom = bond.kind !== "group" && String(bond.a_id) === String(bond.b_id);
+      if (out.rule) {
+        const rule = selfRoom && out.rule.on ? { on: true, kinds: out.rule.kinds, ai: out.rule.ai, ask: out.rule.ask.slice(0, 200), fields: out.rule.fields.slice(0, 8) } : null;
+        if (JSON.stringify(rule) !== JSON.stringify(tool.rule || null)) {
+          await pool.query("update user_tools set rule = $2 where id = $1", [tool.id, rule]);
+          refill(Number(uid), tool.id);
+        }
+      }
       if (!fresh && out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
       // 켜 둔 도구에 더한다(다른 도구는 그대로 켜 둔다. 위 칸에서 옆으로 넘겨 본다)
       const key = "u" + tool.id;
@@ -1494,41 +1566,11 @@ app.post("/api/kblog", auth, (req, res) => {
 
 /* ---------- 한 시간마다 ---------- */
 async function sweep() {
-  // R-5.1 / R-5.6: Count 가 0 이 된 Bond 는 대화·도구 데이터와 함께 서버에서도 지운다. 알리지 않는다(R-5.3)
-  const z = await pool.query(
-    "delete from bonds where kind = 'pair' and a_id <> b_id and last_reset_at <= now() - interval '30 days' returning id, a_id, b_id");
-  for (const b of z.rows) {
-    await pool.query("insert into zeros (a_id, b_id) values ($1, $2)", [b.a_id, b.b_id]);
-    notify([String(b.a_id), String(b.b_id)], { type: "till" });
-  }
-  // 30일 안에 두 사람 이상이 말하지 않은 방은 사라진다. 알리지 않는다
-  const gz = await withMembers((await pool.query(
-    `${BOND_SELECT} where b.kind = 'group' and b.last_reset_at <= now() - interval '30 days'`)).rows);
-  for (const b of gz) { await pool.query("delete from bonds where id = $1", [b.id]); notify(memberIds(b), { type: "till" }); }
   // 만든 지 7일이 지나도록 아무도 들어오지 않은 방은 지운다
   await pool.query(
     `delete from bonds b where b.kind = 'group' and b.bond_at < now() - interval '7 days'
        and (select count(*) from bond_members m where m.bond_id = b.id) < 2`);
-  // R-6.2: 7일, 1일 남았을 때 한 번씩. Reset 되면 다시(R-6.3)
-  const w = await pool.query(
-    `select b.id, b.a_id, b.b_id, b.last_reset_at, b.warned, ua.nickname an, ub.nickname bn
-       from bonds b join users ua on ua.id = b.a_id join users ub on ub.id = b.b_id where b.kind = 'pair' and b.a_id <> b.b_id`);
-  for (const b of w.rows) {
-    const d = ddayOf(b.last_reset_at), lvl = d <= 1 ? 1 : d <= 7 ? 7 : null;
-    if (!lvl || (b.warned && b.warned <= lvl)) continue;
-    await pool.query("update bonds set warned = $2 where id = $1", [b.id, lvl]);
-    push(b.a_id, "dday", { title: "Till Zero", body: `${b.bn} · ${d}일 남았어요`, tag: "bond-" + b.id });
-    push(b.b_id, "dday", { title: "Till Zero", body: `${b.an} · ${d}일 남았어요`, tag: "bond-" + b.id });
-  }
-  const gw = await withMembers((await pool.query(`${BOND_SELECT} where b.kind = 'group'`)).rows);
-  for (const b of gw) {
-    const d = ddayOf(b.last_reset_at), lvl = d <= 1 ? 1 : d <= 7 ? 7 : null;
-    if (!lvl || (b.warned && b.warned <= lvl)) continue;
-    await pool.query("update bonds set warned = $2 where id = $1", [b.id, lvl]);
-    for (const id of memberIds(b)) push(id, "dday", { title: "Till Zero", body: `${roomName(b, id)} · ${d}일 남았어요`, tag: "bond-" + b.id });
-  }
   await pool.query("delete from requests where created_at < now() - interval '7 days'");
-  await pool.query("delete from zeros where zeroed_at < now() - interval '90 days'");
   await pool.query("delete from reports where created_at < now() - interval '90 days'");
   // 주인 없는 사진·동영상 파일 정리. 올리는 중인 파일을 건드리지 않게 한 시간 지난 것만
   const used = new Set((await pool.query("select media from messages where media is not null")).rows.map((r) => r.media));
@@ -1543,6 +1585,55 @@ async function sweep() {
 setTimeout(() => sweep().catch((e) => console.error("sweep", e.message)), 10000);
 setInterval(() => sweep().catch((e) => console.error("sweep", e.message)), 3600000);
 
+// 받아 가는 도구의 항목(주인만)
+app.get("/api/tools/:id/items", auth, async (req, res) => {
+  const id = Number(String(req.params.id).replace(/^u/, "")) || 0;
+  const x = (await pool.query("select owner_id from user_tools where id = $1", [id])).rows[0];
+  if (!x || x.owner_id !== req.user.id) return res.json({ items: [] });
+  const { rows } = await pool.query(
+    `select i.id, i.kind, i.body, i.media, i.mime, i.created_at, i.msg_id, h.data, b.id bond_id, b.name bname, b.kind bkind, b.a_id, b.b_id, ua.nickname an, ub.nickname bn
+       from item_hits h join items i on i.id = h.item_id left join bonds b on b.id = i.bond_id
+       left join users ua on ua.id = b.a_id left join users ub on ub.id = b.b_id
+      where h.tool_id = $1 order by i.id desc limit 300`, [id]);
+  const me = req.user.id;
+  res.json({ items: rows.map((r) => ({ id: r.id, kind: r.kind, text: r.body, media: r.media, mime: r.mime, at: r.created_at, msg: r.msg_id, data: r.data || {},
+    room: !r.bond_id ? "" : r.a_id === r.b_id && r.bkind !== "group" ? "" : r.bkind === "group" ? (r.bname || "") : (r.a_id === me ? r.bn : r.an) })) });
+});
+// 나챗방 말풍선 아래 작은 글씨: 그 글이 들어간 도구들
+app.get("/api/self/tags", auth, async (req, res) => {
+  const { rows } = await pool.query(
+    `select i.msg_id, string_agg(t.name, ' · ' order by t.id) names from items i join item_hits h on h.item_id = i.id join user_tools t on t.id = h.tool_id
+      where i.user_id = $1 and i.msg_id is not null group by i.msg_id order by i.msg_id desc limit 400`, [req.user.id]);
+  res.json({ tags: Object.fromEntries(rows.map((r) => [String(r.msg_id), r.names])) });
+});
+// 이 방도 정리(나에게만). 켜면 이 방의 글도 받아 적는다
+app.post("/api/rooms/:bondId/organize", auth, async (req, res) => {
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  if (req.body?.on) await pool.query("insert into organize (user_id, bond_id) values ($1, $2) on conflict do nothing", [req.user.id, bond.id]);
+  else await pool.query("delete from organize where user_id = $1 and bond_id = $2", [req.user.id, bond.id]);
+  res.json({ on: !!req.body?.on });
+});
+app.get("/api/rooms/:bondId/organize", auth, async (req, res) => {
+  res.json({ on: !!(await pool.query("select 1 from organize where user_id = $1 and bond_id = $2", [req.user.id, Number(req.params.bondId) || 0])).rowCount });
+});
+// 나챗방 처음 열 때 기본 도구(일정·할 일·링크·메모)를 깔아 둔다. 한 번만
+const SELF_DEFAULTS = require("./self-defaults");
+app.post("/api/self/setup", auth, async (req, res) => {
+  await ensureSelfBond(req.user.id);
+  const bond = (await pool.query("select id from bonds where a_id = $1 and b_id = $1 and kind <> 'group'", [req.user.id])).rows[0];
+  if (!bond) return res.json({ ok: false });
+  const done = await pool.query("insert into room_state (bond_id, tool, data) values ($1, '__setup', '{}') on conflict do nothing returning 1", [bond.id]);
+  if (!done.rowCount) return res.json({ ok: true, made: 0 });
+  for (const d of SELF_DEFAULTS) {
+    const tool = (await pool.query("insert into user_tools (owner_id, name, bot, rule) values ($1, $2, 'free', $3) returning *", [req.user.id, d.name, d.rule])).rows[0];
+    const ver = await addVersion(tool, d.code, "처음");
+    await pool.query("insert into room_state (bond_id, tool, data) values ($1, $2, $3) on conflict do nothing", [bond.id, "u" + tool.id, { on: true, ver, name: d.name }]);
+    refill(req.user.id, tool.id);
+  }
+  res.json({ ok: true, made: SELF_DEFAULTS.length });
+});
+
 app.get("/health", (_, res) => res.json({ ok: true, now: new Date().toISOString() }));
 
 /* 칸이 늘어난 날 잊지 않도록, 켜질 때 스스로 맞춘다.
@@ -1550,6 +1641,17 @@ app.get("/health", (_, res) => res.json({ ok: true, now: new Date().toISOString(
 const SCHEMA_PATCHES = [
   "alter table user_tools add column if not exists public boolean not null default false",
   "create index if not exists user_tools_public_idx on user_tools(public) where public",
+  "alter table user_tools add column if not exists rule jsonb",
+  `create table if not exists items (id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+     bond_id bigint references bonds(id) on delete set null, msg_id bigint, kind text not null, body text not null default '',
+     media text, mime text, created_at timestamptz not null default now())`,
+  "create index if not exists items_user_idx on items(user_id, id desc)",
+  `create table if not exists item_hits (item_id bigint not null references items(id) on delete cascade,
+     tool_id bigint not null references user_tools(id) on delete cascade, data jsonb not null default '{}'::jsonb, primary key (item_id, tool_id))`,
+  "create index if not exists item_hits_tool_idx on item_hits(tool_id, item_id desc)",
+  `create table if not exists organize (user_id bigint not null references users(id) on delete cascade,
+     bond_id bigint not null references bonds(id) on delete cascade, primary key (user_id, bond_id))`,
+  "alter table ai_usage add column if not exists photos int not null default 0",
 ];
 async function ensureSchema() {
   for (const sql of SCHEMA_PATCHES) {
