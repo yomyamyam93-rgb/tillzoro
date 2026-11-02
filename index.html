@@ -675,7 +675,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1745</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1759</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1293,11 +1293,9 @@ async function openChat(id){
   nodes.clear(); $("#days").replaceChildren(); pinned=true;
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
   if(cur.self){ loadTags(); if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
-  const dv=$("#days"); dv.style.visibility="hidden";
+  // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
+  // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
-  // 서버에서 대화가 다 온 뒤 바닥에 맞춰 보인다. 기억해 둔 짧은 대화가 먼저 보였다가 튀지 않게(2026-11-02 폰 기록)
-  const show=()=>{ if(dv.style.visibility!=="hidden") return; dv.scrollTop=dv.scrollHeight; dv.style.visibility="" };
-  setTimeout(show,1200);
   loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
@@ -1307,7 +1305,7 @@ async function openChat(id){
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
     cur.msgs=d.messages.map(m=>fromServer(m,m.mine))
       .filter(m=>!hidden.has(String(m.id))).concat(failed.filter(x=>!live.includes(x)),live);
-    showRoomInvite(); renderMsgs(); saveMsgs(); show();
+    showRoomInvite(); renderMsgs(); saveMsgs();
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
 // 아직 혼자인 방: 코드와 보내기 버튼이 대화 자리 위에 보인다
