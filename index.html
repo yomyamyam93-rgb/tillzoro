@@ -263,7 +263,7 @@
             background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);
             height:var(--tool-h);padding:10px 14px;display:none;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
   .roomtool.on{display:flex}
-  #roomTool{touch-action:pan-y}
+  #roomTool{touch-action:none}
   .rtkeep{flex:none;margin:0 16px;height:0;border-radius:var(--r-card);background:var(--card);overflow:hidden;padding:0 14px;
     transition:height .34s cubic-bezier(.4,0,.2,1),margin .34s cubic-bezier(.4,0,.2,1),box-shadow .34s}
   .rtkeep.on{height:calc(var(--tool-h) * 2 + 8px);margin-bottom:8px;padding:10px 14px;box-shadow:var(--tool-lift)}
@@ -271,10 +271,6 @@
   .rtmore.on{display:grid;place-items:center}
   .rtmore svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .34s cubic-bezier(.4,0,.2,1)}
   .rtmore.up svg{transform:rotate(180deg)}
-  .rtdots{display:none;justify-content:center;gap:5px;height:5px;margin:-2px 0 6px;flex:none}
-  .rtdots.on{display:flex}
-  .rtdots i{width:5px;height:5px;border-radius:50%;background:var(--line);transition:background .2s,width .2s}
-  .rtdots i.on{width:12px;border-radius:3px;background:var(--ink-3)}
   .rt-row{display:flex;align-items:center;gap:8px;min-width:0}
   .rt-title{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .rt-title.none{font-weight:400;color:var(--ink-3);cursor:default}
@@ -642,7 +638,6 @@
     <div class="roomtool" id="roomTool"></div>
     <div class="rtkeep" id="rtKeep"></div>
     <button class="rtmore" id="rtMore" aria-label="펼치기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="rtdots" id="rtDots"></div>
     </div>
     <div class="roominvite" id="roomInvite" hidden><div class="codebox" id="riCode">· · · · · ·</div><div class="row2b"><button class="btn" id="riShare">링크 보내기</button><button class="btn ghost" id="riCopy">코드 복사</button></div></div>
     <div class="dayswrap"><div class="days" id="days"></div></div>
@@ -737,7 +732,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1438</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1448</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1403,7 +1398,7 @@ function sandboxDoc(code){
 <style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
-html.keep,html.keep body{overflow-y:auto} html.keep #box{height:auto;min-height:100%}
+html:not(.keep),html:not(.keep) body{touch-action:none} html.keep,html.keep body{overflow-y:auto} html.keep #box{height:auto;min-height:100%}
 ${rtCss()}</style></head><body><div id="box"></div>
 <script>
 const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -1541,7 +1536,7 @@ function toolCtx(t){
   return {
     data, me:myId(), self:!!cur.self,
     // 방에 있는 사람들. 두 명 방이면 상대 한 명
-    members:(cur.group?cur.members:[]).map(m=>({id:String(m.id),name:m.name})),
+    members:roomMembers(),
     ui:toolUi[t.id]||(toolUi[t.id]={}),
     redraw:()=>renderRoomTool(),
     // 바꾼 데이터를 저장하고 상대 화면에도 반영한다. 글을 주면 대화에 기록으로 남는다
@@ -1551,7 +1546,10 @@ function toolCtx(t){
 }
 // 대화방 위 칸에는 한 번에 도구 하나
 // 방에 붙은 만든 도구가 받는 상태. 방 위 칸(render)과 펼침(keep)이 같은 것을 쓴다
-const roomToolState=(id,mode="")=>({data:roomData[id]||{},me:myId(),self:!!cur.self,members:(cur.group?cur.members:[]).map(m=>({id:String(m.id),name:m.name})),mode});
+// 도구가 보는 방 사람들. 1:1 방도 두 사람을 다 준다(없으면 도구가 0명으로 본다)
+const roomMembers=()=>cur.group?cur.members.map(m=>({id:String(m.id),name:m.name}))
+  :cur.other?[{id:myId(),name:auth?.me?.nickname||"나"},{id:String(cur.other),name:cur.name}]:[];
+const roomToolState=(id,mode="")=>({data:roomData[id]||{},me:myId(),self:!!cur.self,members:roomMembers(),mode});
 let roomBox=null;   // 위 칸에 떠 있는 만든 도구 {key, h}. 같은 버전이면 칸을 다시 만들지 않고 데이터만 보낸다(입력 중인 것이 안 날아가게)
 /* 방에는 도구를 여러 개 켜 둘 수 있다(방 사람 모두 같다). 위 칸에는 그중 하나가 보이고, 옆으로 밀면 다음 것으로 넘어간다.
    무엇을 보고 있는지는 나만의 것이다(남의 화면은 그대로) */
@@ -1564,9 +1562,10 @@ function setKeep(on){ if(on&&!roomBox?.h?.hasKeep) return; keepOpen=on; syncKeep
 function syncKeep(){
   const id=viewTool(), h=roomBox?.h, has=!!(id&&isUserTool(id)&&h&&h.hasKeep);
   const btn=$("#rtMore"), panel=$("#rtKeep");
-  if(!has) keepOpen=false;
-  btn.classList.toggle("on",has); btn.classList.toggle("up",keepOpen);
-  if(keepOpen){
+  if(!has&&(!h||h.alive)) keepOpen=false;
+  const show=has&&keepOpen;
+  btn.classList.toggle("on",has); btn.classList.toggle("up",show);
+  if(show){
     if(!keepBox||keepBox.key!==roomBox.key){ const k=roomBox.key;
       keepBox={key:k,h:mountSandbox(panel,codeCache.get(k),{state:()=>roomToolState(id,"keep"),save:()=>{}})} }
     else keepBox.h.push();
@@ -1602,8 +1601,6 @@ function renderRoomTool(){ drawRoomTool(); syncKeep() }
 function drawRoomTool(){
   const box=$("#roomTool"), ids=onTools();
   const id=viewTool();
-  const dots=$("#rtDots"); dots.classList.toggle("on",ids.length>1);
-  dots.innerHTML=ids.length>1?ids.map(k=>`<i class="${k===id?"on":""}"></i>`).join(""):"";
   if(!id){ box.classList.remove("on","user"); box.innerHTML=""; roomBox=null; return }
   box.classList.add("on");
   if(!isUserTool(id)){ box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }

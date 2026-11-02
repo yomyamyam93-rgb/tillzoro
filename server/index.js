@@ -131,6 +131,7 @@ function shape(row, meId) {
     id: row.id,
     self,                     // 나와의 대화방. 사라지지 않는다.
     name: iAmA ? row.b_nickname : row.a_nickname,
+    other: self ? null : String(iAmA ? row.b_id : row.a_id),   // 도구가 두 사람을 알 수 있게
     photo: iAmA ? row.b_photo : row.a_photo,
     dday: self ? 0 : ddayOf(row.last_reset_at),   // 나는 나를 잃지 않는다
     keep: row.keep,
