@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths: ["server/**", ".github/workflows/server.yml"]
   workflow_dispatch:
+# 연달아 올려도 배포는 하나씩. 앞의 것이 끝나야 다음 것이 돈다(겹치면 서버를 켜는 중에 또 꺼서 실패로 보인다)
+concurrency:
+  group: server-deploy
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -32,8 +36,12 @@ jobs:
           $SSH "cd /opt/tillzero && npm install --omit=dev --no-audit --no-fund && pm2 restart tillzero-api"
       - name: 살아 있는지 확인
         run: |
-          set -euo pipefail
-          sleep 3
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://49.247.137.185.sslip.io/health)
-          echo "health: $code"
-          [ "$code" = "200" ]
+          set -uo pipefail
+          # 다시 켜진 서버가 준비되는 데 몇 초 걸린다. 최대 1분 동안 5초마다 물어본다
+          for i in $(seq 1 12); do
+            sleep 5
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://49.247.137.185.sslip.io/health)
+            echo "health: $code"
+            [ "$code" = "200" ] && exit 0
+          done
+          exit 1
