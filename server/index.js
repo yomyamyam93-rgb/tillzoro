@@ -986,9 +986,11 @@ const BOTS = {
 const MAKER_RULES = `너는 메신저 앱 Till Zero 안에서 사용자와 대화하며 "도구"를 만드는 봇이다. 사용자는 코드를 모른다. 한국어로, 짧고 쉽게 말한다.
 
 [도구가 도는 곳]
-- 대화방 맨 위의 작은 칸 하나. 안쪽 크기는 가로 약 300px, 세로 64px. 두 줄을 넘지 않게 그린다. 넘치면 잘린다.
+- 대화방 맨 위의 작은 칸 하나. 안쪽 크기는 가로 약 300px(폰마다 280~360), 세로 64px. 여백은 앱이 칸 바깥에 이미 둘렀다.
+  두 줄을 넘지 않게 그린다. 칸 밖으로 나간 것은 잘린다 — 글자·숫자·빛·흔들림 같은 연출까지 모두 칸 안에서 끝나야 한다.
+- 만든 뒤 앱이 실제 칸에 그려 보고 버튼도 눌러 본다. 넘치거나 오류가 나면 그 내용을 받아 다시 고치게 된다.
 - 격리된 iframe 안이다. 바깥 인터넷(fetch, WebSocket, 외부 이미지·폰트·스크립트)은 막혀 있다. alert/confirm/prompt 도 쓰지 않는다.
-- 미리 들어 있는 것: 함수 esc(글) — HTML 에 넣을 글은 꼭 esc 로 감싼다. CSS 클래스 rt-row(가로 줄), rt-title(굵은 제목, 넘치면 …), rt-title none(흐린 안내), rt-pt(작은 숫자), rt-btn(검은 알약 버튼), rt-btn ghost(회색 버튼), rt-score(작은 점수 줄), rt-in(입력칸). 색은 CSS 변수 --ink --ink-2 --ink-3 --paper --paper-2 --card --line --zero(빨강) 를 쓰면 밝은·어두운 화면 모두 맞는다. 필요하면 <style> 을 box.innerHTML 안에 넣어도 된다.
+- 미리 들어 있는 것: 함수 esc(글) — HTML 에 넣을 글은 꼭 esc 로 감싼다. CSS 클래스 rt-row(가로 줄), rt-title(제목, 넘치면 …), rt-title none(흐린 안내), rt-big(큰 값), rt-sub(작은 흐린 정보), rt-pt(작은 숫자), rt-chip(작은 알약, .on 이면 검정), rt-sp(남는 폭 채우기), rt-btn(검은 알약 버튼), rt-btn ghost(회색 버튼), rt-score(작은 점수 줄), rt-in(입력칸). 색은 CSS 변수 --ink --ink-2 --ink-3 --paper --paper-2 --card --line --zero(빨강) 를 쓰면 밝은·어두운 화면 모두 맞는다. 필요하면 <style> 을 box.innerHTML 안에 넣어도 된다.
 
 [코드 모양] 자바스크립트로 함수 하나를 만든다. 다른 전역 코드는 두지 않는다.
 function render(box, c) { ... }
@@ -999,6 +1001,19 @@ function render(box, c) { ... }
 - c.save(글): c.data 를 바꾼 뒤 부른다. 저장되고 방 사람 모두의 화면이 다시 그려진다. 글을 주면 대화 사이에 기록으로 남는다(예: "'설거지' 완료 +2P"). 기록할 일만 글을 준다.
 - c.toast(글): 화면 아래 잠깐 뜨는 알림.
 - 무작위 결과는 누른 사람 쪽에서 한 번 정해 c.data 에 넣고 c.save 한다. 그래야 모두에게 같은 결과가 보인다.
+
+[디자인] 무엇을 만들든 모양은 요청에 맞게 새로 짠다. 다만 아래 기준은 늘 지킨다 — 이 앱의 다른 화면과 한 몸처럼 보여야 한다.
+- 글자는 세 단계만: 큰 값(rt-big), 보통 글(rt-title 또는 14px), 작은 정보(rt-sub). 다른 크기·굵기를 새로 만들지 않는다.
+- 버튼은 rt-btn(검정)·rt-btn ghost(회색)만. 한 줄에 검은 버튼은 하나(가장 중요한 행동). 버튼 글자는 2~4자.
+- 간격은 4·8·12px 만. 줄 안의 것들은 rt-row 로 세로 가운데 맞춤. 남는 폭은 rt-sp 로 밀어서 버튼은 오른쪽 끝에 둔다.
+- 시선이 갈 곳은 하나: 가장 중요한 값 하나만 크게, 나머지는 작고 흐리게(--ink-3). 비슷한 크기의 것을 여러 개 늘어놓지 않는다.
+- 사람 이름·선택지는 rt-chip(작은 알약)으로 가로 나열. 많으면 앞의 몇 개와 "+3" 처럼 줄인다.
+- 숫자: 금액은 늘 천 단위 쉼표(90,000). 칸이 좁으면 "9만", "1.2만" 처럼 줄인다. 숫자는 var(--font-num).
+- 긴 글은 한 줄에서 … 로 줄인다(white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0). 줄이 넘어가 칸을 밀어내면 안 된다.
+- 입력칸(rt-in)은 남는 폭만 차지하고 옆에 버튼 하나. 입력 중이 아닐 때는 입력칸을 늘 띄워 두지 않는다(버튼을 누르면 나온다).
+- 연출(뽑기·강화 결과 등)은 짧고 또렷하게: 0.6~1.2초, 칸 안에서. 결과가 나오는 순간에 한 번. 늘 움직이는 장식은 두지 않는다.
+- 인원은 c.members 수에 맞춘다(둘이면 둘, 여럿이면 여럿). 사람 수를 따로 묻거나 고정하지 않는다.
+- 안 되는 부탁(실제 지도·인터넷 사진·외부 정보 등)은 reply 에서 한 문장으로 짧게 말하고, 칸 안에서 되는 가장 가까운 방법으로 만든다.
 
 [지킬 것]
 - 화면에 설명 문장을 넣지 않는다. 이름·숫자·짧은 버튼 글자(2~4자)·빈 상태 한 줄만. 사용법 안내 문구 금지.
@@ -1204,14 +1219,18 @@ app.post("/api/tools/:id/chat", auth, makerOnly, async (req, res) => {
 });
 
 /* ---------- 대화방에서 @봇 부르기 ----------
-   "@놀이 강화게임 만들어줘" → 새 도구를 만들어 이 방 위 칸에 바로 붙인다.
+   "@놀이 강화게임 만들어줘" → 새 도구를 만들어 이 방 위 칸에 붙인다.
    위 칸에 내 도구가 있으면(또는 봇 말풍선에 답장하면) 그 도구를 고친다. 고치기는 그 도구를 만든 사람만.
+   봇이 만든 코드는 바로 붙이지 않는다. 부른 사람의 앱이 보이지 않는 칸에 그려 보고 버튼도 눌러 보며 검사한다
+   (칸 밖으로 넘침·오류). 걸리면 무엇이 틀렸는지 봇에게 돌려보내 고치게 하고(최대 BOT_FIXES 번), 통과하면 붙인다.
    봇의 답은 kind "bot" 메시지로 남는다. 사람의 말이 아니라서 30일 Reset 에 세지 않는다.
    봇은 방 대화를 읽지 않는다. 부른 그 한 줄과 지금 도구 코드만 본다.
    많이 부르기 막기: 사람마다 하루 BOT_USER_CALLS(기본 10, 운영자 제외), 방마다 하루 BOT_ROOM_CALLS(기본 30),
-   방 하나에 한 번에 하나만, 같은 사람은 15초 간격, 그리고 하루 전체 예산 AI_DAILY_USD */
+   방 하나에 한 번에 하나만, 같은 사람은 15초 간격, 그리고 하루 전체 예산 AI_DAILY_USD. 검사 뒤 고치기는 횟수에 세지 않는다 */
 const BOT_USER_CALLS = Number(process.env.BOT_USER_CALLS || 10), BOT_ROOM_CALLS = Number(process.env.BOT_ROOM_CALLS || 30);
-const botBusy = new Set(), botLast = new Map();
+const BOT_MODEL = process.env.BOT_MODEL || AI_MODEL, BOT_FIXES = 2;
+const PRICES = { "claude-opus-5-5": AI_PRICE, "claude-sonnet-5-5": { in: 2, out: 10, cacheRead: 0.2, cacheWrite: 2.5 } };
+const botBusy = new Map(), botLast = new Map(), botPending = new Map();   // 방 → 시각, 사람 → 시각, 표 → 만드는 중인 것
 const EDIT_WORDS = /(수정|고쳐|고치|바꿔|바꾸|변경|추가|빼줘|없애|키워|줄여|늘려|되돌)/;
 async function botLeft(userId, bondId) {
   const day = kstDay();
@@ -1220,6 +1239,32 @@ async function botLeft(userId, bondId) {
     "select count(*)::int n from messages where bond_id = $1 and kind = 'bot' and created_at >= ($2::date)::timestamp at time zone 'Asia/Seoul'", [bondId, day])).rows[0].n;
   return Math.max(0, Math.min(BOT_USER_CALLS - mine, BOT_ROOM_CALLS - room));
 }
+// 봇 한 번 부르기. count=false 면 하루 횟수에 세지 않는다(검사 뒤 고치기)
+async function botAsk(userId, bot, content, count) {
+  const r = await ai.beta.messages.parse({
+    model: BOT_MODEL, max_tokens: 16000,
+    betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+    output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
+    system: [{ type: "text", text: MAKER_RULES + "\n\n[너의 성격과 전문]\n" + BOTS[bot], cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content }],
+  });
+  const u = r.usage || {}, p = PRICES[BOT_MODEL] || AI_PRICE;
+  const usd = ((u.input_tokens || 0) * p.in + (u.output_tokens || 0) * p.out +
+    (u.cache_read_input_tokens || 0) * p.cacheRead + (u.cache_creation_input_tokens || 0) * p.cacheWrite) / 1e6;
+  await pool.query(
+    `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, $4, $3)
+       on conflict (day, user_id) do update set calls = ai_usage.calls + $4, usd = ai_usage.usd + $3`, [kstDay(), userId, usd, count ? 1 : 0]);
+  const out = r.stop_reason === "refusal" ? null : r.parsed_output;
+  const good = out && out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
+  return { out, good };
+}
+const botFree = (bond, bot) => { botBusy.delete(bond.id); notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: false }) };
+// 오래 응답이 없으면(앱을 닫음 등) 만들던 것을 버린다
+setInterval(() => {
+  for (const [k, p] of botPending) if (Date.now() - p.at > 180000) { botPending.delete(k); botFree(p.bond, p.bot) }
+  for (const [k, t] of botBusy) if (Date.now() - t > 240000) botBusy.delete(k);
+}, 30000);
+
 app.get("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.sendStatus(404);
@@ -1236,8 +1281,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const uid = String(req.user.id);
   if (botBusy.has(bond.id)) return res.status(429).json({ error: "봇이 아직 만드는 중이에요" });
   if (Date.now() - (botLast.get(uid) || 0) < 15000) return res.status(429).json({ error: "잠시 뒤에 불러주세요" });
-  const day = kstDay();
-  const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [day])).rows[0].usd;
+  const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [kstDay()])).rows[0].usd;
   if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘은 더 부를 수 없어요" });
 
   // 고칠 도구: 답장한 봇 말풍선의 도구 → 아니면 지금 위 칸에 떠 있는 만든 도구
@@ -1258,45 +1302,66 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
     tool = null;
   }
 
-  botBusy.add(bond.id); botLast.set(uid, Date.now());
+  botBusy.set(bond.id, Date.now()); botLast.set(uid, Date.now());
   notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
+  const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
+  let r;
   try {
-    const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
-    const now = (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
-      `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`;
+    r = await botAsk(req.user.id, bot,
+      (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
+      `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, true);
+  } catch (e) {
+    console.error("roombot", e.status || "", e.message);
+    botFree(bond, bot);
+    return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" });
+  }
+  if (!r.out) { botFree(bond, bot); return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" }) }
+  if (tool && r.out.fresh && r.good) tool = null;   // 새 도구를 원한 것
+  const p = { at: Date.now(), bond, uid, bot, text, rid, tool, out: r.out, fixes: 0 };
+  if (!r.good) return res.json(await botFinish(p, false));   // 말만 한 경우(못 만드는 부탁 등): 검사할 것 없이 바로 답
+  const key = crypto.randomBytes(9).toString("base64url");
+  botPending.set(key, p);
+  res.json({ check: key, code: r.out.code });
+});
+// 앱의 검사 결과. issues 가 있으면 봇이 고친 새 코드를 돌려주고, 없으면(또는 고칠 만큼 고쳤으면) 방에 붙인다
+app.post("/api/rooms/:bondId/bot/check", auth, async (req, res) => {
+  const key = String(req.body?.check || ""), p = botPending.get(key);
+  if (!p || p.uid !== String(req.user.id)) return res.status(404).json({ error: "만들던 도구가 없어요" });
+  p.at = Date.now();
+  const issues = (Array.isArray(req.body?.issues) ? req.body.issues : []).map((x) => String(x).slice(0, 200)).slice(0, 8);
+  const broken = issues.some((x) => x.startsWith("오류"));
+  if (issues.length && p.fixes < BOT_FIXES) {
+    p.fixes++;
     let r;
     try {
-      r = await ai.beta.messages.parse({
-        model: AI_MODEL, max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
-        output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
-        system: [{ type: "text", text: MAKER_RULES + "\n\n[너의 성격과 전문]\n" + BOTS[bot], cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: now }],
-      });
-    } catch (e) {
-      console.error("roombot", e.status || "", e.message);
-      return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" });
-    }
-    const u = r.usage || {};
-    const usd = ((u.input_tokens || 0) * AI_PRICE.in + (u.output_tokens || 0) * AI_PRICE.out +
-      (u.cache_read_input_tokens || 0) * AI_PRICE.cacheRead + (u.cache_creation_input_tokens || 0) * AI_PRICE.cacheWrite) / 1e6;
-    await pool.query(
-      `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, 1, $3)
-         on conflict (day, user_id) do update set calls = ai_usage.calls + 1, usd = ai_usage.usd + $3`, [day, req.user.id, usd]);
-    const out = r.stop_reason === "refusal" ? null : r.parsed_output;
-    if (!out) return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" });
-    const good = out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
-    if (tool && out.fresh && good) tool = null;   // 새 도구를 원한 것
-    let ver = null, made = false;
-    if (good) {
+      r = await botAsk(req.user.id, p.bot,
+        `[방금 네가 만든 도구 코드]\n${p.out.code}\n\n[사용자가 처음 부탁한 것]\n${p.text}\n\n` +
+        `[실제 칸에 그려 보고 버튼을 눌러 본 검사 결과 — 이것만 고친다]\n${issues.map((x) => "- " + x).join("\n")}\n\n` +
+        `(같은 도구다. 하는 일·이름·모양은 그대로 두고 위 문제만 고친다. changed=true, code 에 고친 render 전체, reply 는 처음 만든 것처럼 한 문장.)`, false);
+    } catch (e) { r = null }
+    if (r && r.good) { p.out = { ...r.out, name: p.out.name, fresh: p.out.fresh }; return res.json({ check: key, code: p.out.code }) }
+  }
+  botPending.delete(key);
+  if (broken) {   // 고쳐도 오류가 남으면 붙이지 않는다
+    botFree(p.bond, p.bot);
+    return res.status(422).json({ error: "봇이 제대로 만들지 못했어요. 다시 불러주세요" });
+  }
+  res.json(await botFinish(p, true));
+});
+// 버전을 남기고 위 칸에 붙인 뒤, 봇 말풍선을 방에 올린다
+async function botFinish(p, made) {
+  const { bond, out, uid, rid } = p;
+  let tool = p.tool, ver = null, fresh = false;
+  try {
+    if (made) {
       if (!tool) {
         tool = (await pool.query("insert into user_tools (owner_id, name, bot) values ($1, $2, $3) returning *",
-          [req.user.id, (out.name || "새 도구").slice(0, 30), bot])).rows[0];
+          [Number(uid), (out.name || "새 도구").slice(0, 30), p.bot])).rows[0];
         await pool.query("insert into tool_chats (tool_id, messages) values ($1, '[]')", [tool.id]);
-        made = true;
+        fresh = true;
       }
-      ver = await addVersion(tool, out.code, out.note.slice(0, 80) || (made ? "처음" : "고침"));
-      if (!made && out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
+      ver = await addVersion(tool, out.code, out.note.slice(0, 80) || (fresh ? "처음" : "고침"));
+      if (!fresh && out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
       // 위 칸에 붙인다. 떠 있던 다른 도구는 내린다(데이터는 그대로)
       const key = "u" + tool.id;
       await pool.query(`update room_state set data = jsonb_set(data, '{on}', 'false') where bond_id = $1 and tool <> $2 and (data->>'on')::boolean`, [bond.id, key]);
@@ -1305,19 +1370,17 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
            on conflict (bond_id, tool) do update set data = room_state.data || $3, updated_at = now()`,
         [bond.id, key, { on: true, ver, name: (out.name || tool.name).slice(0, 30) }]);
     }
-    const meta = { bot, tool: tool ? tool.id : null, ver, name: tool ? (out.name || tool.name).slice(0, 30) : "", note: ver ? out.note.slice(0, 80) : "", made, owner: uid };
+    const reply = out.reply.slice(0, 300);
+    const meta = { bot: p.bot, tool: tool ? tool.id : null, ver, name: tool ? (out.name || tool.name).slice(0, 30) : "", note: ver ? out.note.slice(0, 80) : "", made: fresh, owner: uid };
     const { rows } = await pool.query(
       "insert into messages (bond_id, sender_id, body, kind, mime, reply_to) values ($1, $2, $3, 'bot', $4, $5) returning id, created_at",
-      [bond.id, req.user.id, out.reply.slice(0, 300), JSON.stringify(meta), rid || null]);
-    const msg = { id: rows[0].id, body: out.reply.slice(0, 300), at: rows[0].created_at, bondId: bond.id, from: uid, kind: "bot", bot: meta, replyTo: rid ? String(rid) : null };
-    notify(memberIds(bond), { type: "message", ...msg }, req.user.id);
+      [bond.id, Number(uid), reply, JSON.stringify(meta), rid || null]);
+    const msg = { id: rows[0].id, body: reply, at: rows[0].created_at, bondId: bond.id, from: uid, kind: "bot", bot: meta, replyTo: rid ? String(rid) : null };
+    notify(memberIds(bond), { type: "message", ...msg }, uid);
     if (ver) notify(memberIds(bond), { type: "room", bondId: bond.id, tool: "u" + tool.id });
-    res.json({ ...msg, left: await botLeft(req.user.id, bond.id) });
-  } finally {
-    botBusy.delete(bond.id);
-    notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: false });
-  }
-});
+    return { ...msg, left: await botLeft(uid, bond.id) };
+  } finally { botFree(bond, p.bot) }
+}
 
 /* ---------- 실시간 알림 ---------- */
 
