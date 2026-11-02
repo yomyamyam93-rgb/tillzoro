@@ -349,7 +349,7 @@
   .phone.kb .compose{padding-bottom:6px}
   .phone{--kb:0px}
   /* 키보드를 따라 밀어 올리는 칸들: 대화방(#chat.kbmove)과 같은 곡선 */
-  .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .25s cubic-bezier(.4,0,.2,1)}
+  .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .36s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
   #s-maker,#s-maker>.bar{background:var(--paper)}
   #s-maker .mkchat{background:var(--paper-2)}
@@ -367,14 +367,14 @@
   .confirm,.menu:not(.pop){transition:bottom .25s cubic-bezier(.4,0,.2,1)}
   .phone.kbapp .confirm{bottom:calc(16px + var(--kb))}
   .phone.kbapp .menu:not(.pop){bottom:calc(16px + var(--kb))}
-  .phone.kbapp .sheet{bottom:var(--kb)}
+  .phone.kbapp .sheet.on{bottom:var(--kb)}
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
   /* 2026-10-29 폰 기록으로 고른 값. 앞이 빠른 곡선(.2,.8,.2,1 / .38,.7,.125,1)은
      시간의 20%에 거리의 90%를 가버려서, 눈에는 뚝 갔다가 기어가는 것으로 보인다.
      이 곡선은 천천히 떠나 천천히 멈춘다: 시간 35%에 거리 50%, 51%에 78% */
-  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .25s cubic-bezier(.4,0,.2,1)}
+  #chat.kbmove .days,#chat.kbmove .compose,#chat.kbmove .chead,#chat.kbmove .roomtool{transition:transform .36s cubic-bezier(.4,0,.2,1)}
   .compose .bar2{display:flex;gap:4px;align-items:flex-end}
   .compose .icon{width:36px;height:36px;border:0;background:transparent;color:var(--ink);flex:none}
   .compose .icon[hidden]{display:none}
@@ -390,6 +390,9 @@
   .compose .send svg{fill:currentColor;stroke:none;width:18px;height:18px}
   .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:14px 14px 40px;box-shadow:0 -10px 40px rgba(0,0,0,.18);transform:translateY(110%);transition:transform .3s var(--ease-soft);z-index:5}
   .sheet.on{transform:none}
+  #toolSheet{padding-top:52px}
+  .sheetx{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+  .sheetx svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
   .sheet .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .sheet .grid button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px;border-radius:14px;background:var(--paper);font-size:12px;color:var(--ink-2)}
   .sheet .grid svg{width:24px;height:24px;fill:var(--ink);stroke:none}
@@ -649,7 +652,7 @@
     </div>
     <div class="scrim" id="scrim"></div>
 
-    <div class="sheet" id="toolSheet"><div class="tlist" id="toolSheetList"></div></div>
+    <div class="sheet" id="toolSheet"><button class="sheetx" data-close aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="tlist" id="toolSheetList"></div></div>
     <div class="sheet" id="drawerSheet"><div class="drawer" id="drawerRow"></div><p class="tempty" id="drawerEmpty" hidden>아직 비어 있어요</p></div>
     <div class="sheet" id="sheet"><div class="grid"><button data-act="album"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM5 18h14l-4.5-6-3.5 4.5-2-2.5z"/></svg>앨범</button><button data-act="camera"><svg viewBox="0 0 24 24"><path d="M9 4h6l1.5 2.5H20a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1h3.5zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>촬영</button></div></div>
     <input type="file" id="albumFile" accept="image/*,video/*" multiple hidden>
@@ -729,7 +732,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1319</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1431</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1548,12 +1551,17 @@ const toolView={};   // 방 → 내가 보고 있는 도구
 const onTools=()=>cur?Object.keys(roomData).filter(k=>roomData[k]?.on&&(isUserTool(k)||TOOLS.some(t=>t.id===k&&t.slot==="top")))
   .sort((a,b)=>(isUserTool(a)-isUserTool(b))||(Number(a.slice(1))-Number(b.slice(1)))||a.localeCompare(b)):[];
 const viewTool=()=>{ const ids=onTools(), v=cur&&toolView[cur.id]; return ids.includes(v)?v:ids[0] };
-function swipeTool(dir){
-  const ids=onTools(); if(ids.length<2) return;
-  toolView[cur.id]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length];
+let swiping=false;
+async function swipeTool(dir){
+  const ids=onTools(); if(ids.length<2||swiping) return; swiping=true;
+  const box=$("#roomTool"), bid=cur.id;
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{});
-  renderRoomTool();
-  $("#roomTool").animate([{transform:`translateX(${dir*28}px)`,opacity:.2},{transform:"none",opacity:1}],{duration:240,easing:"cubic-bezier(.2,.8,.2,1)"});
+  await box.animate([{transform:"none",opacity:1},{transform:`translateX(${-dir*60}%)`,opacity:0}],{duration:220,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
+  if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; renderRoomTool() }
+  const a=box.animate([{transform:`translateX(${dir*60}%)`,opacity:0},{transform:"none",opacity:1}],{duration:380,easing:"cubic-bezier(0,0,.2,1)"});
+  box.getAnimations().forEach(x=>{ if(x!==a) x.cancel() });
+  await a.finished.catch(()=>{});
+  swiping=false;
 }
 // 기본 도구(앱이 직접 그림)는 칸 위의 손가락을 앱이 받는다
 { let sx=null,sy=0; const tb=$("#roomTool");
@@ -2268,6 +2276,7 @@ const sheet=$("#sheet"),scrim=$("#scrim");
 function sheetOpen(v){sheet.classList.toggle("on",v);scrim.classList.toggle("on",v)}
 $("#plusBtn").addEventListener("click",()=>sheetOpen(true));
 scrim.addEventListener("click",closeSheets);
+$("#toolSheet [data-close]").addEventListener("click",closeSheets);
 
 /* 대화방 설정 — 글자 크기와 글꼴 */
 function closeSheets(){["#sheet","#toolSheet","#drawerSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
@@ -2391,7 +2400,7 @@ function openToolSheet(){
     // 같은 이름으로 고쳐 만든 것이 있을 수 있다. 내 것에는 몇 번째 모습인지 적어 가린다
     const tag=t.user?t.ver+"번 버전":SLOT[t.slot];
     r.innerHTML=`<div class="knob"><span style="flex:1">${esc(t.name)}</span><span class="slot">${tag}</span></div>`;
-    slideToggle(r,!!roomData[t.id]?.on,on=>{ setTimeout(closeSheets,260); setRoomTool(t,on) });
+    slideToggle(r,!!roomData[t.id]?.on,on=>setRoomTool(t,on));
     l.appendChild(r);
   });
   if(!l.children.length){
@@ -3207,9 +3216,13 @@ $("#kbLogBtn").addEventListener("click",()=>{
         if(performance.now()-t0<420) requestAnimationFrame(step); else log(w+" move "+path.join(",")) };
       requestAnimationFrame(step) };
     // 입력줄 아래에는 이미 홈바 여백이 있다. 그만큼은 빼야 키보드 윗변에 정확히 붙는다
+    let caretT=null;
     const push=px=>{ chat.classList.add("kbmove");
       const t=px?`translateY(${-px}px)`:"";
-      days.style.transform=t; comp.style.transform=t; };
+      days.style.transform=t; comp.style.transform=t;
+      inp.style.caretColor="transparent"; clearTimeout(caretT);
+      caretT=setTimeout(()=>{ inp.style.caretColor="";
+        if(document.activeElement===inp){ const a=inp.selectionStart,b=inp.selectionEnd; inp.setSelectionRange(a,b) } },420); };
     // 아래에서 뜨는 창(확인 창·메뉴·시트)은 키보드 위로
     const inset=px=>{ ph.style.setProperty("--kb",px+"px"); ph.classList.toggle("kbapp",px>0) };
     // 대화방이 아닌 화면도 같은 곡선으로 밀어 올린다. 아래 입력줄이 있는 만들기 화면은 대화방처럼 목록과 입력줄을 통째로,
