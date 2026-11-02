@@ -1308,11 +1308,6 @@ setInterval(() => {
   for (const [k, t] of botBusy) if (Date.now() - t > 240000) botBusy.delete(k);
 }, 30000);
 
-app.get("/api/rooms/:bondId/bot", auth, async (req, res) => {
-  const bond = await myBond(req.params.bondId, req.user.id);
-  if (!bond) return res.sendStatus(404);
-  res.json({ left: ai ? await botLeft(req.user.id, bond.id) : 0 });
-});
 app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   if (!ai) return res.status(503).json({ error: "AI 준비 중이에요" });
   const bond = await myBond(req.params.bondId, req.user.id);
@@ -1427,7 +1422,7 @@ async function botFinish(p, made) {
     const msg = { id: rows[0].id, body: reply, at: rows[0].created_at, bondId: bond.id, from: uid, kind: "bot", bot: meta, replyTo: rid ? String(rid) : null };
     notify(memberIds(bond), { type: "message", ...msg }, uid);
     if (ver) notify(memberIds(bond), { type: "room", bondId: bond.id, tool: "u" + tool.id });
-    return { ...msg, left: await botLeft(uid, bond.id) };
+    return msg;
   } finally { botFree(bond, p.bot) }
 }
 
