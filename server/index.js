@@ -1327,15 +1327,17 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [kstDay()])).rows[0].usd;
   if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘은 더 부를 수 없어요" });
 
-  // 고칠 도구: 답장한 봇 말풍선의 도구 → 아니면 지금 위 칸에 떠 있는 만든 도구
+  // 고칠 도구: 답장한 봇 말풍선의 도구 → 부른 사람이 지금 위 칸에서 보고 있는 도구 → 켜 둔 만든 도구
   let target = null;
   const rid = Number(req.body?.replyTo) || 0;
   if (rid) {
     const m = (await pool.query("select mime from messages where id = $1 and bond_id = $2 and kind = 'bot'", [rid, bond.id])).rows[0];
     if (m) target = Number(botMeta(m.mime).tool) || null;
   }
+  const seen = /^u\d+$/.test(String(req.body?.toolId || "")) ? String(req.body.toolId) : null;
+  if (!target && seen && (await pool.query("select 1 from room_state where bond_id = $1 and tool = $2", [bond.id, seen])).rowCount) target = Number(seen.slice(1));
   if (!target) {
-    const on = (await pool.query("select tool from room_state where bond_id = $1 and tool ~ '^u[0-9]+$' and (data->>'on')::boolean", [bond.id])).rows[0];
+    const on = (await pool.query("select tool from room_state where bond_id = $1 and tool ~ '^u[0-9]+$' and (data->>'on')::boolean order by updated_at desc", [bond.id])).rows[0];
     if (on) target = Number(on.tool.slice(1));
   }
   let tool = target ? (await pool.query("select * from user_tools where id = $1", [target])).rows[0] : null;
@@ -1410,9 +1412,8 @@ async function botFinish(p, made) {
       }
       ver = await addVersion(tool, out.code, out.note.slice(0, 80) || (fresh ? "처음" : "고침"));
       if (!fresh && out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
-      // 위 칸에 붙인다. 떠 있던 다른 도구는 내린다(데이터는 그대로)
+      // 켜 둔 도구에 더한다(다른 도구는 그대로 켜 둔다. 위 칸에서 옆으로 넘겨 본다)
       const key = "u" + tool.id;
-      await pool.query(`update room_state set data = jsonb_set(data, '{on}', 'false') where bond_id = $1 and tool <> $2 and (data->>'on')::boolean`, [bond.id, key]);
       await pool.query(
         `insert into room_state (bond_id, tool, data) values ($1, $2, $3)
            on conflict (bond_id, tool) do update set data = room_state.data || $3, updated_at = now()`,
