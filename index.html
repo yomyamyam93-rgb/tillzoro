@@ -156,7 +156,7 @@
         padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
   .tabs.show{display:flex}
   /* 탭바에 가리지 않도록 아래를 비워둔다 */
-  #till .rows,#settings .pad,
+  #till .rows,#settings .pad,#s-box .pad,
   #s-profile .pad,#s-blocked .pad,#s-rule .pad,
   #s-tool .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   /* 목록 안에서 무언가를 보이게 내릴 때도 탭바 위까지 */
@@ -264,6 +264,14 @@
   #roomTool{touch-action:none}
   /* 도구와 펼침은 한 상자다. 펼치면 상자가 아래로 늘어난다 */
   .dayswrap{position:relative}
+  /* 모음 탭: 나챗방 도구들을 한곳에서. 누르면 그 도구를 펼친 모습으로 화면 가득 */
+  #boxList{display:flex;flex-direction:column;gap:14px}
+  .boxc{display:flex;flex-direction:column;gap:6px;cursor:pointer}
+  .boxc>b{font:600 13px var(--font-body);color:var(--ink-3);padding:0 4px}
+  .boxc .roomtool{display:flex;margin:0;position:relative}
+  .boxc .roomtool>.cover{position:absolute;inset:0;z-index:2}
+  #s-boxv{display:flex;flex-direction:column}
+  .boxv{flex:1;min-height:0;margin:0 16px calc(88px + env(safe-area-inset-bottom,0px));padding:14px;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift)}
   .days>:first-child{margin-top:auto}
   #chat.self [data-tag]::after{content:attr(data-tag);display:block;margin-top:3px;font-size:11px;font-weight:400;opacity:.55}
   .rtcard{position:absolute;top:4px;left:16px;right:16px;z-index:2;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
@@ -631,6 +639,15 @@
   </section>
 
   <!-- 4. Settings -->
+  <section class="screen" id="s-box">
+    <div class="bar big"><h2>모음</h2></div>
+    <div class="pad" id="boxList"></div>
+  </section>
+  <section class="screen" id="s-boxv">
+    <div class="bar big"><button class="icon" data-back="s-box"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="boxvTitle"></h2></div>
+    <div class="boxv" id="boxvBody"></div>
+  </section>
+
   <section class="screen" id="settings">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2></div>
     <div class="pad" style="gap:0;padding-top:6px">
@@ -658,7 +675,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1735</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1745</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -706,6 +723,7 @@
   <div class="menu pop" id="msgMenu"></div>
   <div class="tabs" id="tabs">
       <button id="tabTill" data-tab="till" class="on" aria-label="Till"><span class="n" id="tabCount">0</span></button>
+      <button id="tabBox" data-tab="s-box" aria-label="모음"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button id="tabSettings" data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
   </div>
   <div class="toast" id="toast"></div>
@@ -2264,7 +2282,7 @@ $("#toolSheet [data-close]").addEventListener("click",closeSheets);
 function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
 const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
-const TAB_OF={till:"till",settings:"settings",
+const TAB_OF={till:"till","s-box":"s-box","s-boxv":"s-box",settings:"settings",
   "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
@@ -2274,7 +2292,7 @@ function syncTabs(){
   const cur=TAB_OF[top];
   $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===cur));
 }
-const TAB_ORDER=["till","settings"];
+const TAB_ORDER=["till","s-box","settings"];
 let tabBusy=false;
 /* 아이폰은 앱이 한 번이라도 물어본 권한만 설정에 보여준다. 여기서 한 번 물어 둔다 */
 const GEO_WORD={granted:"허용함",denied:"꺼둠",prompt:"안 물어봄","prompt-with-rationale":"안 물어봄"};
@@ -2291,6 +2309,7 @@ function goTab(id){
   const dir=TAB_ORDER.indexOf(id)>TAB_ORDER.indexOf(cur)?1:-1;   // 1이면 오른쪽 탭으로
 
   if(id==="settings"){ renderSettings(); showGeo() }
+  if(id==="s-box") renderBox();
   if(id==="till") renderTill();
 
   // 현재 탭 위에 쌓인 화면은 애니메이션 없이 걷어낸다
@@ -2401,6 +2420,42 @@ const TOOLS=[
 ];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
 
+/* 모음 탭: 나챗방에 띄워 둔 도구들을 한 줄씩. 칸은 보기만 하고(누르면 크게), 크게 본 화면에서는 펼친 모습(keep)을 쓰고 누를 수도 있다 */
+let boxData={};
+const selfBond=()=>people.find(p=>p.self);
+const boxState=(id,mode)=>({data:boxData[id]||{},me:myId(),self:true,members:[],items:toolItems[id]||[],mode});
+async function boxSave(id,data){
+  const sb=selfBond(); if(!sb) return;
+  const old=boxData[id]||{}; boxData[id]={...data,on:old.on,ver:old.ver,name:old.name,log:old.log};
+  try{ await api(`/api/room/${sb.id}/${id}`,{method:"POST",body:{data:boxData[id]}}) }catch(e){ toast(e.message) }
+}
+async function boxItems(id){
+  const r=await api(`/api/tools/${id}/items`).catch(()=>null); if(!r) return;
+  toolItems[id]=r.items.map(it=>({id:it.id,kind:it.kind,text:it.text,at:new Date(it.at).getTime(),room:it.room,data:it.data||{},
+    src:it.media?mediaURL(it.media,true):"",full:it.media?mediaURL(it.media):""}));
+}
+async function renderBox(){
+  const l=$("#boxList"), sb=selfBond(); if(!sb) return;
+  try{ boxData=(await api(`/api/room/${sb.id}`)).tools||{} }catch(e){ return }
+  const ids=Object.keys(boxData).filter(k=>isUserTool(k)&&boxData[k]?.on&&boxData[k]?.ver).sort((a,b)=>Number(a.slice(1))-Number(b.slice(1)));
+  l.innerHTML="";
+  if(!ids.length){ const e=document.createElement("p"); e.className="tempty"; e.textContent="아직 없어요"; l.appendChild(e); return }
+  for(const id of ids){
+    const card=document.createElement("div"); card.className="boxc";
+    card.innerHTML=`<b>${esc(boxData[id].name||"도구")}</b><div class="roomtool user"></div>`;
+    card.onclick=()=>openBox(id); l.appendChild(card);
+    const host=card.querySelector(".roomtool");
+    Promise.all([fetchToolCode(id,boxData[id].ver),boxItems(id)]).then(([code])=>{ if(!code||!card.isConnected) return;
+      mountSandbox(host,code,{state:()=>boxState(id,""),save:()=>{}}); const c=document.createElement("i"); c.className="cover"; host.appendChild(c) });
+  }
+}
+async function openBox(id){
+  $("#boxvTitle").textContent=boxData[id]?.name||"도구";
+  const body=$("#boxvBody"); body.innerHTML="";
+  go("s-boxv");
+  const code=await fetchToolCode(id,boxData[id].ver); if(!code) return;
+  const h=mountSandbox(body,code,{state:()=>boxState(id,"keep"),save:(data)=>{ boxSave(id,data); h.push() }});
+}
 // 내가 만든 도구(대화방 도구 시트에 늘 보인다)
 let myTools=[];
 async function loadMyTools(){ try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} }

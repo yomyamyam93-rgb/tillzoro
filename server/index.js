@@ -1363,7 +1363,8 @@ async function judge(uid, items, tools) {
     } else content.push({ type: "text", text: head + ": " + String(it.body || "").slice(0, 600) });
   }
   if (content.length < 2) return [];
-  try {
+  // 가끔 답이 깨져 온다(2026-11-02 재 봄). 그러면 그 묶음이 통째로 안 들어가니 한 번 더 묻는다
+  for (let tries = 0; tries < 2; tries++) try {
     const r = await ai.beta.messages.parse({
       model: PATCH_MODEL, max_tokens: 4000,
       output_config: { format: betaZodOutputFormat(JudgeOut) },
@@ -1377,7 +1378,8 @@ async function judge(uid, items, tools) {
     const ids = new Set(items.map((x) => Number(x.id))), ts = new Set(tools.map((x) => Number(x.id)));
     return (r.parsed_output?.hits || []).filter((h) => ids.has(h.item) && ts.has(h.tool))
       .map((h) => [h.item, h.tool, Object.fromEntries(h.data.map((p) => [p.k.slice(0, 20), p.v.slice(0, 100)]))]);
-  } catch (e) { console.error("judge", e.status || "", e.message); return [] }
+  } catch (e) { console.error("judge", tries, e.status || "", e.message) }
+  return [];
 }
 // 조건이 생기거나 바뀐 도구: 지난 항목을 다시 훑는다(최근 300개)
 async function refill(uid, toolId) {
