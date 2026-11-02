@@ -974,15 +974,10 @@ const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)(
 const AI_MODEL = "claude-opus-5-5";
 const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
 const AI_DAILY_USD = Number(process.env.AI_DAILY_USD || 3), AI_USER_CALLS = Number(process.env.AI_USER_CALLS || 40);
-const BOTS = {
-  play: "놀이: 장난기 있고 연출을 좋아한다. 강화·퀴즈·끝말잇기·빙고·내기·키우기 같은 놀이를 잘 만든다. 확률·차례·점수·순위·짧은 연출을 즐겨 쓴다.",
-  pick: "결정: 빠르고 공정하다. 메뉴 룰렛·사다리·제비뽑기·순서 정하기·팀 나누기를 잘 만든다. 무작위 결과는 한 번 정해서 c.data 에 저장해 모두에게 같게 보이게 한다.",
-  money: "돈: 꼼꼼하다. 정산·더치페이·회비·공동 가계부를 잘 만든다. 금액은 정수 원 단위, 천 단위 쉼표, 각자 자기 줄만 체크.",
-  meet: "모임: 정리를 잘한다. 공지·투표·일정 잡기·출석·역할 나누기·준비물을 잘 만든다. 만든 사람만 고치는 칸과 모두가 누르는 칸을 나눈다.",
-  two: "둘이서: 다정하다. 기념일·안부 확인·교환 일기·버킷리스트 같은 두 사람(친구·가족·연인) 도구를 잘 만든다.",
-  memory: "기억: 차분하다. 타임캡슐·하루 한 줄·연속 기록·습관 챌린지를 잘 만든다. 날짜는 한국 시간 기준.",
-  free: "자유 제작자: 무엇이든 만든다.",
-};
+const BOTS = require("./bot-playbooks");   // 봇별 교본(성격·원리·자주 오는 부탁·흔한 실수·서랍)
+// 잘 만든 예시. 서로 모양이 전혀 다르게 골라, 배치가 아니라 이 앱다운 느낌을 배우게 한다
+const EXAMPLES = require("./bot-examples").map((x, i) =>
+  `[예시 ${i + 1} · ${x.name}] 배울 점: ${x.look}\n${x.code}`).join("\n\n");
 const MAKER_RULES = `너는 메신저 앱 Till Zero 안에서 사용자와 대화하며 "도구"를 만드는 봇이다. 사용자는 코드를 모른다. 한국어로, 짧고 쉽게 말한다.
 
 [도구가 도는 곳]
@@ -1020,24 +1015,26 @@ function render(box, c) { ... }
 - Count·D-day·Keep(앱의 30일 규칙)을 바꾸려 하지 않는다. 그런 기능은 없다.
 - 오류 없이 돌아야 한다. 데이터가 비어 있을 때(처음)도 그려져야 한다.
 
-[대화하는 법]
-- 사용자가 원하는 게 분명하면 바로 만들고, 정할 게 남았으면 그 자리에서 묻는다. 한 번에 하나만 묻는다.
-- 꼭 정해야 하는 것만 묻는다: 몇 명이서(둘·여럿·혼자), 누가 조작하는지(모두·각자 자기 것만·만든 사람만·차례대로), 대화에 기록을 남길지. 분명하면 묻지 않는다.
-- 물을 때는 options 에 고를 답 2~4개(짧게)를 준다. 묻지 않을 때도 다음에 해 볼 만한 고치기 2~3개를 options 로 줄 수 있다.
-- reply 는 두 문장 이내. 코드 이야기는 하지 않는다.
-- 도구를 바꿨으면 changed=true, code 에 render 함수 전체, note 에 무엇을 바꿨는지 한 줄(예: "실패하면 한 단계 내려감"). 안 바꿨으면 changed=false, code 와 note 는 빈 글.
+[만드는 법] 사용자는 대화방에서 "@봇 할 일" 한 줄로 부른다. 되묻지 않는다 — 다시 물을 기회가 없다.
+- 그 한 줄 뒤에 있는 진짜 목적을 생각한다. 그 목적에 꼭 필요한 것은 말하지 않았어도 넣고, 없어도 되는 기능은 넣지 않는다.
+  (예: "회식비 정산" → 1인 금액과 각자 낸 표시는 필요, 영수증 사진·항목별 메모는 필요 없다)
+- 빠진 것은 가장 흔하고 자연스러운 쪽으로 정한다: 인원은 c.members, 누가 누르나는 정산·체크는 각자 자기 것만 / 게임·뽑기는 누구나,
+  대화에 기록(c.save 의 글)은 결과가 났을 때만.
+- 지금 도구 코드가 함께 오면 그걸 고치는 부탁이다. 말한 것만 바꾸고 나머지(데이터 칸 이름 포함)는 그대로 둔다 — 방에 쌓인 데이터가 이어져야 한다.
+- reply 는 한 문장: 무엇을 만들었고/바꿨고 어떻게 쓰는지 핵심만. 코드 이야기는 하지 않는다. options 는 빈 목록.
+- 도구를 바꿨으면 changed=true, code 에 render 함수 전체(keep 이 있으면 함께), note 에 무엇을 바꿨는지 한 줄(예: "실패하면 한 단계 내려감"). 못 만드는 부탁이면 changed=false, code·note 는 빈 글, reply 에 짧게 이유.
 - 서랍: keep(box, c) 함수를 두면 대화방 서랍에 이 도구의 기록이 남는다(없으면 안 남는다).
   render 가 "지금"을 보여준다면 keep 은 "지금까지"를 한 덩어리로 보여준다 —
   승률, 평균, 합계, 간단한 그래프처럼. 도구 두 개 높이의 작은 칸이니 한눈에 읽히게.
   그러려면 통계는 목록으로 쌓지 말고 수로 세어 둔다: d.games/d.wins 는 되고
   d.history=[...] 는 안 된다. 그래프가 필요하면 날짜별 한 점만 남기고 오래된 것은 묶는다.
-  무엇을 만들든 한 번은 물어라: "서랍에는 뭘 남길까요?"
+  서랍에 남길 만한 게 있으면 묻지 말고 알아서 만든다(교본의 [서랍] 참고). 없으면 만들지 않는다.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
     await c.ask("location")        -> {lat, lon, acc}   위치 한 번. 거절되면 예외
     await c.ask("share", {text})   -> 공유 시트
     await c.ask("copy", {text})    -> 복사
     await c.ask("buzz")            -> 짧은 진동
-  거절·실패는 예외로 오니 try/catch 로 받고, 안 되면 그 자리에 안내를 적는다.
+  거절·실패는 예외로 오니 try/catch 로 받고, 안 되면 그 자리에 짧은 상태만 적는다(예: "위치 꺼짐"). 문장으로 설명하지 않는다.
   위치는 누를 때만 묻는다(그릴 때마다 부르지 않는다). 좌표는 c.save 로 남겨 두고 쓴다.
 - fresh: 지금 도구를 고치는 게 아니라 전혀 다른 새 도구를 원하면 true. 그때 code 는 처음부터 새로 만든다.
 - name 은 열 글자 안쪽의 재미있는 이름. 기능 설명이 아니라 별명처럼 짓는다.
@@ -1245,7 +1242,10 @@ async function botAsk(userId, bot, content, count) {
     model: BOT_MODEL, max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
     output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
-    system: [{ type: "text", text: MAKER_RULES + "\n\n[너의 성격과 전문]\n" + BOTS[bot], cache_control: { type: "ephemeral" } }],
+    system: [
+      { type: "text", text: MAKER_RULES + "\n\n[잘 만든 예시] 이 앱다운 느낌(여백·글자 단계·버튼·연출의 절제)을 보라. 배치를 따라 하지 말고 부탁에 맞게 새로 짠다.\n\n" + EXAMPLES, cache_control: { type: "ephemeral" } },
+      { type: "text", text: "[너의 교본]\n" + BOTS[bot], cache_control: { type: "ephemeral" } },
+    ],
     messages: [{ role: "user", content }],
   });
   const u = r.usage || {}, p = PRICES[BOT_MODEL] || AI_PRICE;
