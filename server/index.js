@@ -1012,7 +1012,7 @@ function render(box, c) { ... }
   - rule.ai: 종류만으로 되면 false("사진 전부", "링크 전부"). 내용을 봐야 고를 수 있으면 true("강아지 사진만", "돈 쓴 글만", "약속이 있는 글만").
   - rule.ask: ai=true 일 때 고르는 조건 한 줄(예: "돈을 쓰거나 받은 내용"). rule.fields: 항목에서 뽑아 둘 값 이름(예: amount, date, time, place, item). 없으면 빈 목록.
   - 코드에서는 c.items 로 받는다: [{id, kind, text, src(사진·영상 작은 것), full(원본), at(밀리초), room(방 이름), data:{뽑은 값}}], 새것이 앞.
-    data 의 숫자도 글이니 Number() 로 바꿔 쓴다. 사진은 <img src="${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
+    data 의 숫자도 글이니 Number() 로 바꿔 쓴다. 사진은 <img src="\${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
   - 직접 적는 것(예: 가계부에 손으로 추가)이 필요하면 c.data 에 따로 쌓고 c.items 와 합쳐 보여 준다. 다 한 것 표시(할 일 체크 등)도 c.data 에 item id 로 둔다.
   - 보통 도구(누르는 것: 게임·정산·투표 등)이거나 나챗방이 아니면 rule.on=false, kinds·fields 빈 목록, ai=false, ask 빈 글.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
