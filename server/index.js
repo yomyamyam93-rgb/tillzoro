@@ -1318,7 +1318,7 @@ async function collect(bond, row, m, senderId) {
     if (!m.body && !m.media) return;
     const kind = itemKind(m), self = bond.kind !== "group" && String(bond.a_id) === String(bond.b_id);
     const org = self ? [] : (await pool.query("select user_id from organize where bond_id = $1", [bond.id])).rows.map((r) => String(r.user_id));
-    for (const uid of memberIds(bond)) {
+    for (const uid of new Set(memberIds(bond))) {   // 나챗방은 a·b 가 같은 사람이라 한 번만
       if (kind === "text" && !self && !org.includes(uid)) continue;   // 글은 나챗방과 정리를 켠 방만
       const tools = await ruleTools(uid);
       if (!self && !tools.some((x) => x.rule.kinds.includes(kind))) continue;   // 받아 갈 도구가 없으면 남기지 않는다
