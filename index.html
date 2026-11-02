@@ -730,7 +730,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1317</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1318</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2208,7 +2208,7 @@ function botCall(t){
   const k=BOT_BY_NAME()[m[1]]; return k?{bot:k,text:m[2].trim()}:null;
 }
 const faceOf=k=>BOT_IMG[k]?`background-image:url(bots/${k}-face.jpg)`:"";
-const BOT_TAG={play:"게임·내기",pick:"뽑기·순서",money:"정산·회비",meet:"공지·투표·일정",two:"둘이서",memory:"기록·습관",free:"무엇이든"};
+const BOT_TAG={play:"게임·내기",pick:"뽑기·순서",money:"정산·회비",meet:"공지·투표·일정",two:"연인·친구 둘",memory:"기록·습관",free:"무엇이든"};
 async function callBot(bot,text,replyTo){
   const bond=cur.id; botWork={bond,bot}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
   try{
