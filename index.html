@@ -327,7 +327,6 @@
   .botpick .bface{width:32px;height:32px}
   .botpick b{font:600 15px var(--font-body);flex:none}
   .botpick .d{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-  .botpick .left{position:absolute;top:10px;right:14px;font:600 12px var(--font-num);color:var(--ink-3)}
   .bface{flex:none;width:28px;height:28px;border-radius:50%;background:var(--card) center/cover no-repeat}
   .botmsg{flex:none;align-self:flex-start;display:flex;gap:8px;max-width:86%;align-items:flex-start}
   .botmsg .bface{width:34px;height:34px}
@@ -730,7 +729,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1318</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1319</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2201,7 +2200,7 @@ function sendText(){
 sendBtn.addEventListener("click",sendText);
 /* 대화방에서 @봇 부르기. 봇은 부른 한 줄만 본다(방 대화는 읽지 않는다).
    만든 도구는 바로 위 칸에 붙고, 봇의 답은 방 모두에게 봇 말풍선으로 보인다. 고치기·되돌리기는 만든 사람만 */
-let botWork=null, botLeftN=null;
+let botWork=null;
 const BOT_BY_NAME=()=>Object.fromEntries(Object.entries(BOT_NAME).map(([k,n])=>[n,k]));
 function botCall(t){
   const m=t.match(/^@(\S+)\s+([\s\S]+)$/); if(!m) return null;
@@ -2215,7 +2214,6 @@ async function callBot(bot,text,replyTo){
     const seen=viewTool();
     let r=await api(`/api/rooms/${bond}/bot`,{method:"POST",body:{bot,text,replyTo:replyTo||undefined,toolId:isUserTool(seen||"")?seen:undefined}});
     while(r.check){ const issues=await checkTool(r.code); r=await api(`/api/rooms/${bond}/bot/check`,{method:"POST",body:{check:r.check,issues}}) }
-    botLeftN=r.left;
     if(botWork&&botWork.bond===bond) botWork=null;
     if(cur&&cur.id===bond){ if(r.bot?.tool&&r.bot.ver) toolView[bond]="u"+r.bot.tool; appendBubble(fromServer(r,true)); loadRoomTools() }
   }catch(e){ if(botWork&&botWork.bond===bond) botWork=null; if(cur&&cur.id===bond) renderMsgs(); toast(e.message) }
@@ -2240,16 +2238,16 @@ function botWorkEl(k){
   el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${BOT_NAME[k]||"봇"}</span><div class="bt">만드는 중<i>.</i><i>.</i><i>.</i></div></div>`;
   return el;
 }
-// "@" 로 시작해서 아직 띄어쓰기 전이면 봇 고르기 줄을 보인다. 오늘 남은 횟수는 숫자만
+// "@" 로 시작해서 아직 띄어쓰기 전이면 봇 고르기 목록을 보인다. 남은 횟수는 보여 주지 않는다(넘으면 그때 알린다)
 function showBotPick(){
   const v=msgIn.value, box=$("#botPick"), on=!!cur&&/^@\S*$/.test(v);
   if(!on){ box.hidden=true; return }
   const q=v.slice(1);
   const ks=Object.keys(BOT_NAME).filter(k=>BOT_NAME[k].startsWith(q));
   if(!ks.length){ box.hidden=true; return }
-  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span><b>${BOT_NAME[k]}</b><span class="d">${BOT_TAG[k]}</span></button>`).join("")+(botLeftN!=null?`<span class="left">${botLeftN}</span>`:"");
+  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span><b>${BOT_NAME[k]}</b><span class="d">${BOT_TAG[k]}</span></button>`).join("");
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ msgIn.value="@"+BOT_NAME[b.dataset.k]+" "; fitIn(); box.hidden=true; msgIn.focus() });
-  if(box.hidden){ box.hidden=false; const bond=cur.id; api(`/api/rooms/${bond}/bot`).then(r=>{ botLeftN=r.left; if(!box.hidden&&cur&&cur.id===bond) showBotPick() }).catch(()=>{}) }
+  box.hidden=false;
 }
 msgIn.addEventListener("input",showBotPick);
 document.addEventListener("pointerdown",e=>{ const b=$("#botPick"); if(!b.hidden&&!b.contains(e.target)&&e.target!==msgIn) b.hidden=true },true);

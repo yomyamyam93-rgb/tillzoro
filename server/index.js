@@ -1325,7 +1325,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   if (botBusy.has(bond.id)) return res.status(429).json({ error: "봇이 아직 만드는 중이에요" });
   if (Date.now() - (botLast.get(uid) || 0) < 15000) return res.status(429).json({ error: "잠시 뒤에 불러주세요" });
   const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [kstDay()])).rows[0].usd;
-  if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘은 더 부를 수 없어요" });
+  if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘 사용 한도를 넘었어요" });
 
   // 고칠 도구: 답장한 봇 말풍선의 도구 → 부른 사람이 지금 위 칸에서 보고 있는 도구 → 켜 둔 만든 도구
   let target = null;
