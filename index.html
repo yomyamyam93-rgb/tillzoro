@@ -734,7 +734,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1502</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1504</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1400,7 +1400,7 @@ function sandboxDoc(code){
 <style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
-html:not(.keep),html:not(.keep) body{touch-action:none} html.keep,html.keep body{overflow-y:auto} html.keep #box{height:auto;min-height:100%}
+html:not(.keep),html:not(.keep) body{touch-action:none} html.keep,html.keep body{overflow-y:auto} html.keep #box>.rt-title.none{flex:none;align-self:center;font-size:15px} html.keep #box{height:auto;min-height:100%}
 ${rtCss()}</style></head><body><div id="box"></div>
 <script>
 const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
