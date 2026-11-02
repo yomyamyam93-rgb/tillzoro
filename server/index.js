@@ -1010,7 +1010,13 @@ function render(box, c) { ... }
   rule.on=true 로 조건을 붙인다. 그러면 나챗방에 던진 것(글·사진·영상·파일·링크) 중 맞는 것이 이 도구로 들어온다. 다른 방에서 오는 사진·영상·파일·링크도 들어온다.
   - rule.kinds: 받을 종류(text, link, photo, video, file). 가계부·일정·할 일은 text, 사진 모음은 photo.
   - rule.ai: 종류만으로 되면 false("사진 전부", "링크 전부"). 내용을 봐야 고를 수 있으면 true("강아지 사진만", "돈 쓴 글만", "약속이 있는 글만").
-  - rule.ask: ai=true 일 때 고르는 조건 한 줄(예: "돈을 쓰거나 받은 내용"). rule.fields: 항목에서 뽑아 둘 값 이름(예: amount, date, time, place, item). 없으면 빈 목록.
+  - rule.ask: ai=true 일 때 고르는 조건. 받아 적는 쪽은 이 글만 보고 고르니 꼼꼼히 쓴다 — 넣을 것과 넣지 않을 것을 함께:
+    예) 가계부 "실제로 돈을 쓰거나 받은 기록. 금액이 적혀 있어야 한다. 살 것·할 일·가격 문의·계획은 넣지 않는다"
+        일정 "날짜나 요일·시각이 정해진 약속·예약·일정. 막연한 '나중에'·지난 일 이야기는 넣지 않는다"
+        강아지 사진 "강아지가 주인공으로 보이는 사진. 강아지 그림·장난감·고양이는 넣지 않는다"
+  - rule.fields: 항목에서 뽑아 둘 값 이름(예: amount, date, time, place, item). **첫째 값은 그 도구의 핵심 값**이다 —
+    받아 적는 쪽은 첫째 값을 뽑을 수 없으면 그 항목을 넣지 않는다(가계부는 amount 먼저, 일정은 date 먼저). 핵심 값이 따로 없으면 빈 목록.
+  - 이름(name)은 사용자가 부른 말 그대로 짧게(가계부라 하면 "가계부"). 꾸민 이름을 짓지 않는다.
   - 코드에서는 c.items 로 받는다: [{id, kind, text, src(사진·영상 작은 것), full(원본), at(밀리초), room(방 이름), data:{뽑은 값}}], 새것이 앞.
     data 의 숫자도 글이니 Number() 로 바꿔 쓴다. 사진은 <img src="\${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
   - 직접 적는 것(예: 가계부에 손으로 추가)이 필요하면 c.data 에 따로 쌓고 c.items 와 합쳐 보여 준다. 다 한 것 표시(할 일 체크 등)도 c.data 에 item id 로 둔다.
@@ -1361,7 +1367,8 @@ async function judge(uid, items, tools) {
     const r = await ai.beta.messages.parse({
       model: PATCH_MODEL, max_tokens: 4000,
       output_config: { format: betaZodOutputFormat(JudgeOut) },
-      system: `너는 받아 적는다. 각 항목이 어느 도구의 조건에 맞는지 고른다. 확실할 때만 넣는다(애매하면 넣지 않는다). 한 항목이 여러 도구에 맞을 수 있다.
+      system: `너는 받아 적는다. 각 항목이 어느 도구의 조건에 맞는지 고른다. 조건을 글자 그대로 엄격하게 따른다 — 조건이 "넣지 않는다"고 한 것은 넣지 않고, 애매하면 넣지 않는다. 한 항목이 여러 도구에 맞을 수 있다.
+뽑을 값이 있는 도구는 첫째 값이 핵심이다: 그 항목에서 첫째 값을 뽑을 수 없으면 그 도구에는 넣지 않는다(예: 금액이 없는 글은 가계부에 넣지 않는다).
 뽑을 값이 있으면 항목에서 그 값만 짧게 뽑는다: 금액은 숫자만(원 단위, "1.2만"→12000), 날짜는 YYYY-MM-DD(오늘은 ${day}, "토요일"은 다가오는 토요일), 시각은 HH:MM, 나머지는 짧은 낱말. 없으면 그 값은 뺀다.`,
       messages: [{ role: "user", content }],
     });
@@ -1605,6 +1612,24 @@ app.get("/api/self/tags", auth, async (req, res) => {
     `select i.msg_id, string_agg(t.name, ' · ' order by t.id) names from items i join item_hits h on h.item_id = i.id join user_tools t on t.id = h.tool_id
       where i.user_id = $1 and i.msg_id is not null group by i.msg_id order by i.msg_id desc limit 400`, [req.user.id]);
   res.json({ tags: Object.fromEntries(rows.map((r) => [String(r.msg_id), r.names])) });
+});
+// 나챗방 말풍선 하나가 들어간 도구들과, 넣을 수 있는 내 도구들
+app.get("/api/self/item/:msgId", auth, async (req, res) => {
+  const it = (await pool.query("select id from items where user_id = $1 and msg_id = $2", [req.user.id, Number(req.params.msgId) || 0])).rows[0];
+  if (!it) return res.json({ tools: [] });
+  const { rows } = await pool.query(
+    `select t.id, t.name, exists (select 1 from item_hits h where h.item_id = $2 and h.tool_id = t.id) hit
+       from user_tools t where t.owner_id = $1 and t.rule is not null and (t.rule->>'on')::boolean order by t.id`, [req.user.id, it.id]);
+  res.json({ item: it.id, tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, on: r.hit })) });
+});
+app.post("/api/self/item/:itemId", auth, async (req, res) => {
+  const it = (await pool.query("select id from items where id = $1 and user_id = $2", [Number(req.params.itemId) || 0, req.user.id])).rows[0];
+  const tool = Number(String(req.body?.tool || "").replace(/^u/, "")) || 0;
+  if (!it || !(await pool.query("select 1 from user_tools where id = $1 and owner_id = $2", [tool, req.user.id])).rowCount) return res.sendStatus(404);
+  if (req.body?.on) await pool.query("insert into item_hits (item_id, tool_id) values ($1, $2) on conflict do nothing", [it.id, tool]);
+  else await pool.query("delete from item_hits where item_id = $1 and tool_id = $2", [it.id, tool]);
+  notify([String(req.user.id)], { type: "items", tools: ["u" + tool] });
+  res.json({ ok: true });
 });
 // 이 방도 정리(나에게만). 켜면 이 방의 글도 받아 적는다
 app.post("/api/rooms/:bondId/organize", auth, async (req, res) => {

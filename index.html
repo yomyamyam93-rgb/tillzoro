@@ -156,7 +156,7 @@
         padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
   .tabs.show{display:flex}
   /* 탭바에 가리지 않도록 아래를 비워둔다 */
-  #till .rows,#s-tools .pad,#settings .pad,
+  #till .rows,#settings .pad,
   #s-profile .pad,#s-blocked .pad,#s-rule .pad,
   #s-tool .pad{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   /* 목록 안에서 무언가를 보이게 내릴 때도 탭바 위까지 */
@@ -264,6 +264,7 @@
   #roomTool{touch-action:none}
   /* 도구와 펼침은 한 상자다. 펼치면 상자가 아래로 늘어난다 */
   .dayswrap{position:relative}
+  .days>:first-child{margin-top:auto}
   #chat.self [data-tag]::after{content:attr(data-tag);display:block;margin-top:3px;font-size:11px;font-weight:400;opacity:.55}
   .rtcard{position:absolute;top:4px;left:16px;right:16px;z-index:2;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
     background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden}
@@ -341,21 +342,14 @@
   .phone.kb .compose{padding-bottom:6px}
   .phone{--kb:0px}
   /* 키보드를 따라 밀어 올리는 칸들: 대화방(#chat.kbmove)과 같은 곡선 */
-  .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .27s cubic-bezier(.4,0,.2,1)}
+  .phone.kbanim .pad,.phone.kbanim .rows{transition:transform .27s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
-  #s-maker,#s-maker>.bar{background:var(--paper)}
-  #s-maker .mkchat{background:var(--paper-2)}
-  #s-maker .mkprev{position:relative;z-index:2;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 12px 22px -16px rgba(0,0,0,.55)}
-  /* 키보드가 올라오면 대화가 transform 으로 올라간다. 머리말 위(상태바 여백)로 새지 않게 잘라낸다 */
-  .mkchatwrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}
   @keyframes mkshine{to{background-position:-200% 0}}
   @keyframes toolland{0%{opacity:0;transform:scale(.8) translateY(30px)}60%{opacity:1;transform:scale(1.035) translateY(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
   .landed{animation:toolland .9s cubic-bezier(.22,1,.36,1) both}
   .landed .roomtool{position:relative;overflow:hidden}
   .landed .roomtool::after{content:"";position:absolute;inset:0;pointer-events:none;animation:mkshine 1.1s cubic-bezier(.4,0,.2,1) .25s both;
     background:linear-gradient(100deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%) 0 0/200% 100%}
-  .mkprev.making .roomtool{position:relative;overflow:hidden}
-  .mkprev.making .roomtool::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.8) 50%,transparent 58%) 0 0/200% 100%;animation:mkshine 1.3s linear infinite}
   .confirm,.menu:not(.pop){transition:bottom .25s cubic-bezier(.4,0,.2,1)}
   .phone.kbapp .confirm{bottom:calc(16px + var(--kb))}
   .phone.kbapp .menu:not(.pop){bottom:calc(16px + var(--kb))}
@@ -432,57 +426,9 @@
   .seg button.on{background:var(--ink);color:var(--paper);font-weight:500}
   /* 사파리는 overflow 칸 안의 flex 자식 높이를 안 세는 때가 있다(크롬은 샌다).
      그래서 도구 화면만 가장 평범한 배치로 둔다: 스크롤 칸은 블록, 그 안은 블록 하나 */
-  #s-tools .pad{display:block}
-  .tpane{display:flex;flex-direction:column;gap:14px}
-  .tpane[hidden]{display:none}
   .tempty{color:var(--ink-3);font-size:14px;text-align:center;margin:30px 0}
   .clist{display:flex;flex-direction:column;gap:var(--row-gap)}
-  .bbox{height:var(--tool-h);background:var(--card);border-radius:var(--r-card);padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s ease}
-  .bbox:active,.mine:active{transform:scale(.98)}
-  .bbox .bic{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2) center/cover;color:var(--ink)}
-  .bbox .bic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .bbox .bt{min-width:0;flex:1}
-  .bbox.img{position:relative;overflow:hidden;background:#111 center/cover no-repeat}
-  .bbox.img::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 58%,rgba(0,0,0,0))}
-  .bbox.img .bt{position:relative;z-index:1}
-  .bbox.img b{color:#fff}
-  .bbox.img .d{color:rgba(255,255,255,.8)}
-  #s-maker .mkav{flex:none;width:40px;height:40px;border-radius:50%;background:var(--card) center/cover}
-  .bbox b{display:block;font:600 15px var(--font-body);color:var(--ink)}
-  .bbox .d{display:block;margin-top:3px;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mine{margin-top:0;cursor:pointer;transition:transform .15s ease}
-  .mine .roomtool{display:flex;margin:0}
-  .mine .roomtool iframe,.tool .knob.roomtool *{pointer-events:none}
-  .tool .roomtool{position:relative}
-  .tool .roomtool>.cover{position:absolute;inset:0;z-index:2;pointer-events:auto}   /* 상자는 보기만. 탐색은 카드가 스위치, 내 도구는 누르면 고치기 */
-  .tool .remix{margin-left:auto;font:500 12px var(--font-body);color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:5px 10px;white-space:nowrap}
-  #s-maker .bar .mkact{display:flex;gap:8px;align-items:center}
-  #s-maker .bar .attach{height:40px;padding:0 16px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
-  #s-maker .bar .icon[disabled]{opacity:.35}
-  .mkprev{flex:none;padding:0 0 6px}
-  .mkprev .roomtool{display:flex}
-  .mkbar{display:flex;gap:6px;justify-content:flex-end;align-items:center;margin:0 16px;font-size:12px;color:var(--ink-3)}
-  .mkbar span{margin-right:auto}
-  .mkbar button{height:28px;padding:0 12px;border-radius:14px;background:var(--card);font-size:12px;color:var(--ink-2);white-space:nowrap}
-  .mkchat{flex:1;overflow:auto;padding:8px 14px 10px;display:flex;flex-direction:column;gap:6px;scrollbar-width:none;overscroll-behavior-y:contain}
-  .mkchat .b{max-width:82%;padding:8px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;word-break:break-word;white-space:pre-wrap}
-  .mkchat .who{display:flex;align-items:center;gap:6px;align-self:flex-start;margin:6px 0 1px;font:500 12px var(--font-body);color:var(--ink-2)}
-  .mkchat .who i{width:22px;height:22px;border-radius:50%;flex:none;background:var(--line) center/cover;box-shadow:var(--tool-lift)}
-  .mkchat .b.bot{align-self:flex-start;background:var(--card);color:var(--ink);border-bottom-left-radius:4px}
-  .mkchat .b.me{align-self:flex-end;background:var(--bubble-me);color:var(--bubble-me-ink);border-bottom-right-radius:4px}
-  .mkchat .b.wait{color:var(--ink-3)}
-  .mkchat .v{align-self:flex-start;font-size:11.5px;color:var(--ink-3);margin:-2px 0 2px 4px}
-  .mkchat .opts{display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;max-width:92%}
-  .mkchat .opts button{height:32px;padding:0 13px;border-radius:16px;background:var(--paper-2);border:1px solid var(--line);font-size:13px;color:var(--ink);white-space:nowrap}
-  .mkhist .knob{display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:14px;background:var(--paper-2);font-size:14px}
-  .mkhist .knob b{font:500 13px var(--font-num);min-width:24px}
-  .mkhist .knob span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mkhist .knob i{font-style:normal;font-size:12px;color:var(--ink-3)}
-  .mkhist .knob+.knob{margin-top:8px}
-  .mkhist .knob.now{outline:1.5px solid var(--ink)}
-  .tool .nm{display:flex;align-items:center;gap:8px;margin:0 0 7px 2px;font:600 14px var(--font-body);color:var(--ink)}
   /* 상자는 하나의 규격이다. 어떤 도구든 이 안에서 해결한다. */
-  .tool .pv{background:var(--card);border-radius:var(--r-card);padding:12px 14px;font-size:13px;line-height:1.45;color:var(--ink);
             height:var(--tool-h);display:flex;flex-direction:column;justify-content:center;gap:2px;overflow:hidden}
   .item .t{font-size:15px;font-weight:500;letter-spacing:.01em}
   .item:last-child{border-bottom:0}
@@ -649,16 +595,6 @@
     <input type="file" id="captureFile" accept="image/*,video/*" capture="environment" hidden>
   </section>
 
-  <section class="screen" id="s-tools">
-    <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
-    <div class="pad">
-      <div class="tpane" id="paneBrowse">
-        <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
-        <div id="toolList"></div>
-        <p id="toolEmpty" class="tempty" style="display:none">찾는 도구가 없어요</p>
-      </div>
-    </div>
-  </section>
 
   <section class="screen" id="s-chat">
     <div class="bar big"><button class="icon" data-back="chat"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="sChatTitle">Room</h2></div>
@@ -722,7 +658,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1720</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1735</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -743,18 +679,6 @@
     <iframe id="docFrame" title="문서"></iframe>
   </section>
 
-  <section class="screen" id="s-maker">
-    <div class="bar big"><button class="icon" data-back="s-tools"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span class="mkav" id="mkAv"></span><h2 id="mkName" style="font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
-      <div class="mkact"><button class="attach" id="mkAttach">완료</button></div></div>
-    <div class="mkprev">
-      <div class="roomtool user" id="mkBox"></div>
-      <div class="roomtool user" id="mkBoxOther"></div>
-      <div class="mkbar"><span id="mkVer"></span><span style="flex:1"></span><span>탐색에 공개</span><div class="toggle" id="mkPub"></div><button id="mkHist">기록</button></div></div>
-    <div class="mkchatwrap"><div class="mkchat" id="mkChat"></div></div>
-    <div class="compose" id="mkCompose"><div class="bar2"><div class="field2"><textarea id="mkIn" rows="1" placeholder="메시지"></textarea></div><button class="icon send off" id="mkSend" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-6 18-3-7z"/></svg></button></div></div>
-    <div class="scrim" id="mkScrim"></div>
-    <div class="sheet" id="mkHistSheet"><div class="mkhist" id="mkHistList"></div></div>
-  </section>
 
   <section class="screen" id="s-admin">
     <div class="bar big"><button class="icon" data-back="settings"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Reports</h2></div>
@@ -845,7 +769,6 @@ async function syncTill(){
   const d=await api("/api/till");
   me={...(me||{}), name:d.me.nickname, dob:d.me.dob, photo:d.me.photo||null, phone:d.me.phone||null};
   $("#adminBtn").style.display=d.admin?"":"none";
-  if(amMaker!==!!d.admin){ amMaker=!!d.admin; renderTools($("#toolSearch")?.value||""); loadMyTools() }
   if(d.sms&&!d.me.phone){ store.set("needPhone",1); if(splashing) linkAfterSplash=true; else setTimeout(askPhoneLink,0) }
   else store.del("needPhone");
   const prev=cur, chatOpen=$("#chat").classList.contains("on");
@@ -1318,6 +1241,25 @@ function drawHead(p){
 }
 let selfReady=false, selfTags={};
 async function loadTags(){ if(!cur||!cur.self) return; try{ selfTags=(await api("/api/self/tags")).tags||{} }catch(e){ return } applyTags() }
+// 나챗방 말풍선의 작은 글씨를 누르면: 이 글을 넣을 도구를 켜고 끈다(틸봇이 잘못 넣었거나 빠뜨렸을 때)
+async function tagMenu(msgId){
+  let r; try{ r=await api(`/api/self/item/${msgId}`) }catch(e){ return toast(e.message) }
+  if(!r.tools.length) return;
+  const l=$("#toolSheetList"); l.innerHTML="";
+  r.tools.forEach(t=>{
+    const row=document.createElement("div"); row.className="slide";
+    row.innerHTML=`<div class="knob"><span style="flex:1">${esc(t.name)}</span></div>`;
+    slideToggle(row,t.on,async on=>{ try{ await api(`/api/self/item/${r.item}`,{method:"POST",body:{tool:t.id,on}}) }catch(e){ toast(e.message) } });
+    l.appendChild(row);
+  });
+  $("#toolSheet").classList.add("on"); scrim.classList.add("on");
+}
+$("#days").addEventListener("click",e=>{
+  if(!cur||!cur.self) return;
+  const el=e.target.closest("[data-tag]"); if(!el) return;
+  const r=el.getBoundingClientRect(); if(e.clientY<r.bottom-18) return;   // 맨 아래 작은 글씨 줄을 눌렀을 때만
+  e.stopPropagation(); tagMenu(el.dataset.mid||el.dataset.id);
+},true);
 function applyTags(){
   if(!cur||!cur.self) return;
   $$("#days [data-mid]").forEach(el=>{ const t=selfTags[el.dataset.mid]; if(t) el.dataset.tag=t; else delete el.dataset.tag });
@@ -1335,13 +1277,9 @@ async function openChat(id){
   if(cur.self){ loadTags(); if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   const dv=$("#days"); dv.style.visibility="hidden";
   renderMsgs(); go("chat");
+  // 서버에서 대화가 다 온 뒤 바닥에 맞춰 보인다. 기억해 둔 짧은 대화가 먼저 보였다가 튀지 않게(2026-11-02 폰 기록)
   const show=()=>{ if(dv.style.visibility!=="hidden") return; dv.scrollTop=dv.scrollHeight; dv.style.visibility="" };
-  requestAnimationFrame(()=>requestAnimationFrame(show)); setTimeout(show,250);
-  // 임시: 폰에서 방에 들어갈 때 대화가 어디를 비추는지 프레임마다 적어 서버(kb.log)로 보낸다
-  { const t0=performance.now(), ch=$("#chat"), L=[]; const f=()=>{ const t=performance.now()-t0;
-      L.push(`${Math.round(t)} ${dv.style.visibility||"v"} ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight} ch=${getComputedStyle(ch).transform.slice(-14)} pad=${getComputedStyle(dv).paddingTop}`);
-      if(t<1500) requestAnimationFrame(f); else if(auth) api("/api/kblog",{method:"POST",body:{lines:["open "+id].concat(L).slice(0,80),ua:navigator.userAgent}}).catch(()=>{}) };
-    requestAnimationFrame(f); }
+  setTimeout(show,1200);
   loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
@@ -1351,7 +1289,7 @@ async function openChat(id){
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
     cur.msgs=d.messages.map(m=>fromServer(m,m.mine))
       .filter(m=>!hidden.has(String(m.id))).concat(failed.filter(x=>!live.includes(x)),live);
-    showRoomInvite(); renderMsgs(); saveMsgs();
+    showRoomInvite(); renderMsgs(); saveMsgs(); show();
   }catch(e){ if(!requireLogin()) toast(e.message) }
 }
 // 아직 혼자인 방: 코드와 보내기 버튼이 대화 자리 위에 보인다
@@ -1650,11 +1588,11 @@ function drawRoomTool(){
 }
 // 이 방에 켜기/끄기. 설치 안 한 도구는 켜는 순간 설치된다. 이미 켜 둔 다른 도구는 그대로 두고 옆으로 넘겨 본다
 async function setRoomTool(t,on){
-  if(on&&!t.user&&!toolOn[t.id]) setToolOn(t,true,false);
+  if(on&&!t.user&&!toolOn[t.id]) setToolOn(t,true);
   if(on&&cur) toolView[cur.id]=t.id;
   const d=roomData[t.id]||(roomData[t.id]={});
   if(t.user){ d.name=t.name; if(on) d.ver=t.ver }   // 만든 도구는 띄우는 순간의 버전으로 고정된다
-  d.on=on; addLog(d,josa(t.name,"을","를")+(on?" 띄웠어요":" 내렸어요"));
+  d.on=on;
   renderRoomTool(); renderMsgs(); await saveTool(t.id);
 }
 // 대화 사이에 끼울 도구 기록
@@ -2032,7 +1970,9 @@ function appendBubble(m){
   const d=$("#days"), near=d.scrollHeight-d.scrollTop-d.clientHeight<120;
   cur.msgs.push(m); fresh.add(String(m.id));
   renderMsgs(); saveMsgs();
-  if(m.who==="me"||near) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
+  // 내가 보낸 것은 곧바로 바닥에 붙인다(부드럽게 내리면 키보드 움직임과 겹쳐 덜 내려간 채 멈췄다)
+  if(m.who==="me"){ pinned=true; d.scrollTop=d.scrollHeight; requestAnimationFrame(()=>{ d.scrollTop=d.scrollHeight }) }
+  else if(near) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
   else $("#newPill").classList.add("on");
 }
 async function push(m){
@@ -2323,9 +2263,9 @@ $("#toolSheet [data-close]").addEventListener("click",closeSheets);
 /* 대화방 설정 — 글자 크기와 글꼴 */
 function closeSheets(){["#sheet","#toolSheet"].forEach(i=>$(i).classList.remove("on"));scrim.classList.remove("on")}
 /* 탭바는 대화방에서만 숨는다. 그 밖에서는 계속 떠 있어 바로 옮겨갈 수 있다. */
-const NO_TABS=["splash","ob-phone","ob-profile","ob-rule","s-maker"];   // 만들기 화면은 아래 입력칸이 있어 탭을 숨긴다
-const TAB_OF={till:"till","s-tools":"s-tools","s-tool":"s-tools",settings:"settings",
-  "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-maker":"s-tools","s-rule":"settings","s-doc":"settings"};
+const NO_TABS=["splash","ob-phone","ob-profile","ob-rule"];
+const TAB_OF={till:"till",settings:"settings",
+  "s-profile":"settings","s-blocked":"settings","s-admin":"settings","s-rule":"settings","s-doc":"settings"};
 let navAt=0;
 function syncTabs(){
   navAt=performance.now();
@@ -2334,7 +2274,7 @@ function syncTabs(){
   const cur=TAB_OF[top];
   $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===cur));
 }
-const TAB_ORDER=["till","s-tools","settings"];
+const TAB_ORDER=["till","settings"];
 let tabBusy=false;
 /* 아이폰은 앱이 한 번이라도 물어본 권한만 설정에 보여준다. 여기서 한 번 물어 둔다 */
 const GEO_WORD={granted:"허용함",denied:"꺼둠",prompt:"안 물어봄","prompt-with-rationale":"안 물어봄"};
@@ -2351,7 +2291,6 @@ function goTab(id){
   const dir=TAB_ORDER.indexOf(id)>TAB_ORDER.indexOf(cur)?1:-1;   // 1이면 오른쪽 탭으로
 
   if(id==="settings"){ renderSettings(); showGeo() }
-  if(id==="s-tools"){ $("#toolSearch").value=""; renderTools(); loadToolStates(); loadPublic() }
   if(id==="till") renderTill();
 
   // 현재 탭 위에 쌓인 화면은 애니메이션 없이 걷어낸다
@@ -2462,260 +2401,20 @@ const TOOLS=[
 ];
 const SLOT={top:"대화방 위", bubble:"말풍선"};
 
-function renderTools(q=""){
-  const list=$("#toolList"); list.innerHTML="";
-  const key=q.trim().toLowerCase();
-  // 세 칸: 내가 만든 것, 내 방들에 붙어 있는 남의 것, 남이 공개한 것. 한 도구는 한 칸에만.
-  // 처음부터 들어 있던 견본은 쓰고 있는 것만 둘러보기에 남긴다
-  const hit=t=>!key||t.name.toLowerCase().includes(key);
-  const mine=myTools.filter(t=>t.ver).map(t=>({...t,user:true,mine:true}));
-  const seen=new Set(mine.map(t=>t.id));
-  const shared=roomTools.filter(t=>!seen.has(t.id)).map(t=>({...t,user:true,locked:!t.public}));
-  shared.forEach(t=>seen.add(t.id));
-  const browse=TOOLS.filter(t=>toolOn[t.id]).concat(pubTools.filter(t=>!seen.has(t.id)).map(t=>({...t,user:true})));
-  const groups=[["내가 만든",mine.filter(hit)],["같이 쓰는",shared.filter(hit)],["둘러보기",browse.filter(hit)]];
-  const all=groups.flatMap(g=>g[1]);
-  $("#toolSearch").style.display=all.length?"":"none";
-  const empty=$("#toolEmpty");
-  empty.style.display=all.length?"none":"block";
-  empty.textContent=key?"찾는 도구가 없어요":"아직 올라온 도구가 없어요";
-
-  const card=t=>{
-    const el=document.createElement("div"); el.className="tool";
-    const on=t.mine||t.locked||!!toolOn[t.id];   // 내가 만든 것은 늘 켜져 있다. 공개 안 된 남의 것은 그 방에서만 쓴다
-    el.classList.toggle("off",!on);
-    const tag=t.user?`<span class="slot">${t.mine?(t.public?"공개":"나만"):esc(t.by||"누군가")}</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
-    el.innerHTML=`<div class="nm">${esc(t.name)}${tag}</div>
-      <div class="slide"><div class="roomtool on knob"></div></div>`;
-    const knob=el.querySelector(".knob");
-    // 만든 도구는 코드를 받아 와야 모양이 나온다. 기본 도구는 그릴 함수를 이미 들고 있다
-    if(t.user){ if(t.ver) fetchToolCode(t.id,t.ver).then(code=>{ if(code&&el.isConnected){ mountSandbox(knob,code,{state:previewState,save:()=>{}}); coverBox(knob) } }) }
-    else t.render(knob,previewCtx(t));
-    if(t.mine||t.locked) el.querySelector(".slide").classList.add("on","fixed");
-    else slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
-    if(t.mine) longPress(el,()=>popMenu(el,[["edit",t.public?"나만 보기":"공개",()=>setPublic(t,!t.public)],["del","삭제",()=>deleteTool(t),"danger"]],false));
-    return el;
-  };
-  groups.forEach(([title,arr])=>{
-    if(!arr.length) return;
-    const h=document.createElement("div"); h.className="lbl sect"; h.textContent=title; list.appendChild(h);
-    arr.forEach(t=>list.appendChild(card(t)));
-  });
-}
-let pubTools=[], roomTools=[];
-async function loadPublic(){
-  const get=u=>api(u).then(x=>x.tools||[]).catch(()=>[]);
-  [pubTools,roomTools,myTools]=await Promise.all([get("/api/tools/public"),get("/api/tools/rooms"),get("/api/tools/mine")]);
-  renderTools($("#toolSearch")?.value||"");
-}
-async function setPublic(t,v){
-  try{ await api("/api/tools/"+t.id,{method:"PATCH",body:{public:v}}) }catch(e){ toast(e.message); return }
-  loadPublic();
-}
-
-/* 도구 만들기(운영자만, tools-maker-plan.md 3단계). 봇을 고르면 새 도구가 생기고 대화 화면이 열린다 */
-let amMaker=false, myTools=[];
-const BOT_NAME={play:"놀이",pick:"결정",money:"돈",meet:"모임",two:"둘이서",memory:"기억",free:"자유"};
-const BOT_IC={
-  play:'<path d="M5 5h14v14H5z"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01M12 12h.01"/>',
-  pick:'<path d="M4 7h3l10 10h3M4 17h3l3-3M14 10l3-3h3M18 5l2 2-2 2M18 15l2 2-2 2"/>',
-  money:'<circle cx="12" cy="12" r="9"/><path d="M8.5 9l1.5 6 2-5 2 5 1.5-6M7.5 12h9"/>',
-  meet:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.5M18 14a5 5 0 0 1 3 6"/>',
-  two:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
-  memory:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  free:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
-};
-// 무엇에 강한 봇인지(사장님 요청으로 한 줄 소개를 둔다)
-const BOT_DESC={play:"게임과 내기에 강해요",pick:"공정한 뽑기에 강해요",money:"계산과 정산에 강해요",meet:"공지와 일정 정리에 강해요",two:"두 사람만의 도구에 강해요",memory:"기록과 추억 쌓기에 강해요",free:"무엇이든 만들어요"};
-// 봇 사진(사장님이 만든 인형 사진, bots/). y = 상자(84px 띠)에서 숫자 얼굴이 가운데 오게 하는 세로 기준점(%)
-const BOT_IMG={
-  play:{y:57},pick:{y:31},money:{y:43},meet:{y:22},two:{y:61},memory:{y:36},free:{y:31},
-};
-// 만들기 탭의 봇: 도구 상자와 같은 크기
-function botBox(k){
-  const el=document.createElement("div"), img=BOT_IMG[k];
-  el.className="bbox"+(img?" img":"");
-  if(img){ el.style.backgroundImage=`url(bots/${k}.jpg)`; el.style.backgroundPosition=`50% ${img.y}%` }
-  el.innerHTML=(img?"":`<span class="bic"><svg viewBox="0 0 24 24">${BOT_IC[k]}</svg></span>`)+`<span class="bt"><b>${BOT_NAME[k]}</b><span class="d">${BOT_DESC[k]}</span></span>`;
-  return el;
-}
-// 미리보기에 쓰는 방 상태: 처음 붙였을 때(빈 데이터) + 나와 가짜 방 사람 둘. 탐색·내 도구가 같은 모습이 되게 함께 쓴다
-const previewState=()=>({data:{},me:myId(),self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]});
-function previewCtx(t){ const c={...previewState(),ui:{},toast:()=>{}}; c.redraw=c.save=()=>{}; return c }
-// 아이폰은 손가락이 칸(iframe) 위에서 시작되면 목록 스크롤로 넘겨주지 않는다. 보기만 하는 미리보기에는 투명 덮개를 씌운다
-function coverBox(host){ const c=document.createElement("i"); c.className="cover"; host.appendChild(c) }
-// 길게 누르기(0.5초). 끌거나 손을 떼면 취소. 길게 눌렀으면 바로 뒤의 눌림(click)은 무시한다
-function longPress(el,fn){
-  let t=null;
-  el.addEventListener("pointerdown",()=>{ delete el.dataset.held; t=setTimeout(()=>{ el.dataset.held=1; fn() },500) });
-  ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(t)));
-  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(t); el.dataset.held=1; fn() });
-}
-function deleteTool(m){
-  confirmBox(`${josa(m.name,"을","를")} 삭제할까요? 붙여 둔 방에서도 사라져요.`,async()=>{
-    try{ await api("/api/tools/"+m.id,{method:"DELETE"}) }catch(e){ toast(e.message); return }
-    if(roomData[m.id]){ delete roomData[m.id]; renderRoomTool(); renderMsgs() }
-    loadPublic();
-  },{ok:"삭제"});
-}
-function loadMyTools(){ return loadPublic() }
-async function newTool(bot,from){
-  try{ const d=await api("/api/tools",{method:"POST",body:{bot,from}}); await openMaker(d.id); loadMyTools() }catch(e){ toast(e.message) }
-}
-/* 만들기 화면: 위는 진짜 방 칸과 같은 미리보기(가짜 방 사람들과), 아래는 봇과의 대화.
-   봇이 고칠 때마다 버전이 하나씩 쌓인다. ↶ 는 바로 전 버전으로, 기록은 아무 버전으로. 되돌리기도 새 버전이라 지워지는 건 없다 */
-let mk=null;
-const FAKE=[{id:"f1",name:"민지"},{id:"f2",name:"준호"}];
-async function openMaker(id){
-  let d; try{ d=await api("/api/tools/"+id) }catch(e){ toast(e.message); return }
-  const making=mkBusy.has(id);
-  mk={...d,data:{},hs:[],busy:making,fixed:0};
-  go("s-maker"); drawMaker();
-  if(making){ $(".mkprev").classList.add("making"); mkPush("bot",{text:"만드는 중…",wait:true}) }
-  if(!mk.chat.length) mkPush("bot",{text:mk.code?"어떻게 고칠까요?":"무엇을 만들까요?"});
-}
-function drawMaker(){
-  $("#mkName").textContent=mk.name; $("#mkVer").textContent=verWhen(mk.ver)||"";
-  const av=$("#mkAv"); av.style.display=BOT_IMG[mk.bot]?"":"none"; if(BOT_IMG[mk.bot]) av.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
-  $("#mkAttach").style.visibility=mk.ver?"":"hidden";
-  $("#mkPub").classList.toggle("on",!!mk.public);
-  $(".mkprev").classList.toggle("making",!!mk.busy);
-  drawMkPreview(); drawMkChat();
-}
-/* 내 화면과 상대 화면을 같이 띄운다. 한쪽에서 누르면 둘 다 바뀌므로,
-   화면을 바꿔 가며 보지 않고도 상대에게 어떻게 보이는지 그 자리에서 안다 */
-function drawMkPreview(){
-  const box=$("#mkBox"), other=$("#mkBoxOther");
-  if(!mk.code){ mk.hs=[]; box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[mk.bot]||""}</span></div>`; other.innerHTML=""; return }
-  const ver=mk.ver;
-  const ctx=asId=>({
-    state:()=>({data:mk.data,me:asId,self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]}),
-    save:data=>{ mk.data=data; (mk.hs||[]).forEach(h=>h&&h.push()) },
-    // 미리보기에서 오류가 나면 봇에게 한 번 알아서 고쳐 달라고 한다(같은 버전에 한 번만)
-    error:text=>{ if(mk.ver!==ver||mk.fixed===ver||mk.busy) return; mk.fixed=ver; mkSend("미리보기에서 오류가 났어: "+text+" — 고쳐줘",true) },
-  });
-  mk.hs=[mountSandbox(box,mk.code,ctx(myId())), mountSandbox(other,mk.code,ctx("f1"))];
-}
-// 몇 번째 버전인지는 사람에게 쓸모가 없다. 언제 고친 것인지를 보여준다
-function verWhen(ver){
-  if(!ver) return "";
-  const x=(mk.versions||[]).find(z=>z.ver===ver);
-  if(!x||!x.at) return ver+"번";
-  const d=new Date(x.at);
-  return sepLabel(d)+" "+d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"});
-}
-function drawMkChat(){
-  const box=$("#mkChat"); box.innerHTML="";
-  mk.chat.forEach((m,i)=>{
-    // 봇이 이어서 말할 때는 처음 한 번만 누구인지 보인다(대화방에서 이름이 한 번만 나오는 것과 같다)
-    if(m.role!=="user"&&(i===0||mk.chat[i-1].role==="user")){
-      const w=document.createElement("div"); w.className="who";
-      const a=document.createElement("i"); if(BOT_IMG[mk.bot]) a.style.backgroundImage=`url(bots/${mk.bot}-face.jpg)`;
-      const n=document.createElement("span"); n.textContent=BOT_NAME[mk.bot]||"봇";
-      w.append(a,n); box.appendChild(w);
-    }
-    const b=document.createElement("div"); b.className="b "+(m.role==="user"?"me":"bot")+(m.wait?" wait":""); b.textContent=m.text; box.appendChild(b);
-    // 고친 때를 누르면 그 모습으로 돌아간다. 되돌리기도 새 버전이라 지워지는 건 없다
-    if(m.ver){ const v=document.createElement("button"); v.className="v"; v.textContent=verWhen(m.ver);
-      if(m.ver===mk.ver) v.disabled=true; else v.onclick=()=>mkRevert(m.ver);
-      box.appendChild(v) }
-    if(i===mk.chat.length-1&&m.role!=="user"&&(m.options||[]).length&&!mk.busy){
-      const o=document.createElement("div"); o.className="opts";
-      m.options.forEach(t=>{ const x=document.createElement("button"); x.textContent=t; x.onclick=()=>mkSend(t); o.appendChild(x) });
-      box.appendChild(o);
-    }
-  });
-  box.scrollTop=box.scrollHeight;
-}
-function mkPush(role,m){ mk.chat.push({role:role==="bot"?"assistant":"user",...m}); drawMkChat() }
-// 만드는 중인 도구. 화면을 떠나도 남아 있어서 다시 들어오면 이어서 보인다
-const mkBusy=new Set();
-let mkLanded=0;   // 방금 완료한 도구. 내 도구 목록에서 한 번 크게 자리잡는다
-async function mkSend(text,hidden){
-  text=String(text||"").trim(); if(!text||!mk||mk.busy) return;
-  const id=mk.id; mk.busy=true; mkBusy.add(id);
-  $(".mkprev").classList.add("making");   // 답을 기다리는 동안 상자에 빛이 돈다
-  if(!hidden) mkPush("user",{text});
-  mkPush("bot",{text:"만드는 중…",wait:true});
-  let d=null, err=null;
-  try{ d=await api(`/api/tools/${id}/chat`,{method:"POST",body:{text}}) }catch(e){ err=e.message }
-  mkBusy.delete(id); loadMyTools();
-  $(".mkprev").classList.remove("making");
-  // 화면을 떠났어도 서버에는 남았다. 다시 들어오면 openMaker 가 받아 온다
-  if(!mk||mk.id!==id) return;
-  mk.busy=false; mk.chat.pop();
-  if(err){ mkPush("bot",{text:err}); return }
-  mk.name=d.name||mk.name;
-  if(d.ver){ mk.code=d.code; mk.ver=d.ver; mk.versions.unshift({ver:d.ver,note:d.note,at:new Date().toISOString()}) }
-  mk.chat.push({role:"assistant",text:d.reply,options:d.options,ver:d.ver});
-  drawMaker();
-}
-async function mkRevert(ver){
-  if(!mk||mk.busy) return;
-  try{ const d=await api(`/api/tools/${mk.id}/revert`,{method:"POST",body:{ver}}); mk.code=d.code; mk.ver=d.ver; mk.versions.unshift({ver:d.ver,note:ver+"번으로 되돌림",at:new Date().toISOString()}) }
-  catch(e){ toast(e.message); return }
-  mk.chat.push({role:"assistant",text:ver+"번 모습으로 돌렸어요",ver:mk.ver}); drawMaker(); loadMyTools();
-}
-const mkSheet=(id,on)=>{ $(id).classList.toggle("on",on); $("#mkScrim").classList.toggle("on",on) };
-$("#mkScrim").addEventListener("click",()=>{ mkSheet("#mkHistSheet",false) });
-$("#mkHist").addEventListener("click",()=>{
-  if(!mk) return; const l=$("#mkHistList"); l.innerHTML="";
-  mk.versions.forEach(v=>{ const r=document.createElement("div"); r.className="knob"+(v.ver===mk.ver?" now":"");
-    const at=new Date(v.at).getTime();
-    r.innerHTML=`<b>${v.ver}</b><span>${esc(v.note||"")}</span><i>${fmtD(at)} ${fmtT(at)}</i>`;
-    r.onclick=()=>{ mkSheet("#mkHistSheet",false); if(v.ver!==mk.ver) mkRevert(v.ver) };
-    l.appendChild(r) });
-  mkSheet("#mkHistSheet",true);
-});
-// 붙이기: 방을 고르면 지금 버전이 그 방 위 칸에 뜨고, 그 방으로 간다
-/* 이름을 눌러 그 자리에서 고친다. 봇이 지어 준 이름이 마음에 안 들 때 */
-$("#mkName").addEventListener("click",()=>{
-  const h=$("#mkName"); if(!mk||h.isContentEditable) return;
-  const old=mk.name;
-  h.contentEditable="true"; h.spellcheck=false; h.focus();
-  const sel=getSelection(); const r=document.createRange(); r.selectNodeContents(h); sel.removeAllRanges(); sel.addRange(r);
-  h.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); h.blur() } if(e.key==="Escape"){ h.textContent=old; h.blur() } });
-  h.addEventListener("blur",async()=>{
-    h.contentEditable="false";
-    const name=h.textContent.trim().slice(0,30);
-    if(!name||name===old){ h.textContent=old; return }
-    try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{name}}); mk.name=name; loadMyTools(); toast("이름을 바꿨어요") }
-    catch(e){ h.textContent=old; toast(e.message) }
-  },{once:true});
-});
-/* 공개하면 남들 탐색에 보인다. 끄면 다시 나만 본다 */
-$("#mkPub").addEventListener("click",async()=>{
-  if(!mk) return; const t=$("#mkPub"), on=!t.classList.contains("on");
-  t.classList.toggle("on",on);
-  try{ await api("/api/tools/"+mk.id,{method:"PATCH",body:{public:on}}); mk.public=on; loadPublic(); toast(on?"탐색에 올렸어요":"탐색에서 내렸어요") }
-  catch(e){ t.classList.toggle("on",!on); toast(e.message) }
-});
-/* 완료하면 내 도구에 담긴다. 어느 방에 띄울지는 방에 들어가서 고르면 된다 */
-$("#mkAttach").addEventListener("click",()=>{
-  if(!mk||!mk.ver) return;
-  mkLanded=mk.id;
-  back("s-tools"); loadMyTools();
-  toast("내 도구에 담았어요");
-});
-const mkIn=$("#mkIn");
-mkIn.addEventListener("input",()=>{ mkIn.style.height="auto"; mkIn.style.height=Math.min(100,mkIn.scrollHeight)+"px"; $("#mkSend").classList.toggle("off",!mkIn.value.trim()) });
-const mkGo=()=>{ const t=mkIn.value.trim(); if(!t) return; mkIn.value=""; mkIn.dispatchEvent(new Event("input")); mkSend(t) };
-$("#mkSend").addEventListener("click",mkGo);
-mkIn.addEventListener("keydown",e=>{ if(TOUCH) return; if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); mkGo() } });
-$("#mkCompose").addEventListener("mousedown",e=>{ if(e.target!==mkIn) e.preventDefault() });
-
+// 내가 만든 도구(대화방 도구 시트에 늘 보인다)
+let myTools=[];
+async function loadMyTools(){ try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} }
 /* 도구는 스위치로 설치한다. 설치하면 내 모든 대화방의 머리말 도구 버튼에서 불러올 수 있다. */
 let toolOn={};
 async function loadToolStates(){
   try{ const d=await api("/api/me/tools"); toolOn={}; (d.tools||[]).forEach(id=>toolOn[id]=true) }
   catch(e){}
-  renderTools($("#toolSearch")?.value||"");
 }
-async function setToolOn(t,on,redraw=true){
+async function setToolOn(t,on){
   if(!!toolOn[t.id]===on) return;
-  toolOn[t.id]=on; if(redraw) renderTools($("#toolSearch").value||"");
-  try{ await api("/api/me/tools",{method:"POST",body:{id:t.id,on}}); toast(on?"설치했어요":"내렸어요") }
-  catch(e){ toolOn[t.id]=!on; renderTools(); toast(e.message) }
+  toolOn[t.id]=on;
+  try{ await api("/api/me/tools",{method:"POST",body:{id:t.id,on}}) }
+  catch(e){ toolOn[t.id]=!on; toast(e.message) }
 }
 /* 카드 자체가 스위치다. 오른쪽으로 밀면 켜져서 그 자리에 머물고, 왼쪽으로 밀면 꺼진다. 탭해도 바뀐다.
    세로로 긁으면 스크롤로 넘긴다. */
@@ -2759,7 +2458,6 @@ function slideToggle(tr,on,cb){
     const mm=ev=>move(ev.clientX,ev.clientY,ev), mu=()=>{ document.removeEventListener("mousemove",mm); document.removeEventListener("mouseup",mu); end() };
     document.addEventListener("mousemove",mm); document.addEventListener("mouseup",mu); });
 }
-$("#toolSearch").addEventListener("input",e=>renderTools(e.target.value));
 $("#chatMenu").addEventListener("click",()=>{
   if(!cur) return;
   $("#sChatTitle").textContent=cur.name;
@@ -3114,7 +2812,7 @@ let dragY=null;
 document.addEventListener("touchstart",e=>{ dragY=typing()?e.touches[0].clientY:null },{passive:true,capture:true});
 document.addEventListener("touchmove",e=>{
   if(dragY===null) return; const a=typing(); if(!a){ dragY=null; return }
-  if(Math.abs(e.touches[0].clientY-dragY)>14&&e.target.closest(".pad,.rows,.days,.mkchat,.tlist,.mkhist")&&!e.target.closest(KEEP_KB)){ a.blur(); dragY=null }
+  if(Math.abs(e.touches[0].clientY-dragY)>14&&e.target.closest(".pad,.rows,.days,.tlist")&&!e.target.closest(KEEP_KB)){ a.blur(); dragY=null }
 },{passive:true,capture:true});
 let kbLog=[];
 (function(){
@@ -3199,10 +2897,7 @@ $("#askGeo").addEventListener("click",async()=>{
 });
 $("#kbLogBtn").addEventListener("click",()=>{
   const el=$("#kbLog");
-  // 도구 화면이 스크롤되는 틀인지 폰에서 직접 재 본다
-  const pad=$("#s-tools .pad"), cs=pad?getComputedStyle(pad):null;
-  const probe=pad?`도구칸 보임 ${pad.clientHeight} / 속 ${pad.scrollHeight} / overflow ${cs.overflowY} / 지금 ${pad.scrollTop}`:"도구칸 없음";
-  el.textContent=probe+"\n\n"+(kbLog.join("\n")||"(키보드 기록 없음)");
+  el.textContent=kbLog.join("\n")||"(키보드 기록 없음)";
   el.style.display=el.style.display==="none"?"block":"none";
 });
   if(PLATFORM==="ios"){
@@ -3234,9 +2929,7 @@ $("#kbLogBtn").addEventListener("click",()=>{
       lifted.forEach(e=>{ if(!els.includes(e)) e.style.transform="" });
       lifted=els; els.forEach(e=>e.style.transform=dy?`translateY(${-dy}px)`:"") };
     K.addListener("keyboardWillShow",i=>{ kbMark(); const px=Math.max(0,i.keyboardHeight-safeB()); log("willShow "+i.keyboardHeight);
-      const maker=$("#s-maker").classList.contains("on");
-      if(chat.classList.contains("on")&&!maker){ push(px); lift([],0) }
-      else if(maker){ push(0); lift([$("#mkChat"),$("#mkCompose")],px) }
+      if(chat.classList.contains("on")){ push(px); lift([],0) }
       else{
         push(0);
         const a=typing(), box=a&&a.tagName!=="IFRAME"&&a.closest(".pad,.rows");
