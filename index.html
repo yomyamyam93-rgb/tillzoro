@@ -260,6 +260,7 @@
             background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);
             height:var(--tool-h);padding:10px 14px;display:none;flex-direction:column;justify-content:center;gap:7px;overflow:hidden}
   .roomtool.on{display:flex}
+  #roomTool{touch-action:pan-y}
   .rtdots{display:none;justify-content:center;gap:5px;height:5px;margin:-2px 0 6px;flex:none}
   .rtdots.on{display:flex}
   .rtdots i{width:5px;height:5px;border-radius:50%;background:var(--line);transition:background .2s,width .2s}
@@ -724,7 +725,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1252</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1254</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1387,7 +1388,7 @@ function sandboxDoc(code){
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src data: blob:">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap">
-<style>:root{${vars}} html,body{margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
+<style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
 ${rtCss()}</style></head><body><div id="box"></div>
@@ -1428,9 +1429,12 @@ addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
   if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],mode:m.mode||""}; __draw() }
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
-addEventListener("pointerdown",e=>{ __sx=e.clientX; __sy=e.clientY },true);
-addEventListener("pointerup",e=>{ if(__sx===null) return; const dx=e.clientX-__sx, dy=e.clientY-__sy; __sx=null;
-  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) __send({k:"swipe",dir:dx<0?1:-1}) },true);
+const __down=(x,y)=>{ __sx=x; __sy=y }, __up=(x,y)=>{ if(__sx===null) return; const dx=x-__sx, dy=y-__sy; __sx=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) __send({k:"swipe",dir:dx<0?1:-1}) };
+addEventListener("touchstart",e=>__down(e.touches[0].clientX,e.touches[0].clientY),{capture:true,passive:true});
+addEventListener("touchend",e=>__up(e.changedTouches[0].clientX,e.changedTouches[0].clientY),{capture:true,passive:true});
+addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") __down(e.clientX,e.clientY) },true);
+addEventListener("pointerup",e=>{ if(e.pointerType==="mouse") __up(e.clientX,e.clientY) },true);
 __send({k:"ready",hasKeep:!!__k});
 ${close}</body></html>`;
 }
@@ -1549,9 +1553,12 @@ function swipeTool(dir){
 }
 // 기본 도구(앱이 직접 그림)는 칸 위의 손가락을 앱이 받는다
 { let sx=null,sy=0; const tb=$("#roomTool");
-  tb.addEventListener("pointerdown",e=>{ sx=e.clientX; sy=e.clientY });
-  tb.addEventListener("pointerup",e=>{ if(sx===null) return; const dx=e.clientX-sx, dy=e.clientY-sy; sx=null;
-    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) swipeTool(dx<0?1:-1) }); }
+  const down=(x,y)=>{ sx=x; sy=y }, up=(x,y)=>{ if(sx===null) return; const dx=x-sx, dy=y-sy; sx=null;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*2) swipeTool(dx<0?1:-1) };
+  tb.addEventListener("touchstart",e=>down(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  tb.addEventListener("touchend",e=>up(e.changedTouches[0].clientX,e.changedTouches[0].clientY),{passive:true});
+  tb.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") down(e.clientX,e.clientY) });
+  tb.addEventListener("pointerup",e=>{ if(e.pointerType==="mouse") up(e.clientX,e.clientY) }); }
 function renderRoomTool(){
   const box=$("#roomTool"), ids=onTools();
   const id=viewTool();
