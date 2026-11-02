@@ -318,11 +318,16 @@
   .msg .txts>div+div{margin-top:3px}
   .msg.failed{outline:1px solid var(--zero);cursor:pointer}
   .msg.failed .stamp{color:var(--zero);opacity:1;font-weight:500}
-  .botpick{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
-  .botpick::-webkit-scrollbar{display:none}
-  .botpick button{flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:999px;background:var(--card);color:var(--ink);font:600 13px var(--font-body)}
-  .botpick button:active{transform:scale(.96)}
-  .botpick .left{flex:none;align-self:center;padding:0 6px;font:600 12px var(--font-body);color:var(--ink-3)}
+  .botpick{position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);z-index:6;max-height:min(296px,46vh);overflow-y:auto;overscroll-behavior:contain;
+    background:var(--card);border-radius:var(--r-card);box-shadow:0 8px 28px rgba(0,0,0,.16);padding:6px 0;animation:pickin .16s ease both}
+  .botpick[hidden]{display:none}
+  @keyframes pickin{from{opacity:0;transform:translateY(6px)}}
+  .botpick button{display:flex;align-items:center;gap:12px;width:100%;height:46px;padding:0 16px;text-align:left;color:var(--ink)}
+  .botpick button:active{background:var(--paper-2)}
+  .botpick .bface{width:32px;height:32px}
+  .botpick b{font:600 15px var(--font-body);flex:none}
+  .botpick .d{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .botpick .left{position:absolute;top:10px;right:14px;font:600 12px var(--font-num);color:var(--ink-3)}
   .bface{flex:none;width:28px;height:28px;border-radius:50%;background:var(--card) center/cover no-repeat}
   .botmsg{flex:none;align-self:flex-start;display:flex;gap:8px;max-width:86%;align-items:flex-start}
   .botmsg .bface{width:34px;height:34px}
@@ -725,7 +730,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1254</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1317</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2203,6 +2208,7 @@ function botCall(t){
   const k=BOT_BY_NAME()[m[1]]; return k?{bot:k,text:m[2].trim()}:null;
 }
 const faceOf=k=>BOT_IMG[k]?`background-image:url(bots/${k}-face.jpg)`:"";
+const BOT_TAG={play:"게임·내기",pick:"뽑기·순서",money:"정산·회비",meet:"공지·투표·일정",two:"둘이서",memory:"기록·습관",free:"무엇이든"};
 async function callBot(bot,text,replyTo){
   const bond=cur.id; botWork={bond,bot}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
   try{
@@ -2241,11 +2247,12 @@ function showBotPick(){
   const q=v.slice(1);
   const ks=Object.keys(BOT_NAME).filter(k=>BOT_NAME[k].startsWith(q));
   if(!ks.length){ box.hidden=true; return }
-  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span>${BOT_NAME[k]}</button>`).join("")+(botLeftN!=null?`<span class="left">${botLeftN}</span>`:"");
+  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span><b>${BOT_NAME[k]}</b><span class="d">${BOT_TAG[k]}</span></button>`).join("")+(botLeftN!=null?`<span class="left">${botLeftN}</span>`:"");
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ msgIn.value="@"+BOT_NAME[b.dataset.k]+" "; fitIn(); box.hidden=true; msgIn.focus() });
   if(box.hidden){ box.hidden=false; const bond=cur.id; api(`/api/rooms/${bond}/bot`).then(r=>{ botLeftN=r.left; if(!box.hidden&&cur&&cur.id===bond) showBotPick() }).catch(()=>{}) }
 }
 msgIn.addEventListener("input",showBotPick);
+document.addEventListener("pointerdown",e=>{ const b=$("#botPick"); if(!b.hidden&&!b.contains(e.target)&&e.target!==msgIn) b.hidden=true },true);
 // 입력줄의 버튼을 눌러도 키보드는 그대로 (C-5). 입력칸 자체는 건드리지 않는다
 $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDefault() });
 // 메시지 영역을 탭하면 키보드가 내려간다 (S-5)
