@@ -308,6 +308,27 @@
   .msg .txts>div+div{margin-top:3px}
   .msg.failed{outline:1px solid var(--zero);cursor:pointer}
   .msg.failed .stamp{color:var(--zero);opacity:1;font-weight:500}
+  .botpick{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
+  .botpick::-webkit-scrollbar{display:none}
+  .botpick button{flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:999px;background:var(--card);color:var(--ink);font:600 13px var(--font-body)}
+  .botpick button:active{transform:scale(.96)}
+  .botpick .left{flex:none;align-self:center;padding:0 6px;font:600 12px var(--font-body);color:var(--ink-3)}
+  .bface{flex:none;width:28px;height:28px;border-radius:50%;background:var(--card) center/cover no-repeat}
+  .botmsg{flex:none;align-self:flex-start;display:flex;gap:8px;max-width:86%;align-items:flex-start}
+  .botmsg .bface{width:34px;height:34px}
+  .botmsg .bb{min-width:0;display:flex;flex-direction:column;gap:4px}
+  .botmsg .bn{font:600 12px var(--font-body);color:var(--ink-3)}
+  .botmsg .bt{padding:7px 11px 6px;border-radius:var(--r-bubble);border-top-left-radius:var(--r-bubble-tail);background:var(--card);color:var(--ink);font-size:var(--text-body);line-height:1.5;word-break:break-word}
+  .botmsg .bchip{display:flex;align-items:center;gap:8px;font:600 12px var(--font-body);color:var(--ink-2)}
+  .botmsg .bchip button{padding:3px 10px;border-radius:999px;background:var(--card);color:var(--ink);font:600 12px var(--font-body)}
+  .botmsg.old{opacity:.55}
+  .botmsg.old .bface{width:20px;height:20px}
+  .botmsg.old .bn{font-weight:500}
+  .botmsg.work .bt{color:var(--ink-3)}
+  .botmsg.work .bt i{display:inline-block;animation:blink 1.2s infinite both}
+  .botmsg.work .bt i:nth-child(2){animation-delay:.2s}
+  .botmsg.work .bt i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
   .compose{flex:none;position:relative;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--paper-2)}
   .compose::after{content:"";position:absolute;left:0;right:0;top:100%;height:420px;background:var(--paper-2);pointer-events:none}
   /* 키보드가 올라오면 아래 여백이 필요 없다 */
@@ -604,6 +625,7 @@
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
       <div class="cbar" id="cbar" hidden><div class="cbt"><b id="cbarK"></b><span id="cbarT"></span></div><button class="icon" id="cbarX" aria-label="취소"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="botpick" id="botPick" hidden></div>
       <div class="bar2">
         <button class="icon" id="plusBtn" aria-label="첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="field2" id="field2"><textarea id="msgIn" rows="1" placeholder="메시지"></textarea></div>
@@ -621,15 +643,12 @@
 
   <section class="screen" id="s-tools">
     <div class="bar big"><button class="icon" data-back="till"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Tools</h2></div>
-    <div class="seg" id="toolSeg" style="display:none;margin:var(--sp-2) 22px 0;flex:none"><button data-s="browse" class="on">탐색</button><button data-s="make">만들기</button><button data-s="mine">내 도구</button></div>
     <div class="pad">
       <div class="tpane" id="paneBrowse">
         <input class="field" id="toolSearch" placeholder="도구 찾기" autocomplete="off">
         <div id="toolList"></div>
         <p id="toolEmpty" class="tempty" style="display:none">찾는 도구가 없어요</p>
       </div>
-      <div class="tpane" id="paneMake" hidden><div class="clist" id="botRow"></div></div>
-      <div class="tpane" id="paneMine" hidden><div class="clist" id="mineList"></div><p id="mineEmpty" class="tempty">아직 만든 도구가 없어요</p></div>
     </div>
   </section>
 
@@ -695,7 +714,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-0944</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1102</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -863,6 +882,7 @@ function connectWS(){
       appendBubble(fromServer(d,false));
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
+    if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot}:null; renderMsgs() } return }
     if(d.type==="report"){ if($("#s-admin").classList.contains("on")) renderAdmin(); else api("/api/admin/reports").then(x=>{ $("#adminVal").textContent=x.reports.filter(r=>!r.resolved).length||"" }).catch(()=>{}) }
     if(d.type==="edited"){ patchMsg(d.bondId,d.id,x=>{ x.text=d.body }) }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
@@ -1542,15 +1562,19 @@ function renderMsgs(){
   const addBubble=ms=>{ const el=put("b:"+keyOf(ms[0]),sigOf(ms),()=>bubble(ms)); if(ms[0].type!=="text") syncMedia(el,ms[0]) };
   let lastDay="", group=[];
   const flush=()=>{ if(group.length){ fromName(group[0]); addBubble(group); group=[] } };
+  const lastBot=new Map(); items.forEach(m=>{ if(m.type==="bot") lastBot.set(m.bot.tool||"x"+m.id,m) });
   items.forEach(m=>{
     const d=new Date(m.ts), day=d.toDateString();
     if(day!==lastDay){ flush(); lastDay=day; const lb=sepLabel(d); put("sep:"+day,lb,div("sep",lb)) }
+    if(m.type==="bot"){ flush(); const late=lastBot.get(m.bot.tool||"x"+m.id)===m, undo=late&&canUndo(m);
+      put("bot:"+keyOf(m),[m.id,m.text,late,undo].join("|"),()=>botBubble(m,late,undo)); return }
     if(m.type==="event"){ flush(); const tx=`${m.who} · ${m.text}`; put("evt:"+m.ts+":"+tx,tx,div("evt",tx)); return }
     if(m.type!=="text"){ flush(); fromName(m); addBubble([m]); return }
     if(group.length&&!sameGroup(group[group.length-1],m)) flush();
     group.push(m);
   });
   flush();
+  if(botWork&&botWork.bond===cur.id) put("botwork",botWork.bot,()=>botWorkEl(botWork.bot));
   nodes.clear(); keep.forEach((v,k)=>nodes.set(k,v));
   const kids=days.children;
   if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
@@ -1652,6 +1676,7 @@ const onServer=m=>/^\d+$/.test(String(m.id))&&m.ok!==false&&!m.pending;
 function msgMenu(m,bub){
   const text=m.type==="text", mine=m.who==="me", live=onServer(m), items=[];
   if(m.ok===false){ items.push(["resend","다시 보내기",()=>resend([m])]); items.push(["del","삭제",()=>deleteMsg(m)]) }
+  else if(m.type==="bot"){ items.push(["reply","답장",()=>startCompose("reply",m)]); items.push(["copy","복사",()=>copyText(m.text)]) }
   else{
     if(live) items.push(["reply","답장",()=>startCompose("reply",m)]);
     if(text) items.push(["copy","복사",()=>copyText(m.text)]);
@@ -1852,6 +1877,7 @@ const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.t
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
 const thumbOf=m=>m.thumbSrc||(m.media?mediaURL(m.media,true):m.src);   // 대화 안에 보이는 작은 것
 function fromServer(m,mine){
+  if(m.kind==="bot") return {id:String(m.id),who:mine?"me":"you",from:String(m.from||""),type:"bot",text:m.body,bot:m.bot||{},replyTo:m.replyTo?String(m.replyTo):null,ts:new Date(m.at).getTime(),ok:true};
   const type=m.kind==="image"||m.kind==="video"?m.kind:"text";
   return {id:m.id,who:mine?"me":"you",from:String(m.from||""),type,text:type==="text"?m.body:"",media:m.media||null,w:m.w||null,h:m.h||null,replyTo:m.replyTo?String(m.replyTo):null,ts:new Date(m.at).getTime(),ok:true};
 }
@@ -2082,9 +2108,64 @@ function sendText(){
   const mode=composeMode; composeMode=null; $("#cbar").hidden=true;
   msgIn.value=""; fitIn();
   if(mode&&mode.kind==="edit"){ if(t!==mode.m.text) editMsg(mode.m,t); return }
-  push({type:"text",text:t,replyTo:mode&&mode.kind==="reply"?String(mode.m.id):null});
+  const rep=mode&&mode.kind==="reply"?mode.m:null;
+  push({type:"text",text:t,replyTo:rep?String(rep.id):null});
+  const at=botCall(t);
+  if(at) callBot(at.bot,at.text,rep&&rep.type==="bot"?rep.id:null);
+  else if(rep&&rep.type==="bot") callBot(rep.bot.bot||"free",t,rep.id);
+  showBotPick();
 }
 sendBtn.addEventListener("click",sendText);
+/* 대화방에서 @봇 부르기. 봇은 부른 한 줄만 본다(방 대화는 읽지 않는다).
+   만든 도구는 바로 위 칸에 붙고, 봇의 답은 방 모두에게 봇 말풍선으로 보인다. 고치기·되돌리기는 만든 사람만 */
+let botWork=null, botLeftN=null;
+const BOT_BY_NAME=()=>Object.fromEntries(Object.entries(BOT_NAME).map(([k,n])=>[n,k]));
+function botCall(t){
+  const m=t.match(/^@(\S+)\s+([\s\S]+)$/); if(!m) return null;
+  const k=BOT_BY_NAME()[m[1]]; return k?{bot:k,text:m[2].trim()}:null;
+}
+const faceOf=k=>BOT_IMG[k]?`background-image:url(bots/${k}-face.jpg)`:"";
+async function callBot(bot,text,replyTo){
+  const bond=cur.id; botWork={bond,bot}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
+  try{
+    const r=await api(`/api/rooms/${bond}/bot`,{method:"POST",body:{bot,text,replyTo:replyTo||undefined}});
+    botLeftN=r.left;
+    if(botWork&&botWork.bond===bond) botWork=null;
+    if(cur&&cur.id===bond){ appendBubble(fromServer(r,true)); loadRoomTools() }
+  }catch(e){ if(botWork&&botWork.bond===bond) botWork=null; if(cur&&cur.id===bond) renderMsgs(); toast(e.message) }
+}
+const canUndo=m=>m.bot.owner===myId()&&m.bot.ver>1&&roomData["u"+m.bot.tool];
+function botBubble(m,late,undo){
+  const b=m.bot, el=document.createElement("div"); el.className="botmsg"+(late?"":" old"); el.dataset.id=m.id;
+  const chip=b.ver?`${esc(b.name)} · ${b.ver}번`:"";
+  el.innerHTML=late
+    ?`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${BOT_NAME[b.bot]||"봇"}</span><div class="bt">${esc(m.text)}</div>${chip?`<div class="bchip">${chip}${undo?`<button class="undo">되돌리기</button>`:""}</div>`:""}</div>`
+    :`<span class="bface" style="${faceOf(b.bot)}"></span><div class="bb"><span class="bn">${BOT_NAME[b.bot]||"봇"}${chip?" · "+chip:""}</span></div>`;
+  const u=el.querySelector(".undo");
+  if(u) u.onclick=e=>{ e.stopPropagation(); confirmBox(`${b.ver-1}번으로 되돌릴까요?`,async()=>{
+    try{ await api(`/api/tools/u${b.tool}/revert`,{method:"POST",body:{ver:b.ver-1}}); loadRoomTools() }catch(e){ toast(e.message) } },{ok:"되돌리기"}) };
+  let pt; el.addEventListener("pointerdown",()=>{ pt=setTimeout(()=>msgMenu(m,el.querySelector(".bt")||el),500) });
+  ["pointerup","pointerleave","pointercancel"].forEach(e=>el.addEventListener(e,()=>clearTimeout(pt)));
+  el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(m,el.querySelector(".bt")||el) });
+  return el;
+}
+function botWorkEl(k){
+  const el=document.createElement("div"); el.className="botmsg work";
+  el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${BOT_NAME[k]||"봇"}</span><div class="bt">만드는 중<i>.</i><i>.</i><i>.</i></div></div>`;
+  return el;
+}
+// "@" 로 시작해서 아직 띄어쓰기 전이면 봇 고르기 줄을 보인다. 오늘 남은 횟수는 숫자만
+function showBotPick(){
+  const v=msgIn.value, box=$("#botPick"), on=!!cur&&/^@\S*$/.test(v);
+  if(!on){ box.hidden=true; return }
+  const q=v.slice(1);
+  const ks=Object.keys(BOT_NAME).filter(k=>BOT_NAME[k].startsWith(q));
+  if(!ks.length){ box.hidden=true; return }
+  box.innerHTML=ks.map(k=>`<button data-k="${k}"><span class="bface" style="${faceOf(k)}"></span>${BOT_NAME[k]}</button>`).join("")+(botLeftN!=null?`<span class="left">${botLeftN}</span>`:"");
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ msgIn.value="@"+BOT_NAME[b.dataset.k]+" "; fitIn(); box.hidden=true; msgIn.focus() });
+  if(box.hidden){ box.hidden=false; const bond=cur.id; api(`/api/rooms/${bond}/bot`).then(r=>{ botLeftN=r.left; if(!box.hidden&&cur&&cur.id===bond) showBotPick() }).catch(()=>{}) }
+}
+msgIn.addEventListener("input",showBotPick);
 // 입력줄의 버튼을 눌러도 키보드는 그대로 (C-5). 입력칸 자체는 건드리지 않는다
 $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDefault() });
 // 메시지 영역을 탭하면 키보드가 내려간다 (S-5)
@@ -2294,9 +2375,16 @@ const SLOT={top:"대화방 위", bubble:"말풍선"};
 function renderTools(q=""){
   const list=$("#toolList"); list.innerHTML="";
   const key=q.trim().toLowerCase();
-  // 만든 도구가 주인공이다. 처음부터 들어 있던 견본은 쓰고 있는 것만 남긴다(같은 이름이 둘씩 뜨지 않게)
-  const pub=pubTools.map(t=>({...t,user:true}));
-  const all=TOOLS.filter(t=>toolOn[t.id]).concat(pub).filter(t=>!key||t.name.toLowerCase().includes(key));
+  // 세 칸: 내가 만든 것, 내 방들에 붙어 있는 남의 것, 남이 공개한 것. 한 도구는 한 칸에만.
+  // 처음부터 들어 있던 견본은 쓰고 있는 것만 둘러보기에 남긴다
+  const hit=t=>!key||t.name.toLowerCase().includes(key);
+  const mine=myTools.filter(t=>t.ver).map(t=>({...t,user:true,mine:true}));
+  const seen=new Set(mine.map(t=>t.id));
+  const shared=roomTools.filter(t=>!seen.has(t.id)).map(t=>({...t,user:true,locked:!t.public}));
+  shared.forEach(t=>seen.add(t.id));
+  const browse=TOOLS.filter(t=>toolOn[t.id]).concat(pubTools.filter(t=>!seen.has(t.id)).map(t=>({...t,user:true})));
+  const groups=[["내가 만든",mine.filter(hit)],["같이 쓰는",shared.filter(hit)],["둘러보기",browse.filter(hit)]];
+  const all=groups.flatMap(g=>g[1]);
   $("#toolSearch").style.display=all.length?"":"none";
   const empty=$("#toolEmpty");
   empty.style.display=all.length?"none":"block";
@@ -2304,34 +2392,35 @@ function renderTools(q=""){
 
   const card=t=>{
     const el=document.createElement("div"); el.className="tool";
-    const on=t.mine||!!toolOn[t.id];       // 내가 만든 것은 늘 켜져 있다. 끌 이유가 없다
+    const on=t.mine||t.locked||!!toolOn[t.id];   // 내가 만든 것은 늘 켜져 있다. 공개 안 된 남의 것은 그 방에서만 쓴다
     el.classList.toggle("off",!on);
-    const tag=t.user?`<span class="slot">${t.mine?"내 도구":esc(t.by||"누군가")+" 만듦"}</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
-    el.innerHTML=`<div class="nm">${esc(t.name)}${tag}${(amMaker&&!t.user)?`<button class="remix">고쳐 만들기</button>`:""}</div>
+    const tag=t.user?`<span class="slot">${t.mine?(t.public?"공개":"나만"):esc(t.by||"누군가")}</span>`:`<span class="slot">${SLOT[t.slot]}</span>`;
+    el.innerHTML=`<div class="nm">${esc(t.name)}${tag}</div>
       <div class="slide"><div class="roomtool on knob"></div></div>`;
     const knob=el.querySelector(".knob");
     // 만든 도구는 코드를 받아 와야 모양이 나온다. 기본 도구는 그릴 함수를 이미 들고 있다
     if(t.user){ if(t.ver) fetchToolCode(t.id,t.ver).then(code=>{ if(code&&el.isConnected){ mountSandbox(knob,code,{state:previewState,save:()=>{}}); coverBox(knob) } }) }
     else t.render(knob,previewCtx(t));
-    if(t.mine) el.querySelector(".slide").classList.add("on","fixed");
+    if(t.mine||t.locked) el.querySelector(".slide").classList.add("on","fixed");
     else slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
-    const rx=el.querySelector(".remix"); if(rx) rx.onclick=()=>newTool("free",{name:t.name,code:"function "+t.render.toString()});
+    if(t.mine) longPress(el,()=>popMenu(el,[["edit",t.public?"나만 보기":"공개",()=>setPublic(t,!t.public)],["del","삭제",()=>deleteTool(t),"danger"]],false));
     return el;
   };
-  // 켠 것과 아직 안 켠 것을 나눠 둔다. 섞여 있으면 무엇이 쓰이는 중인지 알 수가 없다
-  const on=all.filter(t=>t.mine||toolOn[t.id]), off=all.filter(t=>!(t.mine||toolOn[t.id]));
-  const sect=(title,arr)=>{
+  groups.forEach(([title,arr])=>{
     if(!arr.length) return;
     const h=document.createElement("div"); h.className="lbl sect"; h.textContent=title; list.appendChild(h);
     arr.forEach(t=>list.appendChild(card(t)));
-  };
-  sect("켜둔 도구",on);
-  sect("더 있어요",off);
+  });
 }
-let pubTools=[];
+let pubTools=[], roomTools=[];
 async function loadPublic(){
-  try{ pubTools=(await api("/api/tools/public")).tools||[] }catch(e){ pubTools=[] }
+  const get=u=>api(u).then(x=>x.tools||[]).catch(()=>[]);
+  [pubTools,roomTools,myTools]=await Promise.all([get("/api/tools/public"),get("/api/tools/rooms"),get("/api/tools/mine")]);
   renderTools($("#toolSearch")?.value||"");
+}
+async function setPublic(t,v){
+  try{ await api("/api/tools/"+t.id,{method:"PATCH",body:{public:v}}) }catch(e){ toast(e.message); return }
+  loadPublic();
 }
 
 /* 도구 만들기(운영자만, tools-maker-plan.md 3단계). 봇을 고르면 새 도구가 생기고 대화 화면이 열린다 */
@@ -2363,35 +2452,8 @@ function botBox(k){
 // 미리보기에 쓰는 방 상태: 처음 붙였을 때(빈 데이터) + 나와 가짜 방 사람 둘. 탐색·내 도구가 같은 모습이 되게 함께 쓴다
 const previewState=()=>({data:{},me:myId(),self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]});
 function previewCtx(t){ const c={...previewState(),ui:{},toast:()=>{}}; c.redraw=c.save=()=>{}; return c }
-// 내 도구: 탐색 탭의 도구처럼 이름 줄 + 실제로 만든 상자(보기만)
 // 아이폰은 손가락이 칸(iframe) 위에서 시작되면 목록 스크롤로 넘겨주지 않는다. 보기만 하는 미리보기에는 투명 덮개를 씌운다
 function coverBox(host){ const c=document.createElement("i"); c.className="cover"; host.appendChild(c) }
-function mineCard(m){
-  const el=document.createElement("div"); el.className="tool mine";
-  el.innerHTML=`<div class="nm">${esc(m.name)}<span class="slot">${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</span></div><div class="roomtool user"></div>`;
-  const box=el.querySelector(".roomtool");
-  if(m.ver) fetchToolCode(m.id,m.ver).then(code=>{ if(code&&el.isConnected){ mountSandbox(box,code,{state:previewState,save:()=>{}}); coverBox(box) } });
-  else box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[m.bot]||""}</span></div>`;
-  return el;
-}
-let toolPane="browse";
-function showToolPane(k){
-  toolPane=amMaker?k:"browse";
-  $$("#toolSeg button").forEach(b=>b.classList.toggle("on",b.dataset.s===toolPane));
-  if(toolPane==="browse") loadPublic();
-  $("#paneBrowse").hidden=toolPane!=="browse"; $("#paneMake").hidden=toolPane!=="make"; $("#paneMine").hidden=toolPane!=="mine";
-}
-$$("#toolSeg button").forEach(b=>b.addEventListener("click",()=>showToolPane(b.dataset.s)));
-function renderMakerArea(){
-  $("#toolSeg").style.display=amMaker?"":"none"; showToolPane(toolPane); if(!amMaker) return;
-  const row=$("#botRow"); row.innerHTML="";
-  Object.keys(BOT_NAME).forEach(k=>{ const b=botBox(k); b.onclick=()=>newTool(k); row.appendChild(b) });
-  const l=$("#mineList"); l.innerHTML=""; $("#mineEmpty").style.display=myTools.length?"none":"";
-  myTools.forEach(m=>{ const it=mineCard(m);
-    if(mkLanded===m.id){ it.classList.add("landed"); mkLanded=0 }
-    longPress(it,()=>popMenu(it,[["edit","수정",()=>openMaker(m.id)],["del","삭제",()=>deleteTool(m),"danger"]],false));
-    it.onclick=()=>{ if(!it.dataset.held) openMaker(m.id) }; l.appendChild(it) });
-}
 // 길게 누르기(0.5초). 끌거나 손을 떼면 취소. 길게 눌렀으면 바로 뒤의 눌림(click)은 무시한다
 function longPress(el,fn){
   let t=null;
@@ -2403,10 +2465,10 @@ function deleteTool(m){
   confirmBox(`${josa(m.name,"을","를")} 삭제할까요? 붙여 둔 방에서도 사라져요.`,async()=>{
     try{ await api("/api/tools/"+m.id,{method:"DELETE"}) }catch(e){ toast(e.message); return }
     if(roomData[m.id]){ delete roomData[m.id]; renderRoomTool(); renderMsgs() }
-    loadMyTools();
+    loadPublic();
   },{ok:"삭제"});
 }
-async function loadMyTools(){ if(!amMaker) return; try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} renderMakerArea() }
+function loadMyTools(){ return loadPublic() }
 async function newTool(bot,from){
   try{ const d=await api("/api/tools",{method:"POST",body:{bot,from}}); await openMaker(d.id); loadMyTools() }catch(e){ toast(e.message) }
 }
@@ -2542,7 +2604,7 @@ $("#mkPub").addEventListener("click",async()=>{
 $("#mkAttach").addEventListener("click",()=>{
   if(!mk||!mk.ver) return;
   mkLanded=mk.id;
-  back("s-tools"); showToolPane("mine"); loadMyTools();
+  back("s-tools"); loadMyTools();
   toast("내 도구에 담았어요");
 });
 const mkIn=$("#mkIn");

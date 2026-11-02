@@ -673,7 +673,7 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
   const mine = bond.kind === "group" && (bond.members || []).find((m) => String(m.id) === String(req.user.id));
   const since = mine && !bond.show_history ? mine.joined_at : new Date(0);
   const { rows } = await pool.query(
-    "select id, sender_id, body, kind, media, w, h, reply_to, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
+    "select id, sender_id, body, kind, media, mime, w, h, reply_to, created_at from messages where bond_id = $1 and created_at >= $2 order by id",
     [bond.id, since]
   );
   // 여는 순간 읽은 것으로 친다 (R-7.4에 따라 상대에게는 알리지 않는다)
@@ -691,6 +691,7 @@ app.get("/api/messages/:bondId", auth, async (req, res) => {
       from: String(m.sender_id),
       body: m.body,
       kind: m.kind || "text",
+      bot: m.kind === "bot" ? botMeta(m.mime) : undefined,
       media: m.media,
       w: m.w, h: m.h,
       replyTo: m.reply_to ? String(m.reply_to) : null,
@@ -1023,6 +1024,7 @@ function render(box, c) { ... }
     await c.ask("buzz")            -> 짧은 진동
   거절·실패는 예외로 오니 try/catch 로 받고, 안 되면 그 자리에 안내를 적는다.
   위치는 누를 때만 묻는다(그릴 때마다 부르지 않는다). 좌표는 c.save 로 남겨 두고 쓴다.
+- fresh: 지금 도구를 고치는 게 아니라 전혀 다른 새 도구를 원하면 true. 그때 code 는 처음부터 새로 만든다.
 - name 은 열 글자 안쪽의 재미있는 이름. 기능 설명이 아니라 별명처럼 짓는다.
   하는 일이 짐작되면서 한 번 웃기거나 정감 있게(예: "오늘의 빚쟁이", "누가 더 멀리", "칼퇴 적금").
   밋밋한 기능명("회식 정산", "거리 계산")은 쓰지 않는다.`;
@@ -1033,7 +1035,9 @@ const MakerOut = z.object({
   name: z.string(),
   note: z.string(),
   code: z.string(),
+  fresh: z.boolean(),
 });
+const botMeta = (s) => { try { return JSON.parse(s) } catch (e) { return {} } };
 const kstDay = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 async function myTool(id, userId) {
   return (await pool.query("select * from user_tools where id = $1 and owner_id = $2", [Number(id) || 0, userId])).rows[0];
@@ -1049,7 +1053,7 @@ async function addVersion(tool, code, note) {
 }
 const makerOnly = (req, res, next) => (isAdmin(req.user.id) ? next() : res.sendStatus(404));
 
-app.get("/api/tools/mine", auth, makerOnly, async (req, res) => {
+app.get("/api/tools/mine", auth, async (req, res) => {
   const { rows } = await pool.query("select id, name, bot, ver, public, updated_at from user_tools where owner_id = $1 order by updated_at desc", [req.user.id]);
   res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, public: r.public, at: r.updated_at })) });
 });
@@ -1060,8 +1064,18 @@ app.get("/api/tools/public", auth, async (req, res) => {
       where t.public and t.ver > 0 order by t.updated_at desc limit 60`);
   res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, by: r.nickname, mine: r.owner_id === req.user.id })) });
 });
+// 내 방들에 붙어 있는 남의 도구. 공개 안 한 것은 그 방에서만 쓴다(탐색에서 다른 방으로 가져갈 수 없다)
+app.get("/api/tools/rooms", auth, async (req, res) => {
+  const { rows } = await pool.query(
+    `select distinct t.id, t.name, t.bot, t.ver, t.public, u.nickname, t.updated_at from room_state rs
+       join bonds b on b.id = rs.bond_id
+       join user_tools t on rs.tool = 'u' || t.id
+       join users u on u.id = t.owner_id
+      where ${IN_ROOM} and t.owner_id <> $1 and t.ver > 0 order by t.updated_at desc limit 60`, [req.user.id]);
+  res.json({ tools: rows.map((r) => ({ id: "u" + r.id, name: r.name, bot: r.bot, ver: r.ver, public: r.public, by: r.nickname })) });
+});
 // 이름 바꾸기·공개 여부. 내 도구만
-app.patch("/api/tools/:id", auth, makerOnly, async (req, res) => {
+app.patch("/api/tools/:id", auth, async (req, res) => {
   const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
   if (!tool) return res.sendStatus(404);
   const sets = [], vals = [];
@@ -1110,7 +1124,7 @@ app.get("/api/tools/:id/v/:ver", auth, async (req, res) => {
   res.json({ name: tool.name, code: v.code });
 });
 // 도구 삭제: 버전·대화가 함께 지워지고, 붙여 둔 방에서도 내려간다(그 방의 도구 데이터도 지운다)
-app.delete("/api/tools/:id", auth, makerOnly, async (req, res) => {
+app.delete("/api/tools/:id", auth, async (req, res) => {
   const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
   if (!tool) return res.sendStatus(404);
   const rooms = (await pool.query("delete from room_state where tool = $1 returning bond_id", ["u" + tool.id])).rows;
@@ -1123,13 +1137,22 @@ app.delete("/api/tools/:id", auth, makerOnly, async (req, res) => {
   res.json({ ok: true });
 });
 // 예전 버전으로: 그 코드로 새 버전을 만든다(기록은 지워지지 않는다)
-app.post("/api/tools/:id/revert", auth, makerOnly, async (req, res) => {
+app.post("/api/tools/:id/revert", auth, async (req, res) => {
   const tool = await myTool(String(req.params.id).replace(/^u/, ""), req.user.id);
   const v = tool && (await toolCode(tool.id, Number(req.body?.ver) || 0));
   if (!v) return res.sendStatus(404);
   const ver = await addVersion(tool, v.code, `${req.body.ver}번으로 되돌림`);
+  await roomsRedraw(tool.id);
   res.json({ ver, code: v.code });
 });
+async function roomsRedraw(toolId) {
+  const rooms = (await pool.query("select bond_id from room_state where tool = $1", ["u" + toolId])).rows;
+  for (const r of rooms) {
+    const who = (await pool.query(
+      "select user_id as id from bond_members where bond_id = $1 union select a_id from bonds where id = $1 union select b_id from bonds where id = $1", [r.bond_id])).rows;
+    notify(who.map((x) => x.id), { type: "room", bondId: r.bond_id, tool: "u" + toolId });
+  }
+}
 // 봇과 대화: 한 번 말할 때마다 AI 를 한 번 부른다
 app.post("/api/tools/:id/chat", auth, makerOnly, async (req, res) => {
   if (!ai) return res.status(503).json({ error: "AI 준비 중이에요" });
@@ -1178,6 +1201,122 @@ app.post("/api/tools/:id/chat", auth, makerOnly, async (req, res) => {
   await pool.query("update tool_chats set messages = $2 where tool_id = $1", [tool.id, JSON.stringify(next)]);
   res.json({ reply: out.reply, options, ver, name: out.name || tool.name, code: ver ? out.code : null, note: ver ? out.note : null,
     usd: Math.round(usd * 1e4) / 1e4 });
+});
+
+/* ---------- 대화방에서 @봇 부르기 ----------
+   "@놀이 강화게임 만들어줘" → 새 도구를 만들어 이 방 위 칸에 바로 붙인다.
+   위 칸에 내 도구가 있으면(또는 봇 말풍선에 답장하면) 그 도구를 고친다. 고치기는 그 도구를 만든 사람만.
+   봇의 답은 kind "bot" 메시지로 남는다. 사람의 말이 아니라서 30일 Reset 에 세지 않는다.
+   봇은 방 대화를 읽지 않는다. 부른 그 한 줄과 지금 도구 코드만 본다.
+   많이 부르기 막기: 사람마다 하루 BOT_USER_CALLS(기본 10, 운영자 제외), 방마다 하루 BOT_ROOM_CALLS(기본 30),
+   방 하나에 한 번에 하나만, 같은 사람은 15초 간격, 그리고 하루 전체 예산 AI_DAILY_USD */
+const BOT_USER_CALLS = Number(process.env.BOT_USER_CALLS || 10), BOT_ROOM_CALLS = Number(process.env.BOT_ROOM_CALLS || 30);
+const botBusy = new Set(), botLast = new Map();
+const EDIT_WORDS = /(수정|고쳐|고치|바꿔|바꾸|변경|추가|빼줘|없애|키워|줄여|늘려|되돌)/;
+async function botLeft(userId, bondId) {
+  const day = kstDay();
+  const mine = isAdmin(userId) ? 0 : (await pool.query("select calls from ai_usage where day = $1 and user_id = $2", [day, userId])).rows[0]?.calls || 0;
+  const room = (await pool.query(
+    "select count(*)::int n from messages where bond_id = $1 and kind = 'bot' and created_at >= ($2::date)::timestamp at time zone 'Asia/Seoul'", [bondId, day])).rows[0].n;
+  return Math.max(0, Math.min(BOT_USER_CALLS - mine, BOT_ROOM_CALLS - room));
+}
+app.get("/api/rooms/:bondId/bot", auth, async (req, res) => {
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.sendStatus(404);
+  res.json({ left: ai ? await botLeft(req.user.id, bond.id) : 0 });
+});
+app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
+  if (!ai) return res.status(503).json({ error: "AI 준비 중이에요" });
+  const bond = await myBond(req.params.bondId, req.user.id);
+  if (!bond) return res.status(404).json({ error: "없는 대화예요" });
+  if (ddayOf(bond.last_reset_at) <= 0 && String(bond.a_id) !== String(bond.b_id)) return res.status(410).json({ error: "이 대화는 끝났어요" });
+  const bot = BOTS[req.body?.bot] ? req.body.bot : "free";
+  const text = String(req.body?.text || "").trim().slice(0, 500);
+  if (!text) return res.status(400).json({ error: "무엇을 할지 적어주세요" });
+  const uid = String(req.user.id);
+  if (botBusy.has(bond.id)) return res.status(429).json({ error: "봇이 아직 만드는 중이에요" });
+  if (Date.now() - (botLast.get(uid) || 0) < 15000) return res.status(429).json({ error: "잠시 뒤에 불러주세요" });
+  const day = kstDay();
+  const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [day])).rows[0].usd;
+  if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘은 더 부를 수 없어요" });
+
+  // 고칠 도구: 답장한 봇 말풍선의 도구 → 아니면 지금 위 칸에 떠 있는 만든 도구
+  let target = null;
+  const rid = Number(req.body?.replyTo) || 0;
+  if (rid) {
+    const m = (await pool.query("select mime from messages where id = $1 and bond_id = $2 and kind = 'bot'", [rid, bond.id])).rows[0];
+    if (m) target = Number(botMeta(m.mime).tool) || null;
+  }
+  if (!target) {
+    const on = (await pool.query("select tool from room_state where bond_id = $1 and tool ~ '^u[0-9]+$' and (data->>'on')::boolean", [bond.id])).rows[0];
+    if (on) target = Number(on.tool.slice(1));
+  }
+  let tool = target ? (await pool.query("select * from user_tools where id = $1", [target])).rows[0] : null;
+  if (tool && tool.owner_id !== req.user.id) {
+    // 남의 도구는 고칠 수 없다. 고쳐 달라는 말이면 AI 를 부르지 않고 바로 거절, 아니면 새로 만든다
+    if (rid || EDIT_WORDS.test(text)) return res.status(403).json({ error: "만든 사람만 고칠 수 있어요" });
+    tool = null;
+  }
+
+  botBusy.add(bond.id); botLast.set(uid, Date.now());
+  notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
+  try {
+    const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
+    const now = (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
+      `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`;
+    let r;
+    try {
+      r = await ai.beta.messages.parse({
+        model: AI_MODEL, max_tokens: 16000,
+        betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+        output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
+        system: [{ type: "text", text: MAKER_RULES + "\n\n[너의 성격과 전문]\n" + BOTS[bot], cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: now }],
+      });
+    } catch (e) {
+      console.error("roombot", e.status || "", e.message);
+      return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" });
+    }
+    const u = r.usage || {};
+    const usd = ((u.input_tokens || 0) * AI_PRICE.in + (u.output_tokens || 0) * AI_PRICE.out +
+      (u.cache_read_input_tokens || 0) * AI_PRICE.cacheRead + (u.cache_creation_input_tokens || 0) * AI_PRICE.cacheWrite) / 1e6;
+    await pool.query(
+      `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, 1, $3)
+         on conflict (day, user_id) do update set calls = ai_usage.calls + 1, usd = ai_usage.usd + $3`, [day, req.user.id, usd]);
+    const out = r.stop_reason === "refusal" ? null : r.parsed_output;
+    if (!out) return res.status(502).json({ error: "봇이 답하지 못했어요. 다시 불러주세요" });
+    const good = out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
+    if (tool && out.fresh && good) tool = null;   // 새 도구를 원한 것
+    let ver = null, made = false;
+    if (good) {
+      if (!tool) {
+        tool = (await pool.query("insert into user_tools (owner_id, name, bot) values ($1, $2, $3) returning *",
+          [req.user.id, (out.name || "새 도구").slice(0, 30), bot])).rows[0];
+        await pool.query("insert into tool_chats (tool_id, messages) values ($1, '[]')", [tool.id]);
+        made = true;
+      }
+      ver = await addVersion(tool, out.code, out.note.slice(0, 80) || (made ? "처음" : "고침"));
+      if (!made && out.name && out.name !== tool.name) await pool.query("update user_tools set name = $2 where id = $1", [tool.id, out.name.slice(0, 30)]);
+      // 위 칸에 붙인다. 떠 있던 다른 도구는 내린다(데이터는 그대로)
+      const key = "u" + tool.id;
+      await pool.query(`update room_state set data = jsonb_set(data, '{on}', 'false') where bond_id = $1 and tool <> $2 and (data->>'on')::boolean`, [bond.id, key]);
+      await pool.query(
+        `insert into room_state (bond_id, tool, data) values ($1, $2, $3)
+           on conflict (bond_id, tool) do update set data = room_state.data || $3, updated_at = now()`,
+        [bond.id, key, { on: true, ver, name: (out.name || tool.name).slice(0, 30) }]);
+    }
+    const meta = { bot, tool: tool ? tool.id : null, ver, name: tool ? (out.name || tool.name).slice(0, 30) : "", note: ver ? out.note.slice(0, 80) : "", made, owner: uid };
+    const { rows } = await pool.query(
+      "insert into messages (bond_id, sender_id, body, kind, mime, reply_to) values ($1, $2, $3, 'bot', $4, $5) returning id, created_at",
+      [bond.id, req.user.id, out.reply.slice(0, 300), JSON.stringify(meta), rid || null]);
+    const msg = { id: rows[0].id, body: out.reply.slice(0, 300), at: rows[0].created_at, bondId: bond.id, from: uid, kind: "bot", bot: meta, replyTo: rid ? String(rid) : null };
+    notify(memberIds(bond), { type: "message", ...msg }, req.user.id);
+    if (ver) notify(memberIds(bond), { type: "room", bondId: bond.id, tool: "u" + tool.id });
+    res.json({ ...msg, left: await botLeft(req.user.id, bond.id) });
+  } finally {
+    botBusy.delete(bond.id);
+    notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: false });
+  }
 });
 
 /* ---------- 실시간 알림 ---------- */
