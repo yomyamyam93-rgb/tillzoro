@@ -1286,6 +1286,16 @@ async function botPatch(userId, bot, code, text) {
   return { counted: true, out: { reply: o.reply, note: o.note, code: next, changed: true, fresh: false, name: "" }, good: true };
 }
 const botBusy = new Map(), botLast = new Map(), botPending = new Map();   // 방 → 시각, 사람 → 시각, 표 → 만드는 중인 것
+// "@할 일" 처럼 봇 이름 없이 부르면 말에서 맞는 봇(교본)을 고른다. AI 를 부르지 않는 단어 맞추기라 공짜다
+const BOT_GUESS = [
+  ["money", /(정산|n분|더치|회비|송금|갚|빌려|가계부|용돈|[0-9]+ ?(원|만원|천원))/i],
+  ["pick", /(뽑기|뽑아|추첨|사다리|순서|당번|제비|룰렛|골라|정해 ?줘|메뉴 ?추천|랜덤)/],
+  ["play", /(게임|내기|강화|퀴즈|맞히|빙고|점수|대결|가위바위보|주사위|타이머)/],
+  ["meet", /(공지|투표|일정|약속|모임|참석|날짜|회의|예약)/],
+  ["two", /(커플|연인|애인|둘이|우리 ?사이|기념일|디데이|d-?day|데이트)/i],
+  ["memory", /(기록|습관|일기|체크|출석|연속|매일|목표|다이어트|운동|공부)/],
+];
+const guessBot = (text) => (BOT_GUESS.find(([, re]) => re.test(text)) || ["free"])[0];
 const EDIT_WORDS = /(수정|고쳐|고치|바꿔|바꾸|변경|추가|빼줘|없애|키워|줄여|늘려|되돌)/;
 async function botLeft(userId, bondId) {
   const day = kstDay();
@@ -1323,7 +1333,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const bond = await myBond(req.params.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
   if (ddayOf(bond.last_reset_at) <= 0 && String(bond.a_id) !== String(bond.b_id)) return res.status(410).json({ error: "이 대화는 끝났어요" });
-  const bot = BOTS[req.body?.bot] ? req.body.bot : "free";
+  let bot = BOTS[req.body?.bot] ? req.body.bot : null;   // 이름 없이 부르면 아래에서: 고치는 거면 그 도구의 봇, 새로면 말로 고른다
   const text = String(req.body?.text || "").trim().slice(0, 500);
   if (!text) return res.status(400).json({ error: "무엇을 할지 적어주세요" });
   const uid = String(req.user.id);
@@ -1352,6 +1362,9 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
     tool = null;
   }
 
+  // 이름 없이 "@할 일" 로 불렀는데 고쳐 달라는 말(답장·고침 낱말)이 아니면 새 도구다. 보고 있던 도구를 엉뚱하게 고치지 않게
+  if (!bot && !rid && !EDIT_WORDS.test(text)) tool = null;
+  if (!bot) bot = tool && BOTS[tool.bot] ? tool.bot : guessBot(text);
   botBusy.set(bond.id, Date.now()); botLast.set(uid, Date.now());
   notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
   const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
