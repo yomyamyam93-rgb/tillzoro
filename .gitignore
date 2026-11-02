@@ -1,2 +1,3 @@
 builds/
 server/node_modules/
+.claude/qa.json
