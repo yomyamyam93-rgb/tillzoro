@@ -734,7 +734,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1459</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1502</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1427,6 +1427,13 @@ function __measure(when){ const W=innerWidth,H=innerHeight,out=[];
     const d=[["왼쪽",-r.left],["오른쪽",r.right-W],["위",-r.top],["아래",r.bottom-H]].filter(x=>x[1]>2).map(x=>x[0]+"으로 "+Math.round(x[1])+"px");
     if(d.length&&!(el.parentElement&&out.some(o=>o.el===el.parentElement))) out.push({el,text:"잘림"+when+": "+__label(el)+" 이(가) 칸 밖으로 "+d.join(", ")+" 나감 (칸 "+W+"x"+H+")"}) }
   return out.map(o=>o.text) }
+// 펼친 모습: 가로로 넘치면 잘림, 세로는 스크롤되니 넘쳐도 된다. 대신 칸의 반도 못 채우면 알린다
+async function __checkKeep(){ await new Promise(r=>setTimeout(r,300)); const W=innerWidth,H=innerHeight,out=[];
+  __measure(" (펼친 모습)").filter(x=>/왼쪽|오른쪽/.test(x)).forEach(x=>out.push(x));
+  let top=1e9,bot=-1e9; for(const el of __box.children){ const r=el.getBoundingClientRect(); if(r.height<1) continue; top=Math.min(top,r.top); bot=Math.max(bot,r.bottom) }
+  const used=bot>top?Math.round((bot-top)/H*100):0, txt=(__box.textContent||"").trim().length;
+  if(txt>20&&used<60) out.push("펼친 모습이 칸 세로의 "+used+"%만 씀 (칸 "+W+"x"+H+"): 위에 몰려 있고 아래가 빈다. 세로로 고루 나눠 써라");
+  __send({k:"checkd",issues:out.slice(0,4),errors:[...new Set(__errs)].slice(0,3).map(x=>"오류: "+x)}) }
 async function __check(){ const found=new Set(), add=a=>a.forEach(x=>found.add(x)), wait=ms=>new Promise(r=>setTimeout(r,ms));
   await wait(300); add(__measure(""));
   for(let i=0;i<4;i++){ const bs=[...__box.querySelectorAll("button,[data-k],[onclick]")].filter(b=>b.getBoundingClientRect().width>0); const b=bs[i]; if(!b) break;
@@ -1435,7 +1442,7 @@ async function __check(){ const found=new Set(), add=a=>a.forEach(x=>found.add(x
     for(const ms of [120,500,1300]){ await wait(ms===120?120:ms-(ms===500?120:500)); add(__measure(" ("+name+" 누른 뒤)")) } }
   __send({k:"checkd",issues:[...found].slice(0,6),errors:[...new Set(__errs)].slice(0,3).map(x=>"오류: "+x)}) }
 addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
-  if(m.k==="check"){ __check(); return }
+  if(m.k==="check"){ m.keep?__checkKeep():__check(); return }
   if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],mode:m.mode||""}; __draw() }
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
@@ -1463,21 +1470,22 @@ window.addEventListener("message",e=>{
 });
 /* 봇이 만든 코드를 붙이기 전에 검사한다. 위 칸과 같은 크기의 보이지 않는 칸에 방 사람들과 함께 그려 보고 결과를 받는다 */
 function checkTool(code){
-  return new Promise(done=>{
+  const one=(keep,data0)=>new Promise(done=>{
     const host=document.createElement("div"), ref=$("#roomTool");
-    host.className="roomtool on user"; host.style.cssText=`position:fixed;left:-9999px;top:0;width:${ref.offsetWidth||Math.min(innerWidth,480)-24}px;visibility:hidden`;
+    host.className="roomtool on user"; host.style.cssText=`position:fixed;left:-9999px;top:0;width:${ref.offsetWidth||Math.min(innerWidth,480)-24}px;visibility:hidden`+(keep?`;height:calc(var(--tool-h) * 3)`:"");
     document.body.appendChild(host);
-    let data={}, fin=false;
-    const end=r=>{ if(fin) return; fin=true; host.remove(); done(r) };
+    let data=data0||{}, fin=false;
+    const end=r=>{ if(fin) return; fin=true; host.remove(); done({issues:r,data,hasKeep:!!h.hasKeep}) };
     const h=mountSandbox(host,code,{
-      state:()=>({...roomToolState(""),data}),
+      state:()=>({...roomToolState("",keep?"keep":""),data}),
       save:d=>{ data=d; h.push() },
       error:t=>h.errs.push("오류: "+t),
-      onReady:()=>setTimeout(()=>h.frame.contentWindow.postMessage({tz:1,k:"check"},"*"),50),
+      onReady:()=>setTimeout(()=>h.frame.contentWindow.postMessage({tz:1,k:"check",keep},"*"),50),
     });
     h.errs=[]; h.checkd=m=>end([...new Set([...h.errs,...m.errors])].concat(m.issues));
     setTimeout(()=>end([...h.errs,"오류: 그리는 데 너무 오래 걸려요"]),12000);
   });
+  return one(false).then(a=>a.hasKeep?one(true,a.data).then(b=>a.issues.concat(b.issues)):a.issues);
 }
 /* 칸은 바깥과 끊겨 있다(CSP default-src 'none'). 위치·공유 같은 것은 앱이 대신 해 주고
    결과만 돌려준다. 그래서 칸은 계속 갇혀 있고 권한은 앱이 쥔다 */
