@@ -975,9 +975,6 @@ const AI_MODEL = "claude-opus-5-5";
 const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
 const AI_DAILY_USD = Number(process.env.AI_DAILY_USD || 3), AI_USER_CALLS = Number(process.env.AI_USER_CALLS || 40);
 const BOTS = require("./bot-playbooks");   // 봇별 교본(성격·원리·자주 오는 부탁·흔한 실수·서랍)
-// 잘 만든 예시. 서로 모양이 전혀 다르게 골라, 배치가 아니라 이 앱다운 느낌을 배우게 한다
-const EXAMPLES = require("./bot-examples").map((x, i) =>
-  `[예시 ${i + 1} · ${x.name}] 배울 점: ${x.look}\n${x.code}`).join("\n\n");
 const MAKER_RULES = `너는 메신저 앱 Till Zero 안에서 사용자와 대화하며 "도구"를 만드는 봇이다. 사용자는 코드를 모른다. 한국어로, 짧고 쉽게 말한다.
 
 [도구가 도는 곳]
@@ -1222,11 +1219,62 @@ app.post("/api/tools/:id/chat", auth, makerOnly, async (req, res) => {
    (칸 밖으로 넘침·오류). 걸리면 무엇이 틀렸는지 봇에게 돌려보내 고치게 하고(최대 BOT_FIXES 번), 통과하면 붙인다.
    봇의 답은 kind "bot" 메시지로 남는다. 사람의 말이 아니라서 30일 Reset 에 세지 않는다.
    봇은 방 대화를 읽지 않는다. 부른 그 한 줄과 지금 도구 코드만 본다.
-   많이 부르기 막기: 사람마다 하루 BOT_USER_CALLS(기본 10, 운영자 제외), 방마다 하루 BOT_ROOM_CALLS(기본 30),
+   모델: 새로 만들기·큰 고치기는 BOT_MODEL(기본 Sonnet). 이미 있는 도구를 고칠 때는 먼저 PATCH_MODEL(Haiku)이 "작은 고치기"인지 보고,
+   작으면 코드 전체를 다시 쓰지 않고 바꿀 곳만 찾아 바꾼다(멀쩡한 곳을 건드리지 않아 정확하고 싸다). 크거나 바꿀 곳이 안 맞으면 BOT_MODEL 로 넘긴다.
+   많이 부르기 막기: 사람마다 하루 BOT_USER_CALLS(기본 50, 운영자 제외), 방마다 하루 BOT_ROOM_CALLS(기본 100),
    방 하나에 한 번에 하나만, 같은 사람은 15초 간격, 그리고 하루 전체 예산 AI_DAILY_USD. 검사 뒤 고치기는 횟수에 세지 않는다 */
-const BOT_USER_CALLS = Number(process.env.BOT_USER_CALLS || 10), BOT_ROOM_CALLS = Number(process.env.BOT_ROOM_CALLS || 30);
-const BOT_MODEL = process.env.BOT_MODEL || AI_MODEL, BOT_FIXES = 2;
-const PRICES = { "claude-opus-5-5": AI_PRICE, "claude-sonnet-5-5": { in: 2, out: 10, cacheRead: 0.2, cacheWrite: 2.5 } };
+const BOT_USER_CALLS = Number(process.env.BOT_USER_CALLS || 50), BOT_ROOM_CALLS = Number(process.env.BOT_ROOM_CALLS || 100);
+const BOT_MODEL = process.env.BOT_MODEL || "claude-sonnet-5-5", PATCH_MODEL = "claude-haiku-5-5", BOT_FIXES = 2;
+const PRICES = { "claude-opus-5-5": AI_PRICE, "claude-sonnet-5-5": { in: 2, out: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+  "claude-haiku-5-5": { in: 0.1, out: 0.5, cacheRead: 0.01, cacheWrite: 0.125 } };
+const usdOf = (model, u) => { const p = PRICES[model] || AI_PRICE;
+  return ((u.input_tokens || 0) * p.in + (u.output_tokens || 0) * p.out + (u.cache_read_input_tokens || 0) * p.cacheRead + (u.cache_creation_input_tokens || 0) * p.cacheWrite) / 1e6 };
+const spend = (userId, usd, count) => pool.query(
+  `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, $4, $3)
+     on conflict (day, user_id) do update set calls = ai_usage.calls + $4, usd = ai_usage.usd + $3`, [kstDay(), userId, usd, count ? 1 : 0]);
+// 작은 고치기: 바꿀 곳(find → replace)만 낸다. find 는 지금 코드에 딱 한 번 나오는 그대로의 글
+const PatchOut = z.object({
+  small: z.boolean(),
+  reply: z.string(),
+  note: z.string(),
+  edits: z.array(z.object({ find: z.string(), replace: z.string() })),
+});
+const PATCH_RULES = `[작은 고치기] 너는 이미 만든 도구를 조금 고친다. 도구 전체를 다시 쓰지 않는다 — 바꿀 곳만 정확히 고른다.
+먼저 부탁이 작은 고치기인지 판단한다.
+- 작은 고치기(small=true): 글자·이름·버튼 글자, 숫자·확률·시간·금액 같은 값, 색·크기·간격, 순서, 보이던 것 숨기기/보이기,
+  이미 있는 동작을 한두 군데 바꾸기(예: "실패하면 0으로", "3명까지만", "확률 더 낮게", "버튼 이름 바꿔줘").
+- 큰 고치기(small=false, edits 는 빈 목록): 새 기능·새 버튼·새 화면 추가, 새 데이터 칸이 필요함, 연출을 새로 만듦, 구조를 바꿈,
+  어디를 바꿔야 할지 코드에서 확실하지 않음, 전혀 다른 도구를 원함. 조금이라도 애매하면 큰 고치기다.
+edits 를 쓰는 법(small=true 일 때):
+- find: 지금 코드에서 바꿀 부분을 글자 하나, 띄어쓰기 하나까지 그대로 옮긴다. 코드 전체에서 딱 한 번만 나오도록 앞뒤를 조금 붙인다.
+- replace: 그 자리에 들어갈 새 글. 바꿀 것만 바꾸고 나머지는 find 와 똑같이 둔다.
+- 같은 값이 여러 곳에 쓰이면(예: 확률 숫자가 그림과 계산 두 곳) 빠짐없이 모두 바꾼다.
+- 데이터 칸 이름(c.data.무엇)은 바꾸지 않는다 — 방에 쌓인 데이터가 이어져야 한다.
+- 디자인 규칙(글자 세 단계, 금액 쉼표, 칸 밖으로 넘치지 않기, 설명 문장 금지)을 지킨다.
+reply 는 무엇을 바꿨는지 한 문장, note 는 바뀐 것 한 줄(예: "성공 확률 5%씩 낮춤").`;
+// 작은 고치기 시도. 작은 고치기가 아니거나, 바꿀 곳이 코드와 맞지 않으면 null(큰 모델로 넘긴다)
+async function botPatch(userId, bot, code, text) {
+  let r;
+  try {
+    r = await ai.beta.messages.parse({
+      model: PATCH_MODEL, max_tokens: 8000,
+      output_config: { effort: "medium", format: betaZodOutputFormat(PatchOut) },
+      system: [{ type: "text", text: MAKER_RULES + "\n\n" + PATCH_RULES, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: `[지금 도구 코드]\n${code}\n\n[사용자]\n${text}` }],
+    });
+  } catch (e) { console.error("patch", e.status || "", e.message); return null }
+  await spend(userId, usdOf(PATCH_MODEL, r.usage || {}), true);
+  const o = r.stop_reason === "refusal" ? null : r.parsed_output;
+  if (!o || !o.small || !o.edits.length) return { counted: true };
+  let next = code;
+  for (const e of o.edits) {
+    if (!e.find || next.split(e.find).length !== 2) return { counted: true };   // 없거나 여러 번 나오면 믿을 수 없다
+    next = next.replace(e.find, () => e.replace);
+  }
+  if (next === code || !/function\s+render\s*\(/.test(next)) return { counted: true };
+  console.log("patch ok", o.edits.length);
+  return { counted: true, out: { reply: o.reply, note: o.note, code: next, changed: true, fresh: false, name: "" }, good: true };
+}
 const botBusy = new Map(), botLast = new Map(), botPending = new Map();   // 방 → 시각, 사람 → 시각, 표 → 만드는 중인 것
 const EDIT_WORDS = /(수정|고쳐|고치|바꿔|바꾸|변경|추가|빼줘|없애|키워|줄여|늘려|되돌)/;
 async function botLeft(userId, bondId) {
@@ -1243,17 +1291,12 @@ async function botAsk(userId, bot, content, count) {
     betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
     output_config: { effort: "medium", format: betaZodOutputFormat(MakerOut) },
     system: [
-      { type: "text", text: MAKER_RULES + "\n\n[잘 만든 예시] 이 앱다운 느낌(여백·글자 단계·버튼·연출의 절제)을 보라. 배치를 따라 하지 말고 부탁에 맞게 새로 짠다.\n\n" + EXAMPLES, cache_control: { type: "ephemeral" } },
+      { type: "text", text: MAKER_RULES, cache_control: { type: "ephemeral" } },
       { type: "text", text: "[너의 교본]\n" + BOTS[bot], cache_control: { type: "ephemeral" } },
     ],
     messages: [{ role: "user", content }],
   });
-  const u = r.usage || {}, p = PRICES[BOT_MODEL] || AI_PRICE;
-  const usd = ((u.input_tokens || 0) * p.in + (u.output_tokens || 0) * p.out +
-    (u.cache_read_input_tokens || 0) * p.cacheRead + (u.cache_creation_input_tokens || 0) * p.cacheWrite) / 1e6;
-  await pool.query(
-    `insert into ai_usage (day, user_id, calls, usd) values ($1, $2, $4, $3)
-       on conflict (day, user_id) do update set calls = ai_usage.calls + $4, usd = ai_usage.usd + $3`, [kstDay(), userId, usd, count ? 1 : 0]);
+  await spend(userId, usdOf(BOT_MODEL, r.usage || {}), count);
   const out = r.stop_reason === "refusal" ? null : r.parsed_output;
   const good = out && out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
   return { out, good };
@@ -1305,11 +1348,16 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   botBusy.set(bond.id, Date.now()); botLast.set(uid, Date.now());
   notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
   const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
-  let r;
-  try {
+  let r = null, counted = false;
+  if (cur) {
+    const pt = await botPatch(req.user.id, bot, cur.code, text);
+    counted = !!pt?.counted;
+    if (pt?.out) r = { ...pt, out: { ...pt.out, name: tool.name } };
+  }
+  if (!r) try {
     r = await botAsk(req.user.id, bot,
       (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
-      `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, true);
+      `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, !counted);
   } catch (e) {
     console.error("roombot", e.status || "", e.message);
     botFree(bond, bot);
