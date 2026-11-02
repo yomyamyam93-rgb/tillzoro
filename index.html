@@ -316,6 +316,8 @@
   /* 키보드를 따라 밀어 올리는 칸들: 대화방(#chat.kbmove)과 같은 곡선 */
   .phone.kbanim .pad,.phone.kbanim .rows,.phone.kbanim #s-maker .mkchat,.phone.kbanim #s-maker .compose{transition:transform .25s cubic-bezier(.4,0,.2,1)}
   .screen>.bar{position:relative;z-index:3;background:var(--paper-2)}
+  #s-maker,#s-maker>.bar{background:var(--paper)}
+  #s-maker .mkchat{background:var(--paper-2)}
   #s-maker .mkprev{position:relative;z-index:2;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 12px 22px -16px rgba(0,0,0,.55)}
   /* 키보드가 올라오면 대화가 transform 으로 올라간다. 머리말 위(상태바 여백)로 새지 않게 잘라낸다 */
   .mkchatwrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}
@@ -419,7 +421,9 @@
   .bbox .d{display:block;margin-top:3px;font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mine{margin-top:0;cursor:pointer;transition:transform .15s ease}
   .mine .roomtool{display:flex;margin:0}
-  .mine .roomtool iframe,.tool .knob.roomtool *{pointer-events:none}   /* 상자는 보기만. 탐색은 카드가 스위치, 내 도구는 누르면 고치기 */
+  .mine .roomtool iframe,.tool .knob.roomtool *{pointer-events:none}
+  .tool .roomtool{position:relative}
+  .tool .roomtool>.cover{position:absolute;inset:0;z-index:2;pointer-events:auto}   /* 상자는 보기만. 탐색은 카드가 스위치, 내 도구는 누르면 고치기 */
   .tool .remix{margin-left:auto;font:500 12px var(--font-body);color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:5px 10px;white-space:nowrap}
   #s-maker .bar .mkact{display:flex;gap:8px;align-items:center}
   #s-maker .bar .attach{height:40px;padding:0 16px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;white-space:nowrap}
@@ -691,7 +695,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-0938</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-0944</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2307,7 +2311,7 @@ function renderTools(q=""){
       <div class="slide"><div class="roomtool on knob"></div></div>`;
     const knob=el.querySelector(".knob");
     // 만든 도구는 코드를 받아 와야 모양이 나온다. 기본 도구는 그릴 함수를 이미 들고 있다
-    if(t.user){ if(t.ver) fetchToolCode(t.id,t.ver).then(code=>{ if(code&&el.isConnected) mountSandbox(knob,code,{state:previewState,save:()=>{}}) }) }
+    if(t.user){ if(t.ver) fetchToolCode(t.id,t.ver).then(code=>{ if(code&&el.isConnected){ mountSandbox(knob,code,{state:previewState,save:()=>{}}); coverBox(knob) } }) }
     else t.render(knob,previewCtx(t));
     if(t.mine) el.querySelector(".slide").classList.add("on","fixed");
     else slideToggle(el.querySelector(".slide"),on,v=>{ el.classList.toggle("off",!v); setToolOn(t,v,false) });
@@ -2360,11 +2364,13 @@ function botBox(k){
 const previewState=()=>({data:{},me:myId(),self:false,members:[{id:myId(),name:me?.name||"나"},...FAKE]});
 function previewCtx(t){ const c={...previewState(),ui:{},toast:()=>{}}; c.redraw=c.save=()=>{}; return c }
 // 내 도구: 탐색 탭의 도구처럼 이름 줄 + 실제로 만든 상자(보기만)
+// 아이폰은 손가락이 칸(iframe) 위에서 시작되면 목록 스크롤로 넘겨주지 않는다. 보기만 하는 미리보기에는 투명 덮개를 씌운다
+function coverBox(host){ const c=document.createElement("i"); c.className="cover"; host.appendChild(c) }
 function mineCard(m){
   const el=document.createElement("div"); el.className="tool mine";
   el.innerHTML=`<div class="nm">${esc(m.name)}<span class="slot">${m.ver?m.ver+"번 · ":""}${BOT_NAME[m.bot]||""}</span></div><div class="roomtool user"></div>`;
   const box=el.querySelector(".roomtool");
-  if(m.ver) fetchToolCode(m.id,m.ver).then(code=>{ if(code&&el.isConnected) mountSandbox(box,code,{state:previewState,save:()=>{}}) });
+  if(m.ver) fetchToolCode(m.id,m.ver).then(code=>{ if(code&&el.isConnected){ mountSandbox(box,code,{state:previewState,save:()=>{}}); coverBox(box) } });
   else box.innerHTML=`<div class="rt-row"><span class="rt-title none">${BOT_NAME[m.bot]||""}</span></div>`;
   return el;
 }
