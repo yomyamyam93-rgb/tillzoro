@@ -1453,7 +1453,10 @@ async function botContext(bond, uid) {
   const hist = (await pool.query(
     "select body, mime from messages where bond_id = $1 and kind = 'bot' order by id desc limit 6", [bond.id])).rows.reverse()
     .map((m) => { const b = botMeta(m.mime); return (b.ask ? `사용자: @${b.ask}\n` : "") + `틸봇: ${m.body}${b.name ? ` [${b.name}]` : ""}` }).join("\n");
-  return { tools, history: hist, facts: await factsOf(uid) };
+  // 방금 이야기하던 도구: 틸봇의 마지막 말풍선이 가리키는 도구
+  const lastMeta = (await pool.query("select mime from messages where bond_id = $1 and kind = 'bot' order by id desc limit 1", [bond.id])).rows[0];
+  const last = lastMeta ? Number(botMeta(lastMeta.mime).tool) || 0 : 0;
+  return { tools, history: hist, facts: await factsOf(uid), last: tools.some((x) => x.id === last) ? last : 0 };
 }
 async function botRoute(uid, ctx, text, ridTool, seen) {
   const ids = new Set(ctx.tools.map((x) => x.id));
@@ -1470,7 +1473,11 @@ async function botRoute(uid, ctx, text, ridTool, seen) {
   reply 에 한두 문장으로 답한다. 숫자는 도구 내용에서 직접 세고 더한다(금액은 쉼표, "원"). 모르면 모른다고 짧게. tool = 근거가 된 도구(없으면 0).
 - edit: 있는 도구를 바꾸거나 더해 달라는 말("카페는 따로", "이름 바꿔", "버튼 키워", "합계 크게"). tool = 그 도구. 남의 도구(mine=false)는 고를 수 없다.
   도구에 없는 기능을 탓하거나 바라는 말도 edit 다 — 질문 꼴이어도 답하지 말고 고친다("왜 수정을 못해?", "지울 수 있어야지", "직접 넣을 수 있게", "고치라고", "그니까 고쳐").
-  앞 대화에서 이어지는 "고치라고/해 줘/그거" 도 앞에서 말한 도구의 edit 다. 여러 도구를 말하면 보고 있는 도구, 없으면 먼저 말한 도구.
+  앞 대화에서 이어지는 "고치라고/해 줘/그거" 는 **바로 앞 대화(마지막 줄)에서 말한 도구**의 edit 다 — 앞 대화에 [도구 이름]이 붙어 있으면 그 도구.
+  대화 흐름이 하나의 도구에 대한 불만·요청으로 이어지는 동안은 계속 그 도구다. 앞 대화보다 오래된 도구로 돌아가지 않는다.
+- 남의 도구(mine=false)에 대한 고쳐 달라는 말은 edit 가 아니라 answer("만든 사람만 고칠 수 있어요").
+- 할 일을 시키는 새 부탁("회식비 3만원 나눠", "사다리 타기", "오늘 저녁 투표")은 있는 도구를 고치는 말이 아니다 — 같은 일을 하는 도구가 없으면 new.
+  가계부가 있어도 "정산"은 다른 일이다(모으는 것 vs 나누는 것).
 - new: 이 방에 같은 일을 하는 도구가 없을 때만. 이미 비슷한 도구가 있으면 new 가 아니라 show 나 edit 다(가계부가 있는데 "가계부" → show).
   사용자가 "하나 더", "새로", "따로 하나" 처럼 분명히 새 것을 원할 때만 비슷해도 new.
 - remember: 나에 대한 사실을 알려 주거나 고쳐 주는 말("지연이는 와이프야", "그거 와이프 일정이야", "회사는 강남이야", "민지는 동료").
@@ -1482,6 +1489,7 @@ show 의 reply 는 아주 짧게(예: "가계부예요"). edit·new 의 reply �
         `[이 방의 도구]\n${ctx.tools.map((x) => `#${x.id} ${x.name}${x.mine ? "" : " (남의 것)"}${x.on ? "" : " (내려 둠)"}${x.ask ? " · 받는 것: " + x.ask : ""}\n  내용: ${x.sum}`).join("\n")}\n\n` +
         (ctx.history ? `[바로 앞 대화]\n${ctx.history}\n\n` : "") +
         (ridTool ? `[답장한 도구] #${ridTool}\n` : "") + (seen ? `[지금 보고 있는 도구] #${seen}\n` : "") +
+        (ctx.last ? `[방금 이야기하던 도구] #${ctx.last} — "그거", "고치라고", 이어지는 불만은 이 도구다\n` : "") +
         `\n[사용자]\n@${text}` }],
     });
     await spend(uid, usdOf(PATCH_MODEL, r.usage || {}), false);
