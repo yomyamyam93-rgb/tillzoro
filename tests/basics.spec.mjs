@@ -121,9 +121,11 @@ test("길게 누르면 메뉴가 뜨고 바깥을 누르면 닫힌다", async ({
   await page.evaluate(() => { const b = [...document.querySelectorAll("#days .msg")].pop(); const m = cur.msgs.find((x) => String(x.id) === b.dataset.id) || cur.msgs[cur.msgs.length - 1]; msgMenu(m, b) });
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => document.getElementById("msgMenu").classList.contains("on"))).toBe(true);
-  const spot = await page.evaluate(() => { const s = document.querySelector(".spot"), b = document.querySelector(".lifted"); if (!s || !b) return null; const a = s.getBoundingClientRect(), c = b.getBoundingClientRect(); return Math.abs(a.width - c.width) + Math.abs(a.height - c.height) });
-  expect(spot, "뚫린 자리가 말풍선 크기와 같아야 한다").not.toBeNull();
-  expect(spot).toBeLessThan(12);
+  // 화면 전체가 어두워지고, 누른 말풍선의 사본만 같은 자리에 떠 있다
+  const d = await page.evaluate(() => { const g = document.querySelector(".lifted"), o = [...document.querySelectorAll("#days .msg")].pop(); if (!g) return null; const a = g.getBoundingClientRect(), c = o.getBoundingClientRect(); return { off: Math.abs(a.left - c.left) + Math.abs(a.top - c.top) + Math.abs(a.width - c.width), dark: getComputedStyle(document.getElementById("msgMenuBg")).backgroundColor } });
+  expect(d, "떠오른 사본이 있어야 한다").not.toBeNull();
+  expect(d.off, "사본이 원래 자리에 있어야 한다").toBeLessThan(24);   // 1.03배 커지는 모션만큼은 어긋난다
+  expect(d.dark).not.toBe("rgba(0, 0, 0, 0)");
   await page.evaluate(() => document.getElementById("msgMenuBg").click());
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => document.getElementById("msgMenu").classList.contains("on"))).toBe(false);
