@@ -154,3 +154,20 @@ test("틸봇에게 할 일 고치기를 시키면 새 버전이 붙는다", asyn
   await page.waitForFunction((k) => roomBox && roomBox.key.startsWith(k + "@") && roomBox.h.alive, tid, { timeout: 30000 });
   expect(await page.evaluate(() => [...document.querySelectorAll("#days .botmsg:not(.work)")].length)).toBeGreaterThan(0);
 });
+
+// 업계 방식(바뀐 부분만 갈아 끼우기): 줄을 고치는 중에 새 데이터가 와도 입력칸·적던 글·커서가 그대로다
+test("고치는 중에 알림이 와도 입력칸이 남는다", async ({ page }) => {
+  await page.evaluate((id) => openChat(id), await selfId(page));
+  await page.waitForFunction(() => Object.keys(roomData).some((k) => roomData[k]?.name === "할 일"), null, { timeout: 15000 });
+  await page.evaluate(() => { toolView[cur.id] = Object.keys(roomData).find((k) => roomData[k]?.name === "할 일"); renderRoomTool() });
+  await page.waitForFunction(() => roomBox && roomBox.h.alive && roomBox.h.hasKeep, null, { timeout: 20000 });
+  await page.evaluate(() => setKeep(true)); await page.waitForTimeout(1200);
+  const fr = page.frameLocator(".rtkeep.on iframe");
+  await fr.locator(".kl [data-id]").first().tap();
+  await fr.locator("input.rt-in").fill("고치는 중");
+  await page.evaluate(() => { keepBox && keepBox.h.push(); roomBox && roomBox.h.push() });   // 알림이 온 것처럼 다시 그린다
+  await page.waitForTimeout(300);
+  expect(await fr.locator("input.rt-in").count(), "입력칸이 남아야 한다").toBe(1);
+  expect(await fr.locator("input.rt-in").inputValue()).toBe("고치는 중");
+  expect(await fr.locator("input.rt-in").evaluate((e) => document.activeElement === e), "커서가 남아야 한다").toBe(true);
+});

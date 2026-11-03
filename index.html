@@ -686,7 +686,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2030</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2100</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1399,11 +1399,36 @@ const c={get data(){return S.data},get items(){return S.items||[]},get me(){retu
     __send({k:"ask",id,kind:String(kind),opt:opt||{}});
     setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },15000); })};
 let __aid=0; const __asks={};
-// 적는 중(입력칸에 커서)에는 새 데이터가 와도 다시 그리지 않는다. 그리면 키패드가 내려가고 적던 것이 날아간다. 입력칸을 떠나면 그때 그린다
-let __later=false, __acted=0, __drawn=false, __sig=""; const __typing=()=>{ const a=document.activeElement; return !!a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA") };
-addEventListener("focusout",()=>{ setTimeout(()=>{ if(__later&&!__typing()&&(S.mode!=="keep"||Date.now()-__acted<1500)){ __later=false; __draw() } },50) },true);
+let __acted=0, __drawn=false, __sig="";
 function __fit(){ const d=document.documentElement; d.style.touchAction=S.mode==="keep"&&d.scrollHeight>innerHeight+2?"pan-y":"none" }
-function __draw(){ __drawn=true; document.documentElement.classList.toggle("keep",S.mode==="keep"); setTimeout(__fit,0); const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return } try{ f(__box,c) }catch(e){ __fail(e) } }
+/* 도구는 box.innerHTML 로 전체를 그리지만, 화면에는 달라진 글자·속성·줄만 갈아 끼운다(업계의 가상 DOM 방식).
+   그래서 데이터가 바뀌어도 입력칸·커서·스크롤·사진은 그대로고 번쩍이지 않는다. 줄은 data-id 로 짝을 맞춘다 */
+const __EV=["onclick","oninput","onchange","onkeydown","onkeyup","onsubmit","ontouchstart","ontouchend","ontouchmove","onpointerdown","onpointerup","onfocus","onblur","ondblclick"];
+function __morph(a,b){
+  if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){ a.replaceWith(b); return }
+  if(a.nodeType!==1){ if(a.nodeValue!==b.nodeValue) a.nodeValue=b.nodeValue; return }
+  for(const at of [...a.attributes]) if(!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for(const at of [...b.attributes]) if(a.getAttribute(at.name)!==at.value) a.setAttribute(at.name,at.value);
+  for(const k of __EV) if(a[k]!==b[k]) a[k]=b[k];
+  const tag=a.nodeName, typing=document.activeElement===a;
+  if(tag==="INPUT"||tag==="TEXTAREA"){ if(!typing&&a.value!==b.value) a.value=b.value; if(tag==="INPUT"&&a.checked!==b.checked&&!typing) a.checked=b.checked; return }
+  if(tag==="SELECT"&&!typing&&a.value!==b.value){ a.value=b.value }
+  const keyOf=n=>n.nodeType===1?n.getAttribute("data-id"):null;
+  const old=new Map(); for(const n of a.childNodes){ const k=keyOf(n); if(k!=null&&!old.has(k)) old.set(k,n) }
+  const want=[...b.childNodes]; let i=0;
+  for(const nb of want){
+    const k=keyOf(nb); let na=a.childNodes[i];
+    if(k!=null&&old.has(k)&&old.get(k)!==na){ na=old.get(k); a.insertBefore(na,a.childNodes[i]||null) }
+    else if(na&&k==null&&keyOf(na)!=null&&old.has(keyOf(na))&&want.some(x=>keyOf(x)===keyOf(na))){ a.insertBefore(nb,na); i++; continue }
+    if(!na){ a.appendChild(nb); i++; continue }
+    __morph(na,nb); i++;
+  }
+  while(a.childNodes.length>want.length) a.removeChild(a.lastChild);
+}
+function __draw(){ __drawn=true; document.documentElement.classList.toggle("keep",S.mode==="keep"); setTimeout(__fit,0); const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return }
+  const tmp=document.createElement("div"); tmp.id="box"; try{ f(tmp,c) }catch(e){ __fail(e); return }
+  if(!__box.childNodes.length){ __box.replaceChildren(...tmp.childNodes); return }
+  __morph(__box,tmp); }
 // 검사: 칸 밖으로 나간 것(잘림)과 오류를 모은다. 버튼은 최대 4개를 차례로 눌러 보고 그때마다 다시 잰다
 const __errs=[]; addEventListener("error",e=>__errs.push(String(e.message||e.error)));
 function __label(el){ const t=(el.textContent||"").trim().replace(/\s+/g," ").slice(0,14); return t?"'"+t+"'":el.tagName.toLowerCase() }
@@ -1437,9 +1462,7 @@ addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
   if(m.k==="state"){ const was=S.mode, first=!__drawn; S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],items:m.items||[],mode:m.mode||""};
     // 똑같은 데이터면 그리지 않는다(방에 다시 들어올 때마다 상자 안이 깜빡였다)
     const sig=JSON.stringify(S); if(!first&&sig===__sig) return; __sig=sig;
-    // 펼쳐 놓고 보는 중에는 내가 방금 한 것(저장·삭제·추가 직후 1.5초)이 아니면 다시 그리지 않는다. 뒤에서 온 알림(AI 이해 등)은 다음에 펼칠 때 반영된다
-    const mine=Date.now()-__acted<1500;
-    if(first||was!==S.mode||S.mode!=="keep"||(mine&&!__typing())) __draw(); else __later=true }
+    __draw() }
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; __acted=Date.now(); m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
 const __down=(x,y)=>{ __sx=x; __sy=y }, __up=(x,y)=>{ if(__sx===null) return; const dx=x-__sx, dy=y-__sy; __sx=null;
