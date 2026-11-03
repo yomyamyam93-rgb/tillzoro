@@ -1,0 +1,11 @@
+{
+  "name": "tillzero-tests",
+  "private": true,
+  "description": "기본 동작 시험(폰 크기 화면). 깨지면 TestFlight 에 올라가지 않는다",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}

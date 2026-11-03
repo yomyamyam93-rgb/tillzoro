@@ -30,8 +30,30 @@ jobs:
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build | tail -40
 
+  # 기본 동작 시험(tests/). 폰 크기 화면에서 진짜 서버·시험 계정으로 돌린다. 하나라도 깨지면 아래 testflight 가 돌지 않는다
+  basics:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cd tests && npm ci
+      - run: cd tests && npx playwright test
+        env:
+          QA_TOKEN: ${{ secrets.QA_TOKEN }}
+          QA_ID: ${{ secrets.QA_ID }}
+          QA_ROOM: ${{ secrets.QA_ROOM }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: basics-report
+          path: tests/report
+
   testflight:
     if: github.event_name == 'workflow_dispatch'
+    needs: basics
     runs-on: macos-latest
     defaults:
       run:

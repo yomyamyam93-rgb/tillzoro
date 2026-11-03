@@ -1,3 +1,6 @@
 builds/
 server/node_modules/
 .claude/qa.json
+tests/node_modules/
+tests/report/
+tests/test-results/
