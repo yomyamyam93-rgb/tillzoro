@@ -153,6 +153,8 @@ test("틸봇에게 할 일 고치기를 시키면 새 버전이 붙는다", asyn
   await page.waitForFunction(([k, v]) => roomData[k] && roomData[k].ver > v, [tid, before], { timeout: 200000 });
   await page.waitForFunction((k) => roomBox && roomBox.key.startsWith(k + "@") && roomBox.h.alive, tid, { timeout: 30000 });
   expect(await page.evaluate(() => [...document.querySelectorAll("#days .botmsg:not(.work)")].length)).toBeGreaterThan(0);
+  // 시험이 끝나면 되돌린다. 봇이 고친 판이 쌓이면 다른 시험이 보는 할 일 모양이 달라진다
+  await page.evaluate(([k, v]) => api(`/api/tools/${k}/revert`, { method: "POST", body: { ver: v } }), [tid, before]);
 });
 
 // 업계 방식(바뀐 부분만 갈아 끼우기): 줄을 고치는 중에 새 데이터가 와도 입력칸·적던 글·커서가 그대로다
