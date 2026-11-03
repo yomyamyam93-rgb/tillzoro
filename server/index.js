@@ -1777,9 +1777,11 @@ app.post("/api/self/item/:itemId", auth, async (req, res) => {
   res.json({ ok: true });
 });
 // 받아 적은 것 지우기: 항목 자체를 지운다(도구에서만 빼면 다시 이해할 때 되살아난다). 나챗방의 원래 말풍선은 그대로
+// 지운 자리는 남긴다(kind='dropped'). 행을 아예 지우면 backfill 이 글을 다시 넣어 지운 것이 돌아온다
 app.post("/api/self/item/:itemId/drop", auth, async (req, res) => {
-  const it = (await pool.query("delete from items where id = $1 and user_id = $2 returning id", [Number(req.params.itemId) || 0, req.user.id])).rows[0];
+  const it = (await pool.query("update items set kind = 'dropped' where id = $1 and user_id = $2 returning id", [Number(req.params.itemId) || 0, req.user.id])).rows[0];
   if (!it) return res.sendStatus(404);
+  await pool.query("delete from item_hits where item_id = $1", [it.id]);
   notify([String(req.user.id)], { type: "items", tools: (await ruleTools(req.user.id)).map((x) => "u" + x.id) });
   res.json({ ok: true });
 });
