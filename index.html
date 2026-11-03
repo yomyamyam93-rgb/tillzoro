@@ -686,7 +686,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2130</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2200</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -847,7 +847,7 @@ function connectWS(){
     if(d.type==="items"){ (d.tools||[]).forEach(k=>loadItems(k));
       if(boxOpen&&(d.tools||[]).includes(boxOpen)&&$("#s-boxv").classList.contains("on")){ const id=boxOpen; boxItems(id).then(()=>{ if(boxOpen===id&&boxH) boxH.push() }) }
       return }
-    if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot}:null; renderMsgs() } return }
+    if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot,stage:d.stage||""}:null; renderMsgs() } return }
     if(d.type==="report"){ if($("#s-admin").classList.contains("on")) renderAdmin(); else api("/api/admin/reports").then(x=>{ $("#adminVal").textContent=x.reports.filter(r=>!r.resolved).length||"" }).catch(()=>{}) }
     if(d.type==="edited"){ patchMsg(d.bondId,d.id,x=>{ x.text=d.body }) }
     if(d.type==="room"&&cur&&String(cur.id)===String(d.bondId)){
@@ -1759,7 +1759,7 @@ function renderMsgs(){
     group.push(m);
   });
   flush();
-  if(botWork&&botWork.bond===cur.id) put("botwork",botWork.bot,()=>botWorkEl(botWork.bot));
+  if(botWork&&botWork.bond===cur.id) put("botwork",botWork.bot+"|"+botWork.stage,()=>botWorkEl(botWork.bot,botWork.stage));
   nodes.clear(); keep.forEach((v,k)=>nodes.set(k,v));
   const kids=days.children;
   if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
@@ -2312,7 +2312,7 @@ function botCall(t){
 }
 const TILBOT="틸봇", faceOf=()=>"background-image:url(bots/free-face.jpg)";
 async function callBot(bot,text,replyTo){
-  const bond=cur.id; botWork={bond,bot}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
+  const bond=cur.id; botWork={bond,bot,stage:"읽는 중"}; renderMsgs(); $("#days").scrollTo({top:$("#days").scrollHeight,behavior:"smooth"});
   try{
     const seen=viewTool();
     let r=await api(`/api/rooms/${bond}/bot`,{method:"POST",body:{bot,text,replyTo:replyTo||undefined,toolId:isUserTool(seen||"")?seen:undefined}});
@@ -2337,9 +2337,10 @@ function botBubble(m,late,undo){
   el.addEventListener("contextmenu",e=>{ e.preventDefault(); clearTimeout(pt); msgMenu(m,el.querySelector(".bt")||el) });
   return el;
 }
-function botWorkEl(k){
+// 봇이 지금 뭘 하는지(읽는 중 → 만드는 중 → 검사하는 중)를 보여 준다. 기다림은 같아도 멈춘 것처럼 보이지 않는다
+function botWorkEl(k,stage){
   const el=document.createElement("div"); el.className="botmsg work";
-  el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${TILBOT}</span><div class="bt">만드는 중<i>.</i><i>.</i><i>.</i></div></div>`;
+  el.innerHTML=`<span class="bface" style="${faceOf(k)}"></span><div class="bb"><span class="bn">${TILBOT}</span><div class="bt">${esc(stage||"만드는 중")}<i>.</i><i>.</i><i>.</i></div></div>`;
   return el;
 }
 // 입력줄의 버튼을 눌러도 키보드는 그대로 (C-5). 입력칸 자체는 건드리지 않는다

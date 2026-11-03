@@ -942,7 +942,7 @@ app.post("/api/room/:bondId/:tool", auth, async (req, res) => {
 const Anthropic = require("@anthropic-ai/sdk");
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { z } = require("zod/v4");   // SDK 의 출력 모양 도우미는 zod 4 문법을 쓴다
-const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)() : null;
+const ai = process.env.ANTHROPIC_API_KEY ? new (Anthropic.default || Anthropic)({ timeout: 120000, maxRetries: 1 }) : null;   // 2분 넘으면 끊고 사과한다. 재시도는 한 번만(꼬리 지연을 숨기지 않게)
 const AI_MODEL = "claude-opus-5-5";
 const AI_PRICE = { in: 4, out: 20, cacheRead: 0.2, cacheWrite: 5 };   // 달러 / 백만 토큰 (2026-10 공식 가격)
 const AI_DAILY_USD = Number(process.env.AI_DAILY_USD || 3), AI_USER_CALLS = Number(process.env.AI_USER_CALLS || 40);
@@ -1573,6 +1573,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   }
   const seen = /^u\d+$/.test(String(req.body?.toolId || "")) ? Number(String(req.body.toolId).slice(1)) : null;
   const ctx = await botContext(bond, req.user.id);
+  notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true, stage: "읽는 중" });
   const route = await botRoute(req.user.id, ctx, text, ridTool, seen);
   if (route.action === "remember" && route.fact.trim()) {
     await addFacts(req.user.id, [route.fact.trim().slice(0, 80)]);
@@ -1584,8 +1585,8 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   if (tool && tool.owner_id !== req.user.id) return res.status(403).json({ error: "만든 사람만 고칠 수 있어요" });
   if (!bot) bot = tool && BOTS[tool.bot] ? tool.bot : guessBot(text);
   botBusy.set(bond.id, Date.now()); botLast.set(uid, Date.now());
-  notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
   const cur = tool && tool.ver ? await toolCode(tool.id, tool.ver) : null;
+  notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true, stage: cur ? "고치는 중" : "만드는 중" });
   let r = null, counted = false;
   if (cur) {
     const pt = await botPatch(req.user.id, bot, cur.code, text);
@@ -1621,6 +1622,7 @@ app.post("/api/rooms/:bondId/bot/check", auth, async (req, res) => {
   const broken = issues.some((x) => x.startsWith("오류"));
   if (issues.length && p.fixes < BOT_FIXES) {
     p.fixes++;
+    notify(memberIds(p.bond), { type: "botwork", bondId: p.bond.id, bot: p.bot, on: true, stage: "검사하고 고치는 중" });
     let r;
     try {
       r = await botAsk(req.user.id, p.bot,
