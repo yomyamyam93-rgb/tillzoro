@@ -270,3 +270,33 @@ test("도구를 펼쳤다 닫아도 대화가 비워 두는 자리가 안 변한
   });
   expect(seen, "닫는 동안 대화 자리가 움직였다: " + seen.join(" → ")).toEqual([before]);
 });
+
+// 들어올 때 도구 칸이 깜빡였다: 칸째 감췄다가 iframe 이 준비되면 페이드로 들였다(2026-11-03 측정: 702ms 부터 300ms 페이드)
+test("대화방에 들어올 때 도구 칸이 깜빡이지 않는다", async ({ page }) => {
+  const seen = await page.evaluate(async (id) => {
+    const out = new Set(); openChat(id);
+    const t0 = performance.now();
+    await new Promise((r) => { const f = () => { const c = document.querySelector(".rtcard");
+      if (c && c.offsetHeight > 0) out.add((+getComputedStyle(c).opacity).toFixed(1));
+      performance.now() - t0 < 1800 ? requestAnimationFrame(f) : r() }; requestAnimationFrame(f) });
+    return [...out];
+  }, await selfId(page));
+  expect(seen, "자리를 잡은 칸이 투명해진 순간이 있다: " + seen.join(",")).toEqual(["1.0"]);
+});
+
+// 전에는 손을 뗀 뒤에야 움직여서 미는 동안 상자가 딱 붙어 있었다
+test("도구를 미는 동안 상자가 손가락을 따라오고, 조금 밀면 제자리로 돌아온다", async ({ page }) => {
+  await page.evaluate((id) => openChat(id), await selfId(page));
+  await page.waitForFunction(() => onTools().length >= 2, null, { timeout: 10000 });
+  const tf = () => page.evaluate(() => getComputedStyle(document.querySelector(".rtcard")).transform);
+  expect(await tf()).toBe("none");
+  await page.evaluate(() => dragTool(-80));
+  expect(await tf(), "미는 동안 상자가 안 따라왔다").toContain("-80");
+  const before = await page.evaluate(() => viewTool());
+  await page.evaluate(() => dropTool(-80, 1200));          // 느리고 조금만 — 제자리
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => viewTool()), "조금 밀었는데 넘어갔다").toBe(before);
+  await page.evaluate(() => { const w = document.querySelector(".rtcard").offsetWidth; dragTool(-w); dropTool(-w, 1200) });
+  await page.waitForTimeout(900);
+  expect(await page.evaluate(() => viewTool()), "끝까지 밀었는데 안 넘어갔다").not.toBe(before);
+});
