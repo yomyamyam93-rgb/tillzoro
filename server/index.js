@@ -1377,8 +1377,10 @@ async function fileItems(uid, items, tools, force = 0) {   // force: 이 도구�
   const want = items.filter((it) => it.kind === "text" || it.kind === "link" || (it.kind === "photo" && smart.some((x) => fit(x, it))));
   const res = new Map();
   for (let i = 0; i < want.length && ai; i += 20) for (const [k, v] of await understand(uid, want.slice(i, i + 20), smart)) res.set(k, v);
+  // 이해하는 사이에 지워진 항목은 다시 넣지 않는다(저장 → 뒤에서 이해 중 → 삭제 → 이해 끝나며 되살아남)
+  const alive = new Set((await pool.query("select id from items where id = any($1::bigint[]) and kind <> 'dropped'", [items.map((it) => it.id)])).rows.map((r) => Number(r.id)));
   const hits = [];
-  for (const it of items) {
+  for (const it of items.filter((it) => alive.has(Number(it.id)))) {
     const u = res.get(Number(it.id)), meta = u ? u.meta : (it.meta || {});
     if (u) await pool.query("update items set meta = $2 where id = $1", [it.id, meta]);
     for (const x of tools) if (Number(x.id) === force || (fit(x, it) && (!x.rule.ai || (u && u.tools.includes(x.id))))) hits.push([it.id, x.id, meta]);
