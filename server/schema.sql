@@ -205,3 +205,14 @@ create table if not exists organize (
   bond_id bigint not null references bonds(id) on delete cascade, primary key (user_id, bond_id)
 );
 alter table ai_usage add column if not exists photos int not null default 0;
+
+-- 2026-11-03 깊게 이해하기·기억장·고친 것(개편-계획.md)
+alter table items add column if not exists meta jsonb;   -- 넓은 틀로 이해한 것(understand.js META_KEYS)
+create table if not exists user_facts (
+  id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+  fact text not null, created_at timestamptz not null default now()
+);
+create table if not exists corrections (
+  id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+  body text not null, tool text not null, "on" boolean not null, created_at timestamptz not null default now()
+);

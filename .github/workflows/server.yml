@@ -30,7 +30,7 @@ jobs:
           # 지금 돌고 있는 것을 날짜 찍어 남겨 둔다
           $SSH "cp /opt/tillzero/index.js /opt/tillzero/index.js.bak_\$(date +%y%m%d_%H%M)"
           scp -i "$RUNNER_TEMP/deploy_key" -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
-            server/index.js server/bot-playbooks.js server/self-defaults.js server/schema.sql server/package.json server/package-lock.json \
+            server/index.js server/bot-playbooks.js server/self-defaults.js server/understand.js server/eval.js server/eval-cases.json server/schema.sql server/package.json server/package-lock.json \
             root@49.247.137.185:/opt/tillzero/
           # 쓰는 꾸러미가 늘었을 수 있으니 맞춰 둔다. 안 바뀌었으면 금방 끝난다
           $SSH "cd /opt/tillzero && npm install --omit=dev --no-audit --no-fund && pm2 restart tillzero-api"
@@ -45,3 +45,8 @@ jobs:
             [ "$code" = "200" ] && exit 0
           done
           exit 1
+      # 받아 적기 시험: 예전에 맞던 것·사용자가 고친 것이 다시 틀리지 않는지(점수와 틀린 것을 이 기록에 남긴다. 떨어져도 배포는 막지 않는다)
+      - name: 받아 적기 시험
+        continue-on-error: true
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" root@49.247.137.185             "cd /opt/tillzero && set -a && . ./.env && set +a && node eval.js"

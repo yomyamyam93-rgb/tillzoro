@@ -23,25 +23,30 @@ function left(x){ var t=new Date(); t.setHours(0,0,0,0); var n=Math.round((x-t)/
 module.exports = [
   {
     name: "일정",
-    rule: { on: true, kinds: ["text"], ai: true, ask: "날짜나 시각이 있는 약속·일정·예약", fields: ["date", "time", "what"] },
+    // 일정은 기간(시작~끝)·누구의 일정인지·장소가 있을 수 있다. 끝나는 날까지는 "지금 진행 중"으로 남는다
+    rule: { on: true, kinds: ["text"], ai: true, ask: "날짜나 요일·시각이 정해진 약속·예약·일정·여행·기간. 막연한 '나중에'·지난 일 이야기는 넣지 않는다", fields: ["date", "end", "time", "what", "who", "place"] },
     code: helpers + `
 var CSS=${JSON.stringify(css)};
 function list(c){
-  return c.items.map(function(it){ var x=day(it.data.date); return x?{x:x,t:it.data.time||'',w:it.data.what||it.text}:null })
+  return c.items.map(function(it){ var d=it.data, x=day(d.date); if(!x) return null; var y=day(d.end); if(!y||y<x) y=x;
+      return {x:x,y:y,t:d.time||'',w:d.what||it.text,who:d.who||'',p:d.place||''} })
     .filter(Boolean).sort(function(a,b){ return a.x-b.x||String(a.t).localeCompare(String(b.t)) });
 }
+function when(e){ return md(e.x)+(e.y>e.x?' ~ '+md(e.y):'')+(e.t?' '+e.t:'') }
+function what(e){ return (e.who?e.who+' · ':'')+e.w }
+function state(e){ var t=new Date(); t.setHours(0,0,0,0); return e.x<=t&&e.y>=t&&e.y>e.x?'진행 중':left(e.x) }
 function render(box,c){
   var t=new Date(); t.setHours(0,0,0,0);
-  var up=list(c).filter(function(e){ return e.x>=t });
+  var up=list(c).filter(function(e){ return e.y>=t });
   if(!up.length){ box.innerHTML=CSS+'<div class="lx"><div class="none">다가오는 일정 없음</div></div>'; return }
   var e=up[0];
-  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big">'+esc(md(e.x)+(e.t?' '+e.t:'')+' '+e.w)+'</span></div><div class="sub">'+esc(left(e.x))+(up.length>1?' · 다가오는 일정 '+up.length+'개':'')+'</div></div>';
+  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big">'+esc(what(e))+'</span></div><div class="sub">'+esc(when(e)+' · '+state(e))+(up.length>1?' · 다가오는 일정 '+up.length+'개':'')+'</div></div>';
 }
 function keep(box,c){
   var t=new Date(); t.setHours(0,0,0,0);
-  var all=list(c), up=all.filter(function(e){ return e.x>=t }), past=all.filter(function(e){ return e.x<t }).reverse().slice(0,10);
+  var all=list(c), up=all.filter(function(e){ return e.y>=t }), past=all.filter(function(e){ return e.y<t }).reverse().slice(0,10);
   if(!all.length){ box.innerHTML=CSS+'<div class="kl"><div class="zero">일정 없음</div></div>'; return }
-  var row=function(e){ return '<div class="it"><span class="mt" style="width:72px">'+esc(md(e.x))+'</span><span class="tx">'+esc((e.t?e.t+' ':'')+e.w)+'</span><span class="mt">'+esc(left(e.x))+'</span></div>' };
+  var row=function(e){ return '<div class="it"><span class="mt" style="width:96px">'+esc(when(e))+'</span><span class="tx">'+esc(what(e)+(e.p?' · '+e.p:''))+'</span><span class="mt">'+esc(state(e))+'</span></div>' };
   box.innerHTML=CSS+'<div class="kl">'+(up.length?up.map(row).join(''):'')+(past.length?'<div class="hd">지난 일정</div>'+past.map(row).join(''):'')+'</div>';
 }`,
   },

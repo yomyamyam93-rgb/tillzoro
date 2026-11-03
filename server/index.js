@@ -1016,11 +1016,14 @@ function render(box, c) { ... }
     예) 가계부 "실제로 돈을 쓰거나 받은 기록. 금액이 적혀 있어야 한다. 살 것·할 일·가격 문의·계획은 넣지 않는다"
         일정 "날짜나 요일·시각이 정해진 약속·예약·일정. 막연한 '나중에'·지난 일 이야기는 넣지 않는다"
         강아지 사진 "강아지가 주인공으로 보이는 사진. 강아지 그림·장난감·고양이는 넣지 않는다"
-  - rule.fields: 항목에서 뽑아 둘 값 이름(예: amount, date, time, place, item). **첫째 값은 그 도구의 핵심 값**이다 —
-    받아 적는 쪽은 첫째 값을 뽑을 수 없으면 그 항목을 넣지 않는다(가계부는 amount 먼저, 일정은 date 먼저). 핵심 값이 따로 없으면 빈 목록.
+  - rule.fields: 핵심 값 하나만(그 값이 없는 항목은 받지 않는다). 가계부 ["amount"], 일정 ["date"], 없으면 빈 목록.
+  - 항목의 data 에는 늘 같은 틀이 들어 있다(사용자가 말한 만큼): type, what, who, with, date, end, time, repeat, place, amount, payer, item, title, tags.
+    도구는 필요한 것을 골라 빠짐없이 보여 준다 — 사용자가 하나하나 가르치게 만들지 않는다:
+    일정이면 기간(date ~ end), 누구 일(who), 시각·장소. 가계부면 금액·산 것·누가 냈나(payer). 기간 중인 일정은 끝날 때까지 "진행 중".
+    who 는 "와이프(지연)" 처럼 관계가 붙어 올 수 있다. 값은 모두 글이니 숫자는 Number() 로.
   - 이름(name)은 사용자가 부른 말 그대로 짧게(가계부라 하면 "가계부"). 꾸민 이름을 짓지 않는다.
   - 코드에서는 c.items 로 받는다: [{id, kind, text, src(사진·영상 작은 것), full(원본), at(밀리초), room(방 이름), data:{뽑은 값}}], 새것이 앞.
-    data 의 숫자도 글이니 Number() 로 바꿔 쓴다. 사진은 <img src="\${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
+    사진은 <img src="\${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
   - 직접 적는 것(예: 가계부에 손으로 추가)이 필요하면 c.data 에 따로 쌓고 c.items 와 합쳐 보여 준다. 다 한 것 표시(할 일 체크 등)도 c.data 에 item id 로 둔다.
   - 보통 도구(누르는 것: 게임·정산·투표 등)이거나 나챗방이 아니면 rule.on=false, kinds·fields 빈 목록, ai=false, ask 빈 글.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
@@ -1311,15 +1314,23 @@ async function botAsk(userId, bot, content, count) {
   const good = out && out.changed && out.code && out.code.length < 60000 && /function\s+render\s*\(/.test(out.code);
   return { out, good };
 }
-/* ---------- 받아 적기 ----------
+/* ---------- 받아 적기 (2026-11-03 다시 짬, understand.js) ----------
    던진 것은 항목(items)으로 쌓인다: 나챗방의 모든 것, 다른 방의 사진·영상·파일·링크, "이 방도 정리"를 켠 방의 글.
-   조건(rule)이 붙은 도구가 맞는 항목을 받아 간다(item_hits). 종류만 보면 되는 조건은 그냥 넣고,
-   말·그림을 봐야 하는 조건은 Haiku 가 한 번에 여러 항목을 보고 고른다 */
+   항목은 도구와 상관없이 한 번 깊게 이해해서 items.meta 에 넓은 틀(언제·끝·누구·함께·어디·얼마·무엇…)로 남긴다.
+   도구는 그 이해에서 고르기만 한다 — 도구가 무슨 칸을 원했든 정보가 버려지지 않는다(일정에 기간·누구가 빠졌던 일).
+   이해할 때 그 사람의 기억장(user_facts)과 예전에 고친 것(corrections)을 함께 본다 */
+const U = require("./understand");
 const PHOTO_DAY = 200;   // 사람마다 하루에 AI 가 볼 사진 수
 const itemKind = (m) => m.media ? (/^image\//.test(m.mime || "") ? "photo" : /^video\//.test(m.mime || "") ? "video" : "file")
   : /https?:\/\/\S+/.test(m.body || "") ? "link" : "text";
 const ruleTools = async (uid) => (await pool.query(
-  "select id, name, rule from user_tools where owner_id = $1 and rule is not null and (rule->>'on')::boolean", [uid])).rows;
+  "select id, name, rule from user_tools where owner_id = $1 and rule is not null and (rule->>'on')::boolean", [uid])).rows.map((x) => ({ ...x, id: Number(x.id) }));
+const factsOf = async (uid) => (await pool.query("select fact from user_facts where user_id = $1 order by id", [uid])).rows.map((r) => r.fact);
+const fixesOf = async (uid) => (await pool.query("select body, tool, \"on\" from corrections where user_id = $1 order by id desc limit 30", [uid])).rows;
+async function addFacts(uid, list) {
+  for (const f of list) await pool.query(
+    "insert into user_facts (user_id, fact) select $1, $2 where not exists (select 1 from user_facts where user_id = $1 and fact = $2)", [uid, f]);
+}
 async function collect(bond, row, m, senderId) {
   try {
     if (!m.body && !m.media) return;
@@ -1336,68 +1347,89 @@ async function collect(bond, row, m, senderId) {
     }
   } catch (e) { console.error("collect", e.message) }
 }
+// 항목들을 이해하고(필요한 것만) 도구에 넣는다. only: 이 도구들의 넣고 빼기만 다시 정한다(새 도구·조건 바뀜)
 async function fileItems(uid, items, tools) {
-  const hits = [], fit = (x, it) => x.rule.kinds.includes(it.kind);
-  for (const x of tools) if (!x.rule.ai) for (const it of items) if (fit(x, it)) hits.push([it.id, x.id, {}]);
+  const fit = (x, it) => x.rule.kinds.includes(it.kind);
   const smart = tools.filter((x) => x.rule.ai);
-  const want = items.filter((it) => smart.some((x) => fit(x, it)));
-  for (let i = 0; i < want.length && ai; i += 20) hits.push(...await judge(uid, want.slice(i, i + 20), smart));
+  // 글·링크는 늘 이해한다(나중에 생길 도구와 답하기에 쓴다). 사진은 사진을 가리는 도구가 있을 때만 본다
+  const want = items.filter((it) => it.kind === "text" || it.kind === "link" || (it.kind === "photo" && smart.some((x) => fit(x, it))));
+  const res = new Map();
+  for (let i = 0; i < want.length && ai; i += 20) for (const [k, v] of await understand(uid, want.slice(i, i + 20), smart)) res.set(k, v);
+  const hits = [];
+  for (const it of items) {
+    const u = res.get(Number(it.id)), meta = u ? u.meta : (it.meta || {});
+    if (u) await pool.query("update items set meta = $2 where id = $1", [it.id, meta]);
+    for (const x of tools) if (fit(x, it) && (!x.rule.ai || (u && u.tools.includes(x.id)))) hits.push([it.id, x.id, meta]);
+  }
   for (const [i, x, d] of hits)
     await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, $3) on conflict (item_id, tool_id) do update set data = $3", [i, x, d]);
   const touched = [...new Set(hits.map((h) => h[1]))];
   if (touched.length) notify([String(uid)], { type: "items", tools: touched.map((x) => "u" + x) });
 }
-const JudgeOut = z.object({ hits: z.array(z.object({ item: z.number(), tool: z.number(), data: z.array(z.object({ k: z.string(), v: z.string() })) })) });
-async function judge(uid, items, tools) {
+const MetaOut = z.object({
+  items: z.array(z.object({ item: z.number(), meta: z.array(z.object({ k: z.string(), v: z.string() })), tools: z.array(z.number()) })),
+  facts: z.array(z.string()),
+});
+async function understand(uid, items, tools) {
   const day = kstDay();
   const seen = (await pool.query("select coalesce(sum(photos), 0)::int n from ai_usage where day = $1 and user_id = $2", [day, uid])).rows[0].n;
   let room = Math.max(0, PHOTO_DAY - seen), photos = 0;
-  const content = [{ type: "text", text: "[도구]\n" + tools.map((x) => `#${x.id} ${x.name}: ${x.rule.ask} (받는 것: ${x.rule.kinds.join(",")}${x.rule.fields.length ? " · 뽑을 값: " + x.rule.fields.join(",") : ""})`).join("\n") + "\n\n[항목]" }];
+  const its = [];
   for (const it of items) {
-    const head = `#${it.id} ${it.kind} ${new Date(it.created_at).toISOString().slice(0, 10)}`;
     if (it.kind === "photo") {
       const f = path.join(MEDIA_DIR, it.media + ".t.jpg");
       if (room <= 0 || !fs.existsSync(f)) continue;
       room--; photos++;
-      content.push({ type: "text", text: head + " (사진)" + (it.body ? " " + it.body : "") });
-      content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: fs.readFileSync(f).toString("base64") } });
-    } else content.push({ type: "text", text: head + ": " + String(it.body || "").slice(0, 600) });
+      its.push({ ...it, image: fs.readFileSync(f).toString("base64") });
+    } else its.push(it);
   }
-  if (content.length < 2) return [];
+  if (!its.length) return new Map();
+  const [facts, fixes] = await Promise.all([factsOf(uid), fixesOf(uid)]);
   // 가끔 답이 깨져 온다(2026-11-02 재 봄). 그러면 그 묶음이 통째로 안 들어가니 한 번 더 묻는다
   for (let tries = 0; tries < 2; tries++) try {
     const r = await ai.beta.messages.parse({
-      model: PATCH_MODEL, max_tokens: 4000,
-      output_config: { format: betaZodOutputFormat(JudgeOut) },
-      system: `너는 받아 적는다. 각 항목이 어느 도구의 조건에 맞는지 고른다. 조건을 글자 그대로 엄격하게 따른다 — 조건이 "넣지 않는다"고 한 것은 넣지 않고, 애매하면 넣지 않는다. 한 항목이 여러 도구에 맞을 수 있다.
-뽑을 값이 있는 도구는 첫째 값이 핵심이다: 그 항목에서 첫째 값을 뽑을 수 없으면 그 도구에는 넣지 않는다(예: 금액이 없는 글은 가계부에 넣지 않는다).
-뽑을 값이 있으면 항목에서 그 값만 짧게 뽑는다: 금액은 숫자만(원 단위, "1.2만"→12000), 날짜는 YYYY-MM-DD(오늘은 ${day}, "토요일"은 다가오는 토요일), 시각은 HH:MM, 나머지는 짧은 낱말. 없으면 그 값은 뺀다.`,
-      messages: [{ role: "user", content }],
+      model: PATCH_MODEL, max_tokens: 6000,
+      output_config: { format: betaZodOutputFormat(MetaOut) },
+      system: U.system(day),
+      messages: [{ role: "user", content: U.content({ facts, fixes, tools, items: its }) }],
     });
     await spend(uid, usdOf(PATCH_MODEL, r.usage || {}), false);
     if (photos) await pool.query("update ai_usage set photos = photos + $3 where day = $1 and user_id = $2", [day, uid, photos]);
-    const ids = new Set(items.map((x) => Number(x.id))), ts = new Set(tools.map((x) => Number(x.id)));
-    return (r.parsed_output?.hits || []).filter((h) => ids.has(h.item) && ts.has(h.tool))
-      .map((h) => [h.item, h.tool, Object.fromEntries(h.data.map((p) => [p.k.slice(0, 20), p.v.slice(0, 100)]))]);
-  } catch (e) { console.error("judge", tries, e.status || "", e.message) }
-  return [];
+    const { by, facts: nf } = U.read(r.parsed_output, its, tools);
+    if (nf.length) await addFacts(uid, nf);
+    return by;
+  } catch (e) { console.error("understand", tries, e.status || "", e.message) }
+  return new Map();
 }
 // 조건이 생기거나 바뀐 도구: 지난 항목을 다시 훑는다(최근 300개)
 async function refill(uid, toolId) {
   try {
-    const x = (await pool.query("select id, name, rule from user_tools where id = $1", [toolId])).rows[0];
+    const x = (await ruleTools(uid)).find((t) => t.id === Number(toolId));
     await pool.query("delete from item_hits where tool_id = $1", [toolId]);
-    if (!x?.rule?.on) return notify([String(uid)], { type: "items", tools: ["u" + toolId] });
+    if (!x) return notify([String(uid)], { type: "items", tools: ["u" + toolId] });
     const items = (await pool.query("select * from items where user_id = $1 order by id desc limit 300", [uid])).rows.reverse();
     await fileItems(uid, items, [x]);
     notify([String(uid)], { type: "items", tools: ["u" + toolId] });
   } catch (e) { console.error("refill", e.message) }
 }
+// 기억이 늘었거나(관계를 알게 됨) 이해 방식이 바뀌었을 때: 지난 항목 전부를 다시 이해하고 모든 도구에 다시 넣는다
+const refilling = new Set();
+async function refillAll(uid, limit = 300) {
+  if (refilling.has(uid)) return; refilling.add(uid);
+  try {
+    const tools = await ruleTools(uid);
+    const items = (await pool.query("select * from items where user_id = $1 order by id desc limit $2", [uid, limit])).rows.reverse();
+    if (tools.length && items.length) await pool.query("delete from item_hits where tool_id = any($1::bigint[]) and item_id = any($2::bigint[])", [tools.map((x) => x.id), items.map((x) => x.id)]);
+    await fileItems(uid, items, tools);
+    notify([String(uid)], { type: "items", tools: tools.map((x) => "u" + x.id) });
+  } catch (e) { console.error("refillAll", e.message) }
+  finally { refilling.delete(uid) }
+}
 
 /* ---------- 틸봇의 판단 ----------
    @ 로 부르면 먼저 싼 모델이 이 방의 도구 목록·내용 요약·바로 앞 대화를 보고 넷 중 하나를 고른다.
    show(있는 도구 꺼내 보이기)·answer(내용으로 답하기)는 여기서 끝나고, edit·new 만 만드는 모델로 간다 */
-const RouteOut = z.object({ action: z.enum(["show", "answer", "edit", "new"]), tool: z.number(), reply: z.string() });
+const RouteOut = z.object({ action: z.enum(["show", "answer", "edit", "new", "remember"]), tool: z.number(), reply: z.string(), fact: z.string() });
 async function botContext(bond, uid) {
   const rows = (await pool.query(
     `select r.tool, r.data, t.id, t.name, t.owner_id, t.rule from room_state r join user_tools t on 'u' || t.id = r.tool
@@ -1417,7 +1449,7 @@ async function botContext(bond, uid) {
   const hist = (await pool.query(
     "select body, mime from messages where bond_id = $1 and kind = 'bot' order by id desc limit 6", [bond.id])).rows.reverse()
     .map((m) => { const b = botMeta(m.mime); return (b.ask ? `사용자: @${b.ask}\n` : "") + `틸봇: ${m.body}${b.name ? ` [${b.name}]` : ""}` }).join("\n");
-  return { tools, history: hist };
+  return { tools, history: hist, facts: await factsOf(uid) };
 }
 async function botRoute(uid, ctx, text, ridTool, seen) {
   const ids = new Set(ctx.tools.map((x) => x.id));
@@ -1434,9 +1466,12 @@ async function botRoute(uid, ctx, text, ridTool, seen) {
 - edit: 있는 도구를 바꾸거나 더해 달라는 말("카페는 따로", "이름 바꿔", "버튼 키워", "합계 크게"). tool = 그 도구. 남의 도구(mine=false)는 고를 수 없다.
 - new: 이 방에 같은 일을 하는 도구가 없을 때만. 이미 비슷한 도구가 있으면 new 가 아니라 show 나 edit 다(가계부가 있는데 "가계부" → show).
   사용자가 "하나 더", "새로", "따로 하나" 처럼 분명히 새 것을 원할 때만 비슷해도 new.
+- remember: 나에 대한 사실을 알려 주거나 고쳐 주는 말("지연이는 와이프야", "그거 와이프 일정이야", "회사는 강남이야", "민지는 동료").
+  fact 에 기억할 한 줄(예: "지연은 와이프"), reply 는 짧게("기억할게요"). tool = 0.
 - 앞 대화를 이어서 이해한다: "그거", "아까 만든 거", "이름 바꿔 줘" 는 앞에서 말한 도구다. 답장한 도구·보고 있는 도구가 있으면 애매할 때 그것을 가리킨다.
 show 의 reply 는 아주 짧게(예: "가계부예요"). edit·new 의 reply 는 빈 글. 말투는 짧고 친근하게, 설명 늘어놓지 않는다.`,
       messages: [{ role: "user", content:
+        (ctx.facts.length ? `[기억장]\n${ctx.facts.map((f) => "- " + f).join("\n")}\n\n` : "") +
         `[이 방의 도구]\n${ctx.tools.map((x) => `#${x.id} ${x.name}${x.mine ? "" : " (남의 것)"}${x.on ? "" : " (내려 둠)"}${x.ask ? " · 받는 것: " + x.ask : ""}\n  내용: ${x.sum}`).join("\n")}\n\n` +
         (ctx.history ? `[바로 앞 대화]\n${ctx.history}\n\n` : "") +
         (ridTool ? `[답장한 도구] #${ridTool}\n` : "") + (seen ? `[지금 보고 있는 도구] #${seen}\n` : "") +
@@ -1503,7 +1538,12 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const seen = /^u\d+$/.test(String(req.body?.toolId || "")) ? Number(String(req.body.toolId).slice(1)) : null;
   const ctx = await botContext(bond, req.user.id);
   const route = await botRoute(req.user.id, ctx, text, ridTool, seen);
-  if (route.action === "show" || route.action === "answer") return res.json(await botSay(bond, uid, route, rid, text, ctx));
+  if (route.action === "remember" && route.fact.trim()) {
+    await addFacts(req.user.id, [route.fact.trim().slice(0, 80)]);
+    refillAll(req.user.id);   // 새로 안 것으로 지난 것까지 다시 이해한다
+    return res.json(await botSay(bond, uid, { ...route, tool: 0, reply: route.reply || "기억할게요" }, rid, text, ctx));
+  }
+  if (route.action === "show" || route.action === "answer" || route.action === "remember") return res.json(await botSay(bond, uid, route, rid, text, ctx));
   let tool = route.action === "edit" && route.tool ? (await pool.query("select * from user_tools where id = $1", [route.tool])).rows[0] : null;
   if (tool && tool.owner_id !== req.user.id) return res.status(403).json({ error: "만든 사람만 고칠 수 있어요" });
   if (!bot) bot = tool && BOTS[tool.bot] ? tool.bot : guessBot(text);
@@ -1521,6 +1561,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
       (String(bond.a_id) === String(bond.b_id) && bond.kind !== "group" ? "[이 방: 나챗방(나와의 대화). 받아 가는 도구를 만들 수 있다]\n" : `[이 방: ${bond.kind === "group" ? (bond.members || []).length : 2}명 대화방. rule.on=false]\n`) +
       (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${tool.rule ? "[지금 조건] " + JSON.stringify(tool.rule) + "\n" : ""}${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
       (ctx.history ? `[바로 앞 대화]\n${ctx.history}\n\n` : "") +
+      (ctx.facts.length ? `[기억장]\n${ctx.facts.join("\n")}\n\n` : "") +
       `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, !counted);
   } catch (e) {
     console.error("roombot", e.status || "", e.message);
@@ -1700,9 +1741,21 @@ app.post("/api/self/item/:itemId", auth, async (req, res) => {
   const it = (await pool.query("select id from items where id = $1 and user_id = $2", [Number(req.params.itemId) || 0, req.user.id])).rows[0];
   const tool = Number(String(req.body?.tool || "").replace(/^u/, "")) || 0;
   if (!it || !(await pool.query("select 1 from user_tools where id = $1 and owner_id = $2", [tool, req.user.id])).rowCount) return res.sendStatus(404);
-  if (req.body?.on) await pool.query("insert into item_hits (item_id, tool_id) values ($1, $2) on conflict do nothing", [it.id, tool]);
+  if (req.body?.on) await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, coalesce((select meta from items where id = $1), '{}')) on conflict do nothing", [it.id, tool]);
   else await pool.query("delete from item_hits where item_id = $1 and tool_id = $2", [it.id, tool]);
+  // 다음부터는 이렇게 판단하도록 남긴다
+  const tn = (await pool.query("select name from user_tools where id = $1", [tool])).rows[0]?.name || "";
+  const body = (await pool.query("select body from items where id = $1", [it.id])).rows[0]?.body || "";
+  if (body) await pool.query("insert into corrections (user_id, body, tool, \"on\") values ($1, $2, $3, $4)", [req.user.id, body.slice(0, 200), tn, !!req.body?.on]);
   notify([String(req.user.id)], { type: "items", tools: ["u" + tool] });
+  res.json({ ok: true });
+});
+// 기억장: 틸봇이 나에 대해 아는 것. 설정에서 보고 지운다
+app.get("/api/me/facts", auth, async (req, res) => {
+  res.json({ facts: (await pool.query("select id, fact from user_facts where user_id = $1 order by id", [req.user.id])).rows.map((r) => ({ id: String(r.id), fact: r.fact })) });
+});
+app.delete("/api/me/facts/:id", auth, async (req, res) => {
+  await pool.query("delete from user_facts where id = $1 and user_id = $2", [Number(req.params.id) || 0, req.user.id]);
   res.json({ ok: true });
 });
 // 이 방도 정리(나에게만). 켜면 이 방의 글도 받아 적는다
@@ -1751,6 +1804,11 @@ const SCHEMA_PATCHES = [
   `create table if not exists organize (user_id bigint not null references users(id) on delete cascade,
      bond_id bigint not null references bonds(id) on delete cascade, primary key (user_id, bond_id))`,
   "alter table ai_usage add column if not exists photos int not null default 0",
+  "alter table items add column if not exists meta jsonb",
+  `create table if not exists user_facts (id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+     fact text not null, created_at timestamptz not null default now())`,
+  `create table if not exists corrections (id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
+     body text not null, tool text not null, "on" boolean not null, created_at timestamptz not null default now())`,
 ];
 async function ensureSchema() {
   for (const sql of SCHEMA_PATCHES) {
