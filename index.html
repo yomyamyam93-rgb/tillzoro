@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1810</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1830</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1316,6 +1316,11 @@ async function openChat(id){
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
+  // 임시 기록(2026-11-03): 폰에서만 보이는 "들어갈 때 한 번 튐"을 잡는다. 1.5초 동안 줄 수·높이·스크롤·도구 상자 높이가 바뀐 순간을 서버로 보낸다
+  { const dv=$("#days"), card=document.querySelector(".rtcard"), L=[], t0=performance.now(), sn=()=>`${dv.children.length}/${dv.clientHeight}/${dv.scrollHeight}/${Math.round(dv.scrollTop)}/card${card?card.offsetHeight:-1}/${card?card.className.replace(/\s+/g,"."):""}/pt${getComputedStyle(dv).paddingTop}`;
+    let last=sn(); L.push("0:"+last);
+    const f=()=>{ const x=sn(); if(x!==last){ L.push(Math.round(performance.now()-t0)+":"+x); last=x } if(performance.now()-t0<1500) requestAnimationFrame(f); else if(auth) api("/api/kblog",{method:"POST",body:{lines:["open4 "+id+" "+L.join(" ")],ua:navigator.userAgent,standalone:!!navigator.standalone}}).catch(()=>{}) };
+    requestAnimationFrame(f); }
   // 화면이 미끄러져 들어오는 동안 대화가 바뀌면 눈에 튄다. 서버 대화·작은 글씨·도구를 받아 두었다가 전환이 끝난 뒤 한 번에 그린다(2026-11-03 폰 기록)
   const settled=new Promise(r=>setTimeout(r,360));
   const tagsP=cur.self?api("/api/self/tags").then(r=>r.tags||{}).catch(()=>null):Promise.resolve(null);
