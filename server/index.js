@@ -966,7 +966,9 @@ function render(box, c) { ... }
 - 무작위 결과는 누른 사람 쪽에서 한 번 정해 c.data 에 넣고 c.save 한다. 그래야 모두에게 같은 결과가 보인다.
 
 [디자인] 무엇을 만들든 모양은 요청에 맞게 새로 짠다. 다만 아래 기준은 늘 지킨다 — 이 앱의 다른 화면과 한 몸처럼 보여야 한다.
-- 글자는 세 단계만: 큰 값(rt-big), 보통 글(rt-title 또는 14px), 작은 정보(rt-sub). 다른 크기·굵기를 새로 만들지 않는다.
+- 글꼴은 칸이 하나로 정한다(font-family 를 쓰지 않는다). 글자 크기는 정해진 것만 쓴다 — 붙이기 전 검사에서 다른 크기는 걸린다:
+  작은 정보 12px(rt-sub) · 보통 글 14px(rt-title) · 큰 값 22px(rt-big) · 입력칸 16px. 펼친 모습(keep)에서만 보통 15px, 큰 값 30px(rt-hero).
+  굵기는 보통 400·강조 600·큰 값 800. 다른 크기·굵기를 새로 만들지 않는다.
 - 버튼은 rt-btn(검정)·rt-btn ghost(회색)만. 한 줄에 검은 버튼은 하나(가장 중요한 행동). 버튼 글자는 2~4자.
 - 간격은 4·8·12px 만. 줄 안의 것들은 rt-row 로 세로 가운데 맞춤. 남는 폭은 rt-sp 로 밀어서 버튼은 오른쪽 끝에 둔다.
 - 시선이 갈 곳은 하나: 가장 중요한 값 하나만 크게, 나머지는 작고 흐리게(--ink-3). 비슷한 크기의 것을 여러 개 늘어놓지 않는다.
@@ -982,7 +984,7 @@ function render(box, c) { ... }
   같은 정보를 두 번 쓰지 않는다(위 큰 값에 쓴 금액을 아래 작은 글에 또 쓰지 않는다).
 - 펼친 모습(keep)의 공간: 칸은 가로 꽉, 세로는 도구 세 개 높이다. 위쪽에 몰아 두고 아래를 비우지 않는다.
   세로로 고루 나눠 쓴다: keep 이 그리는 맨 바깥 요소에 flex:1; display:flex; flex-direction:column; justify-content:space-between (height:100% 는 안 먹는다).
-  펼친 모습에서는 글자를 한 단계 키워도 된다(큰 값 28~34px, 보통 15px). 막대·칩·목록은 가로 폭을 다 쓴다.
+  펼친 모습에서는 글자를 한 단계 키운다(큰 값 30px rt-hero, 보통 15px). 막대·칩·목록은 가로 폭을 다 쓴다.
   구역은 2~3개(지금 / 사람별 / 지금까지)로 나누고 구역 사이는 12px 이상 띄우거나 가는 줄(1px var(--line)) 하나.
   자세히 볼 것이 적으면 억지로 채우지 말고 핵심 값을 크게, 가운데에 둔다 — 작은 글 두세 줄만 위에 붙어 있는 모습은 안 된다.
 
@@ -1285,7 +1287,6 @@ const BOT_GUESS = [
   ["memory", /(기록|습관|일기|체크|출석|연속|매일|목표|다이어트|운동|공부)/],
 ];
 const guessBot = (text) => (BOT_GUESS.find(([, re]) => re.test(text)) || ["free"])[0];
-const EDIT_WORDS = /(수정|고쳐|고치|바꿔|바꾸|변경|추가|빼줘|없애|키워|줄여|늘려|되돌)/;
 async function botLeft(userId, bondId) {
   const day = kstDay();
   const mine = isAdmin(userId) ? 0 : (await pool.query("select calls from ai_usage where day = $1 and user_id = $2", [day, userId])).rows[0]?.calls || 0;
@@ -1393,6 +1394,84 @@ async function refill(uid, toolId) {
   } catch (e) { console.error("refill", e.message) }
 }
 
+/* ---------- 틸봇의 판단 ----------
+   @ 로 부르면 먼저 싼 모델이 이 방의 도구 목록·내용 요약·바로 앞 대화를 보고 넷 중 하나를 고른다.
+   show(있는 도구 꺼내 보이기)·answer(내용으로 답하기)는 여기서 끝나고, edit·new 만 만드는 모델로 간다 */
+const RouteOut = z.object({ action: z.enum(["show", "answer", "edit", "new"]), tool: z.number(), reply: z.string() });
+async function botContext(bond, uid) {
+  const rows = (await pool.query(
+    `select r.tool, r.data, t.id, t.name, t.owner_id, t.rule from room_state r join user_tools t on 'u' || t.id = r.tool
+      where r.bond_id = $1 order by t.id`, [bond.id])).rows;
+  const tools = [];
+  for (const r of rows) {
+    const d = { ...(r.data || {}) }; const on = !!d.on; delete d.log; delete d.on; delete d.ver; delete d.name;
+    let sum = JSON.stringify(d).slice(0, 300);
+    if (r.rule && r.owner_id === uid) {
+      const its = (await pool.query(
+        `select i.body, h.data, i.created_at from item_hits h join items i on i.id = h.item_id where h.tool_id = $1 order by i.id desc limit 12`, [r.id])).rows;
+      const n = (await pool.query("select count(*)::int n from item_hits where tool_id = $1", [r.id])).rows[0].n;
+      sum = `항목 ${n}개. 최근: ` + its.map((x) => `${new Date(x.created_at).toISOString().slice(5, 10)} ${String(x.body).slice(0, 40)} ${JSON.stringify(x.data)}`).join(" / ") + (sum !== "{}" ? ` · 저장: ${sum}` : "");
+    }
+    tools.push({ id: r.id, name: r.name, on, mine: r.owner_id === uid, ask: r.rule?.ask || "", sum });
+  }
+  const hist = (await pool.query(
+    "select body, mime from messages where bond_id = $1 and kind = 'bot' order by id desc limit 6", [bond.id])).rows.reverse()
+    .map((m) => { const b = botMeta(m.mime); return (b.ask ? `사용자: @${b.ask}\n` : "") + `틸봇: ${m.body}${b.name ? ` [${b.name}]` : ""}` }).join("\n");
+  return { tools, history: hist };
+}
+async function botRoute(uid, ctx, text, ridTool, seen) {
+  const ids = new Set(ctx.tools.map((x) => x.id));
+  const fall = { action: ridTool && ids.has(ridTool) ? "edit" : "new", tool: ridTool || 0, reply: "" };
+  if (!ctx.tools.length) return { action: "new", tool: 0, reply: "" };
+  try {
+    const r = await ai.beta.messages.parse({
+      model: PATCH_MODEL, max_tokens: 1500,
+      output_config: { format: betaZodOutputFormat(RouteOut) },
+      system: `너는 틸봇이다. 사용자가 대화방에서 "@..." 로 한 말을 보고 할 일 하나를 고른다.
+- show: 이미 있는 도구를 찾거나 보여 달라는 말("가계부 보여줘", "가계부 어딨어", "열어 줘", "찾아 줘", 도구 이름만 말함). tool = 그 도구.
+- answer: 도구에 든 내용이나 앞 대화로 답할 수 있는 질문("이번 달 얼마 썼어?", "토요일에 뭐 있어?", "할 일 몇 개 남았어?", "아까 그거 뭐였지?").
+  reply 에 한두 문장으로 답한다. 숫자는 도구 내용에서 직접 세고 더한다(금액은 쉼표, "원"). 모르면 모른다고 짧게. tool = 근거가 된 도구(없으면 0).
+- edit: 있는 도구를 바꾸거나 더해 달라는 말("카페는 따로", "이름 바꿔", "버튼 키워", "합계 크게"). tool = 그 도구. 남의 도구(mine=false)는 고를 수 없다.
+- new: 이 방에 같은 일을 하는 도구가 없을 때만. 이미 비슷한 도구가 있으면 new 가 아니라 show 나 edit 다(가계부가 있는데 "가계부" → show).
+  사용자가 "하나 더", "새로", "따로 하나" 처럼 분명히 새 것을 원할 때만 비슷해도 new.
+- 앞 대화를 이어서 이해한다: "그거", "아까 만든 거", "이름 바꿔 줘" 는 앞에서 말한 도구다. 답장한 도구·보고 있는 도구가 있으면 애매할 때 그것을 가리킨다.
+show 의 reply 는 아주 짧게(예: "가계부예요"). edit·new 의 reply 는 빈 글. 말투는 짧고 친근하게, 설명 늘어놓지 않는다.`,
+      messages: [{ role: "user", content:
+        `[이 방의 도구]\n${ctx.tools.map((x) => `#${x.id} ${x.name}${x.mine ? "" : " (남의 것)"}${x.on ? "" : " (내려 둠)"}${x.ask ? " · 받는 것: " + x.ask : ""}\n  내용: ${x.sum}`).join("\n")}\n\n` +
+        (ctx.history ? `[바로 앞 대화]\n${ctx.history}\n\n` : "") +
+        (ridTool ? `[답장한 도구] #${ridTool}\n` : "") + (seen ? `[지금 보고 있는 도구] #${seen}\n` : "") +
+        `\n[사용자]\n@${text}` }],
+    });
+    await spend(uid, usdOf(PATCH_MODEL, r.usage || {}), false);
+    const o = r.parsed_output; if (!o) return fall;
+    if (o.action !== "new" && o.tool && !ids.has(o.tool)) o.tool = 0;
+    if ((o.action === "show" || o.action === "edit") && !o.tool) return fall;
+    if (o.action === "edit" && !ctx.tools.find((x) => x.id === o.tool)?.mine) return { action: "answer", tool: o.tool, reply: "만든 사람만 고칠 수 있어요" };
+    return o;
+  } catch (e) { console.error("route", e.status || "", e.message); return fall }
+}
+// show·answer: 만들지 않고 말풍선 하나. show 는 그 도구를 위 칸에 꺼내 펼치게 한다(내려 둔 것이면 다시 띄운다)
+async function botSay(bond, uid, route, rid, text, ctx) {
+  const tl = ctx.tools.find((x) => x.id === route.tool);
+  let ver = null;
+  if (tl) {
+    const st = (await pool.query("select data from room_state where bond_id = $1 and tool = $2", [bond.id, "u" + tl.id])).rows[0];
+    ver = Number(st?.data?.ver) || null;
+    if (route.action === "show" && !tl.on) {
+      await pool.query("update room_state set data = data || '{\"on\":true}'::jsonb, updated_at = now() where bond_id = $1 and tool = $2", [bond.id, "u" + tl.id]);
+      notify(memberIds(bond), { type: "room", bondId: bond.id, tool: "u" + tl.id });
+    }
+  }
+  const reply = String(route.reply || (tl ? tl.name : "")).slice(0, 300) || "네";
+  const meta = { bot: "free", tool: tl ? tl.id : null, ver, name: tl ? tl.name : "", note: "", made: false, owner: uid, show: route.action === "show", ask: String(text).slice(0, 200) };
+  const { rows } = await pool.query(
+    "insert into messages (bond_id, sender_id, body, kind, mime, reply_to) values ($1, $2, $3, 'bot', $4, $5) returning id, created_at",
+    [bond.id, Number(uid), reply, JSON.stringify(meta), rid || null]);
+  const msg = { id: rows[0].id, body: reply, at: rows[0].created_at, bondId: bond.id, from: uid, kind: "bot", bot: meta, replyTo: rid ? String(rid) : null };
+  notify(memberIds(bond), { type: "message", ...msg }, uid);
+  return msg;
+}
+
 const botFree = (bond, bot) => { botBusy.delete(bond.id); notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: false }) };
 // 오래 응답이 없으면(앱을 닫음 등) 만들던 것을 버린다
 setInterval(() => {
@@ -1413,28 +1492,19 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
   const spent = (await pool.query("select coalesce(sum(usd), 0)::float usd from ai_usage where day = $1", [kstDay()])).rows[0].usd;
   if (spent >= AI_DAILY_USD || (await botLeft(req.user.id, bond.id)) <= 0) return res.status(429).json({ error: "오늘 사용 한도를 넘었어요" });
 
-  // 고칠 도구: 답장한 봇 말풍선의 도구 → 부른 사람이 지금 위 칸에서 보고 있는 도구 → 켜 둔 만든 도구
-  let target = null;
+  // 틸봇이 먼저 판단한다: 있는 도구를 보여 줄지, 내용으로 답할지, 고칠지, 새로 만들지. 바로 앞 대화도 본다(2026-11-03)
   const rid = Number(req.body?.replyTo) || 0;
+  let ridTool = null;
   if (rid) {
     const m = (await pool.query("select mime from messages where id = $1 and bond_id = $2 and kind = 'bot'", [rid, bond.id])).rows[0];
-    if (m) target = Number(botMeta(m.mime).tool) || null;
+    if (m) ridTool = Number(botMeta(m.mime).tool) || null;
   }
-  const seen = /^u\d+$/.test(String(req.body?.toolId || "")) ? String(req.body.toolId) : null;
-  if (!target && seen && (await pool.query("select 1 from room_state where bond_id = $1 and tool = $2", [bond.id, seen])).rowCount) target = Number(seen.slice(1));
-  if (!target) {
-    const on = (await pool.query("select tool from room_state where bond_id = $1 and tool ~ '^u[0-9]+$' and (data->>'on')::boolean order by updated_at desc", [bond.id])).rows[0];
-    if (on) target = Number(on.tool.slice(1));
-  }
-  let tool = target ? (await pool.query("select * from user_tools where id = $1", [target])).rows[0] : null;
-  if (tool && tool.owner_id !== req.user.id) {
-    // 남의 도구는 고칠 수 없다. 고쳐 달라는 말이면 AI 를 부르지 않고 바로 거절, 아니면 새로 만든다
-    if (rid || EDIT_WORDS.test(text)) return res.status(403).json({ error: "만든 사람만 고칠 수 있어요" });
-    tool = null;
-  }
-
-  // 이름 없이 "@할 일" 로 불렀는데 고쳐 달라는 말(답장·고침 낱말)이 아니면 새 도구다. 보고 있던 도구를 엉뚱하게 고치지 않게
-  if (!bot && !rid && !EDIT_WORDS.test(text)) tool = null;
+  const seen = /^u\d+$/.test(String(req.body?.toolId || "")) ? Number(String(req.body.toolId).slice(1)) : null;
+  const ctx = await botContext(bond, req.user.id);
+  const route = await botRoute(req.user.id, ctx, text, ridTool, seen);
+  if (route.action === "show" || route.action === "answer") return res.json(await botSay(bond, uid, route, rid, text, ctx));
+  let tool = route.action === "edit" && route.tool ? (await pool.query("select * from user_tools where id = $1", [route.tool])).rows[0] : null;
+  if (tool && tool.owner_id !== req.user.id) return res.status(403).json({ error: "만든 사람만 고칠 수 있어요" });
   if (!bot) bot = tool && BOTS[tool.bot] ? tool.bot : guessBot(text);
   botBusy.set(bond.id, Date.now()); botLast.set(uid, Date.now());
   notify(memberIds(bond), { type: "botwork", bondId: bond.id, bot, on: true });
@@ -1449,6 +1519,7 @@ app.post("/api/rooms/:bondId/bot", auth, async (req, res) => {
     r = await botAsk(req.user.id, bot,
       (String(bond.a_id) === String(bond.b_id) && bond.kind !== "group" ? "[이 방: 나챗방(나와의 대화). 받아 가는 도구를 만들 수 있다]\n" : `[이 방: ${bond.kind === "group" ? (bond.members || []).length : 2}명 대화방. rule.on=false]\n`) +
       (cur ? `[지금 도구 코드 · ${tool.ver}번 버전 · 이름 "${tool.name}"]\n${tool.rule ? "[지금 조건] " + JSON.stringify(tool.rule) + "\n" : ""}${cur.code}\n\n` : "[아직 만든 코드 없음]\n\n") +
+      (ctx.history ? `[바로 앞 대화]\n${ctx.history}\n\n` : "") +
       `[사용자]\n${text}\n\n(대화방에서 한 번에 부른 것이다. 되묻지 말고 알맞게 정해서 바로 만든다. reply 는 한 문장.)`, !counted);
   } catch (e) {
     console.error("roombot", e.status || "", e.message);
@@ -1519,7 +1590,7 @@ async function botFinish(p, made) {
         [bond.id, key, { on: true, ver, name: (out.name || tool.name).slice(0, 30) }]);
     }
     const reply = out.reply.slice(0, 300);
-    const meta = { bot: p.bot, tool: tool ? tool.id : null, ver, name: tool ? (out.name || tool.name).slice(0, 30) : "", note: ver ? out.note.slice(0, 80) : "", made: fresh, owner: uid };
+    const meta = { bot: p.bot, tool: tool ? tool.id : null, ver, name: tool ? (out.name || tool.name).slice(0, 30) : "", note: ver ? out.note.slice(0, 80) : "", made: fresh, owner: uid, ask: String(p.text || "").slice(0, 200) };
     const { rows } = await pool.query(
       "insert into messages (bond_id, sender_id, body, kind, mime, reply_to) values ($1, $2, $3, 'bot', $4, $5) returning id, created_at",
       [bond.id, Number(uid), reply, JSON.stringify(meta), rid || null]);

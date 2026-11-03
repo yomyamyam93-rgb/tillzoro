@@ -2,7 +2,7 @@
    사용자가 지우거나 "@일정 달력으로 바꿔줘" 처럼 고칠 수 있다. c.items 는 받아 적은 항목(새것이 앞) */
 const css = `<style>.lx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .lx .row{display:flex;align-items:center;gap:8px;min-width:0}
-.lx .big{font-size:20px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.lx .big{font-size:22px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .lx .sub{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lx .none{font-size:14px;color:var(--ink-3)}
 .kl{flex:1;display:flex;flex-direction:column;gap:2px;padding:2px 0;min-width:0}
@@ -97,7 +97,7 @@ function when(at){ var x=new Date(at); return (x.getMonth()+1)+'/'+x.getDate() }
 function render(box,c){
   var l=c.items;
   if(!l.length){ box.innerHTML=CSS+'<div class="lx"><div class="none">메모 없음</div></div>'; return }
-  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big" style="font-size:16px;font-weight:600">'+esc(l[0].text)+'</span></div><div class="sub">'+esc(when(l[0].at))+' · 메모 '+l.length+'개</div></div>';
+  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big" style="font-size:15px;font-weight:600">'+esc(l[0].text)+'</span></div><div class="sub">'+esc(when(l[0].at))+' · 메모 '+l.length+'개</div></div>';
 }
 function keep(box,c){
   var l=c.items.slice(0,80);

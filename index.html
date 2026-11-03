@@ -284,12 +284,13 @@
   .rt-row{display:flex;align-items:center;gap:8px;min-width:0}
   .rt-title{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .rt-title.none{font-weight:400;color:var(--ink-3);cursor:default}
-  .rt-pt{font:500 13px/1 var(--font-num);color:var(--ink-2);flex:none}
+  .rt-pt{font-size:12px;font-weight:600;color:var(--ink-2);flex:none}
   .rt-btn{flex:none;padding:6px 12px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:12px;font-weight:500}
   .rt-btn.ghost{background:var(--paper-2);color:var(--ink-2)}
   .rt-score{font-size:12px;color:var(--ink-3);justify-content:space-between}
-  .rt-score b{font:500 14px/1 var(--font-num);color:var(--ink);margin-left:4px}
-  .rt-big{font:600 22px/1.1 var(--font-num);color:var(--ink);white-space:nowrap}
+  .rt-score b{font-size:14px;font-weight:700;color:var(--ink);margin-left:4px}
+  .rt-big{font-size:22px;font-weight:800;line-height:1.15;color:var(--ink);white-space:nowrap}
+  .rt-hero{font-size:30px;font-weight:800;line-height:1.1;color:var(--ink);white-space:nowrap}
   .rt-sub{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .rt-chip{flex:none;padding:3px 9px;border-radius:var(--r-pill);background:var(--paper-2);color:var(--ink-2);font-size:12px;white-space:nowrap}
   .rt-chip.on{background:var(--ink);color:var(--paper)}
@@ -675,7 +676,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1102-1759</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1021</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1296,6 +1297,12 @@ async function openChat(id){
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
+  // 임시(2026-11-03): 방에 들어갈 때 화면 맨 위에 어느 말이 보이는지·사진이 몇 장 아직 안 왔는지 프레임마다 적어 kb.log 로
+  { const dv=$("#days"), t0=performance.now(), L=[]; const f=()=>{ const t=performance.now()-t0, r=dv.getBoundingClientRect();
+      const top=document.elementFromPoint(r.left+r.width/2,r.top+120)?.closest(".msg,.evt,.botmsg"), imgs=[...dv.querySelectorAll("img")];
+      L.push(`${Math.round(t)} ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight} n=${dv.children.length} top=${top?(top.dataset.id||top.className).slice(0,14):"-"} img=${imgs.filter(i=>!i.complete).length}/${imgs.length} ch=${getComputedStyle($("#chat")).transform.slice(-12)}`);
+      if(t<2000) requestAnimationFrame(f); else if(auth) api("/api/kblog",{method:"POST",body:{lines:["open2 "+id].concat(L.filter((x,i)=>i<40||i%3===0)).slice(0,80),ua:navigator.userAgent}}).catch(()=>{}) };
+    requestAnimationFrame(f); }
   loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
@@ -1353,7 +1360,7 @@ function sandboxDoc(code){
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap">
 <style>:root{${vars}} html,body{touch-action:pan-y;margin:0;height:100%;background:transparent;color:var(--ink);font:14px/1.4 var(--font-body,-apple-system),sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden;-webkit-text-size-adjust:100%}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent} #box,#box *{font-family:var(--font-body),sans-serif!important;font-variant-numeric:tabular-nums;letter-spacing:-.2px} button{font:inherit;border:0;cursor:pointer;color:inherit;background:none;padding:0} input{font:inherit}
 #box{height:100%;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}
 html:not(.keep),html:not(.keep) body{touch-action:none} html.keep,html.keep body{overflow-y:auto} html.keep #box>.rt-title.none{flex:none;align-self:center;font-size:15px} html.keep #box{height:auto;min-height:100%}
 ${rtCss()}</style></head><body><div id="box"></div>
@@ -1384,14 +1391,19 @@ function __measure(when){ const W=innerWidth,H=innerHeight,out=[];
     if(d.length&&!(el.parentElement&&out.some(o=>o.el===el.parentElement))) out.push({el,text:"잘림"+when+": "+__label(el)+" 이(가) 칸 밖으로 "+d.join(", ")+" 나감 (칸 "+W+"x"+H+")"}) }
   return out.map(o=>o.text) }
 // 펼친 모습: 가로로 넘치면 잘림, 세로는 스크롤되니 넘쳐도 된다. 대신 칸의 반도 못 채우면 알린다
+// 글자 크기는 정해진 것만: 12 작은 글 · 14 보통 · 22 큰 값 · 16 입력칸, 펼친 모습은 15 보통 · 30 큰 값까지
+function __fonts(when){ const ok=[12,14,15,16,22,30], bad=new Set();
+  for(const el of __box.querySelectorAll("*")){ if(![...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())) continue;
+    if(!el.getBoundingClientRect().width) continue; const px=Math.round(parseFloat(getComputedStyle(el).fontSize)); if(!ok.includes(px)) bad.add(px) }
+  return bad.size?["글자 크기"+when+" "+[...bad].join(",")+"px 를 씀: 12(작은 글)·14(보통)·22(큰 값, rt-big)만. 펼친 모습은 15·30(rt-hero)까지"]:[] }
 async function __checkKeep(){ await new Promise(r=>setTimeout(r,300)); const W=innerWidth,H=innerHeight,out=[];
-  __measure(" (펼친 모습)").filter(x=>/왼쪽|오른쪽/.test(x)).forEach(x=>out.push(x));
+  __measure(" (펼친 모습)").filter(x=>/왼쪽|오른쪽/.test(x)).forEach(x=>out.push(x)); __fonts(" (펼친 모습)").forEach(x=>out.push(x));
   let top=1e9,bot=-1e9; for(const el of __box.children){ const r=el.getBoundingClientRect(); if(r.height<1) continue; top=Math.min(top,r.top); bot=Math.max(bot,r.bottom) }
   const used=bot>top?Math.round((bot-top)/H*100):0, txt=(__box.textContent||"").trim().length;
   if(txt>20&&used<60) out.push("펼친 모습이 칸 세로의 "+used+"%만 씀 (칸 "+W+"x"+H+"): 위에 몰려 있고 아래가 빈다. 세로로 고루 나눠 써라");
   __send({k:"checkd",issues:out.slice(0,4),errors:[...new Set(__errs)].slice(0,3).map(x=>"오류: "+x)}) }
 async function __check(){ const found=new Set(), add=a=>a.forEach(x=>found.add(x)), wait=ms=>new Promise(r=>setTimeout(r,ms));
-  await wait(300); add(__measure(""));
+  await wait(300); add(__measure("")); add(__fonts(""));
   for(let i=0;i<4;i++){ const bs=[...__box.querySelectorAll("button,[data-k],[onclick]")].filter(b=>b.getBoundingClientRect().width>0); const b=bs[i]; if(!b) break;
     __box.querySelectorAll("input").forEach(x=>{ if(!x.value) x.value=x.type==="number"?"12000":"12000" });
     const name=__label(b); try{ b.click() }catch(e){ __errs.push(String(e.message)) }
@@ -2233,7 +2245,8 @@ async function callBot(bot,text,replyTo){
     let r=await api(`/api/rooms/${bond}/bot`,{method:"POST",body:{bot,text,replyTo:replyTo||undefined,toolId:isUserTool(seen||"")?seen:undefined}});
     while(r.check){ const issues=await checkTool(r.code); r=await api(`/api/rooms/${bond}/bot/check`,{method:"POST",body:{check:r.check,issues}}) }
     if(botWork&&botWork.bond===bond) botWork=null;
-    if(cur&&cur.id===bond){ if(r.bot?.tool&&r.bot.ver) toolView[bond]="u"+r.bot.tool; appendBubble(fromServer(r,true)); loadRoomTools() }
+    if(cur&&cur.id===bond){ if(r.bot?.tool&&r.bot.ver) toolView[bond]="u"+r.bot.tool; appendBubble(fromServer(r,true)); await loadRoomTools()
+      if(r.bot?.show) setTimeout(()=>setKeep(true),500) }   // "가계부 보여줘" → 위 칸에 꺼내서 펼친다
   }catch(e){ if(botWork&&botWork.bond===bond) botWork=null; if(cur&&cur.id===bond) renderMsgs(); toast(e.message) }
 }
 const canUndo=m=>m.bot.owner===myId()&&m.bot.ver>1&&roomData["u"+m.bot.tool]?.ver==m.bot.ver;   // 그 뒤로 바뀌었으면(되돌림 포함) 버튼을 거둔다
