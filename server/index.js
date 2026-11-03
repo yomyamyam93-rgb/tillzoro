@@ -1412,7 +1412,7 @@ async function botContext(bond, uid) {
       const n = (await pool.query("select count(*)::int n from item_hits where tool_id = $1", [r.id])).rows[0].n;
       sum = `항목 ${n}개. 최근: ` + its.map((x) => `${new Date(x.created_at).toISOString().slice(5, 10)} ${String(x.body).slice(0, 40)} ${JSON.stringify(x.data)}`).join(" / ") + (sum !== "{}" ? ` · 저장: ${sum}` : "");
     }
-    tools.push({ id: r.id, name: r.name, on, mine: r.owner_id === uid, ask: r.rule?.ask || "", sum });
+    tools.push({ id: Number(r.id), name: r.name, on, mine: r.owner_id === uid, ask: r.rule?.ask || "", sum });
   }
   const hist = (await pool.query(
     "select body, mime from messages where bond_id = $1 and kind = 'bot' order by id desc limit 6", [bond.id])).rows.reverse()
@@ -1444,6 +1444,7 @@ show 의 reply 는 아주 짧게(예: "가계부예요"). edit·new 의 reply �
     });
     await spend(uid, usdOf(PATCH_MODEL, r.usage || {}), false);
     const o = r.parsed_output; if (!o) return fall;
+    console.log("route", JSON.stringify({ text: text.slice(0, 40), action: o.action, tool: o.tool }));
     if (o.action !== "new" && o.tool && !ids.has(o.tool)) o.tool = 0;
     if ((o.action === "show" || o.action === "edit") && !o.tool) return fall;
     if (o.action === "edit" && !ctx.tools.find((x) => x.id === o.tool)?.mine) return { action: "answer", tool: o.tool, reply: "만든 사람만 고칠 수 있어요" };
