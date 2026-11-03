@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1740</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1810</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1398,6 +1398,9 @@ const c={get data(){return S.data},get items(){return S.items||[]},get me(){retu
     __send({k:"ask",id,kind:String(kind),opt:opt||{}});
     setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },15000); })};
 let __aid=0; const __asks={};
+// 적는 중(입력칸에 커서)에는 새 데이터가 와도 다시 그리지 않는다. 그리면 키패드가 내려가고 적던 것이 날아간다. 입력칸을 떠나면 그때 그린다
+let __later=false; const __typing=()=>{ const a=document.activeElement; return !!a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA") };
+addEventListener("focusout",()=>{ setTimeout(()=>{ if(__later&&!__typing()){ __later=false; __draw() } },50) },true);
 function __fit(){ const d=document.documentElement; d.style.touchAction=S.mode==="keep"&&d.scrollHeight>innerHeight+2?"pan-y":"none" }
 function __draw(){ document.documentElement.classList.toggle("keep",S.mode==="keep"); setTimeout(__fit,0); const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return } try{ f(__box,c) }catch(e){ __fail(e) } }
 // 검사: 칸 밖으로 나간 것(잘림)과 오류를 모은다. 버튼은 최대 4개를 차례로 눌러 보고 그때마다 다시 잰다
@@ -1430,7 +1433,7 @@ async function __check(){ const found=new Set(), add=a=>a.forEach(x=>found.add(x
   __send({k:"checkd",issues:[...found].slice(0,6),errors:[...new Set(__errs)].slice(0,3).map(x=>"오류: "+x)}) }
 addEventListener("message",e=>{ const m=e.data; if(!m||!m.tz) return;
   if(m.k==="check"){ m.keep?__checkKeep():__check(); return }
-  if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],items:m.items||[],mode:m.mode||""}; __draw() }
+  if(m.k==="state"){ S={data:m.data||{},me:m.me,self:m.self,members:m.members||[],items:m.items||[],mode:m.mode||""}; if(__typing()) __later=true; else __draw() }
   else if(m.k==="askd"){ const a=__asks[m.id]; if(a){ delete __asks[m.id]; m.err?a.no(new Error(m.err)):a.ok(m.val) } } });
 let __sx=null,__sy=0;
 const __down=(x,y)=>{ __sx=x; __sy=y }, __up=(x,y)=>{ if(__sx===null) return; const dx=x-__sx, dy=y-__sy; __sx=null;
@@ -1530,7 +1533,8 @@ async function loadRoomTools(){
 const codeCache=new Map();   // "u5@3" → 코드
 async function fetchToolCode(id,ver){
   const key=id+"@"+ver; if(codeCache.has(key)) return codeCache.get(key);
-  let code=""; try{ code=(await api(`/api/tools/${id}/v/${ver}`)).code||"" }catch(e){}
+  let code=store.get("code:"+key,""); if(!code){ try{ code=(await api(`/api/tools/${id}/v/${ver}`)).code||"" }catch(e){} }
+  if(code) store.set("code:"+key,code);
   codeCache.set(key,code); return code;
 }
 function addLog(d,text){ d.log=(d.log||[]).concat({at:Date.now(),by:myId(),text}).slice(-30) }
@@ -1609,9 +1613,13 @@ async function swipeTool(dir){
   const ids=onTools(); if(ids.length<2||swiping) return; swiping=true;
   const box=$("#roomTool").parentNode, bid=cur.id;   // 글씨만이 아니라 상자째
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{});
-  await box.animate([{transform:"none",opacity:1},{transform:`translateX(${-dir*60}%)`,opacity:0}],{duration:220,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
+  await box.animate([{transform:"none"},{transform:`translateX(${-dir*110}%)`}],{duration:200,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
   if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; keepOpen=false; renderRoomTool() }
-  const a=box.animate([{transform:`translateX(${dir*60}%)`,opacity:0},{transform:"none",opacity:1}],{duration:380,easing:"cubic-bezier(0,0,.2,1)"});
+  // 다음 도구가 그려질 때까지(최대 .4초) 옆에 세워 둔다. 빈 상자가 들어왔다가 채워지면 깜빡여 보인다
+  box.style.transform=`translateX(${dir*110}%)`;
+  await new Promise(r=>{ const t0=Date.now(); const f=()=>{ if((roomBox&&roomBox.h.alive)||!roomBox||Date.now()-t0>400) r(); else setTimeout(f,16) }; f() });
+  box.style.transform="";
+  const a=box.animate([{transform:`translateX(${dir*110}%)`},{transform:"none"}],{duration:300,easing:"cubic-bezier(0,0,.2,1)"});
   box.getAnimations().forEach(x=>{ if(x!==a&&!(x instanceof CSSTransition)) x.cancel() });
   await a.finished.catch(()=>{});
   swiping=false;
@@ -1635,7 +1643,7 @@ function drawRoomTool(){
   box.classList.add("user");
   const d=roomData[id], key=id+"@"+d.ver;
   if(roomBox&&roomBox.key===key&&box.contains(roomBox.h.frame)){ roomBox.h.push(); return }
-  if(!codeCache.has(key)){ box.innerHTML=""; roomBox=null; if(!swiping) box.parentNode.classList.add("wait"); fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return }
+  if(!codeCache.has(key)){ const c=store.get("code:"+key,""); if(c) codeCache.set(key,c); else { box.innerHTML=""; roomBox=null; if(!swiping) box.parentNode.classList.add("wait"); fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return } }
   const card=box.parentNode; if(!swiping) card.classList.add("wait");
   const bid=cur.id;
   const h=mountSandbox(box,codeCache.get(key),{tool:id,

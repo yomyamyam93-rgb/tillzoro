@@ -41,9 +41,10 @@ function editRow(el,c,id,text){
   el.className='ed'; el.onclick=null;
   el.innerHTML='<input class="rt-in"><button class="rt-btn" data-a="s">저장</button><button class="rt-btn ghost" data-a="d">삭제</button>';
   var inp=el.querySelector('input'); inp.value=text; inp.focus();
-  el.querySelector('[data-a="s"]').onclick=async function(e){ e.stopPropagation(); var t=inp.value.trim(); if(!t) return;
+  // 저장·삭제를 누르면 입력칸을 먼저 떠난다(적는 중에는 새 목록이 와도 다시 그리지 않으므로)
+  el.querySelector('[data-a="s"]').onclick=async function(e){ e.stopPropagation(); var t=inp.value.trim(); if(!t) return; inp.blur();
     try{ await c.ask('item.edit',{id:id,text:t}) }catch(err){ c.toast(err.message) } };
-  el.querySelector('[data-a="d"]').onclick=async function(e){ e.stopPropagation();
+  el.querySelector('[data-a="d"]').onclick=async function(e){ e.stopPropagation(); inp.blur();
     try{ await c.ask('item.drop',{id:id}) }catch(err){ c.toast(err.message) } };
 }`;
 
