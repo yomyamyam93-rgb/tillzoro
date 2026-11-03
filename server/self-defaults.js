@@ -38,6 +38,8 @@ function adder(box,c){
 }
 // 줄 하나를 그 자리에서 고치기·지우기
 function editRow(el,c,id,text){
+  // 다른 줄을 고치던 중이면 그것부터 닫는다(두 줄이 같이 열리지 않게)
+  var o=el.parentNode.querySelector('.ed'); if(o&&o!==el){ c.redraw(); el=document.querySelector('[data-id="'+id+'"]'); if(!el) return }
   el.className='ed'; el.onclick=null;
   el.innerHTML='<input class="rt-in"><button class="rt-btn" data-a="s">저장</button><button class="rt-btn ghost" data-a="d">삭제</button>';
   var inp=el.querySelector('input'); inp.value=text; inp.focus();

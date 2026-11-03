@@ -1389,6 +1389,7 @@ async function fileItems(uid, items, tools, force = 0) {   // force: 이 도구�
     await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, $3) on conflict (item_id, tool_id) do update set data = $3", [i, x, d]);
   const touched = [...new Set(hits.map((h) => h[1]))];
   if (touched.length) notify([String(uid)], { type: "items", tools: touched.map((x) => "u" + x) });
+  return touched;
 }
 const MetaOut = z.object({
   items: z.array(z.object({ item: z.number(), meta: z.array(z.object({ k: z.string(), v: z.string() })), tools: z.array(z.number()) })),
@@ -1805,8 +1806,8 @@ app.post("/api/self/item/:itemId/edit", auth, async (req, res) => {
   notify([String(req.user.id)], { type: "items", tools: tools.map((x) => "u" + x.id) });
   res.json({ ok: true });
   (async () => {
-    await pool.query("delete from item_hits where item_id = $1 and tool_id = any($2::bigint[])", [it.id, tools.filter((x) => x.rule.ai).map((x) => x.id)]);
-    await fileItems(req.user.id, [it], tools);
+    const got = await fileItems(req.user.id, [it], tools);
+    await pool.query("delete from item_hits where item_id = $1 and tool_id = any($2::bigint[]) and not (tool_id = any($3::bigint[]))", [it.id, tools.filter((x) => x.rule.ai).map((x) => x.id), got]);
     notify([String(req.user.id)], { type: "items", tools: tools.map((x) => "u" + x.id) });
   })().catch((e) => console.error("edit", e.message));
 });
