@@ -1757,6 +1757,7 @@ app.get("/api/me/facts", auth, async (req, res) => {
 app.delete("/api/me/facts/:id", auth, async (req, res) => {
   await pool.query("delete from user_facts where id = $1 and user_id = $2", [Number(req.params.id) || 0, req.user.id]);
   res.json({ ok: true });
+  refillAll(req.user.id);   // 지운 기억 없이 다시 이해한다
 });
 // 이 방도 정리(나에게만). 켜면 이 방의 글도 받아 적는다
 app.post("/api/rooms/:bondId/organize", auth, async (req, res) => {
@@ -1776,7 +1777,11 @@ app.post("/api/self/setup", auth, async (req, res) => {
   const bond = (await pool.query("select id from bonds where a_id = $1 and b_id = $1 and kind <> 'group'", [req.user.id])).rows[0];
   if (!bond) return res.json({ ok: false });
   const done = await pool.query("insert into room_state (bond_id, tool, data) values ($1, '__setup', '{}') on conflict do nothing returning 1", [bond.id]);
-  if (!done.rowCount) return res.json({ ok: true, made: 0 });
+  if (!done.rowCount) {
+    // 깊게 이해하기 전에 받아 적은 것이 남아 있으면 한 번 다시 이해한다(2026-11-03 바뀐 뒤 처음 열 때)
+    if ((await pool.query("select 1 from items where user_id = $1 and meta is null and kind in ('text','link') limit 1", [req.user.id])).rowCount) refillAll(req.user.id);
+    return res.json({ ok: true, made: 0 });
+  }
   for (const d of SELF_DEFAULTS) {
     const tool = (await pool.query("insert into user_tools (owner_id, name, bot, rule) values ($1, $2, 'free', $3) returning *", [req.user.id, d.name, d.rule])).rows[0];
     const ver = await addVersion(tool, d.code, "처음");
