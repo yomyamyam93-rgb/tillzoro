@@ -280,7 +280,6 @@
   #s-boxv{display:flex;flex-direction:column}
   .boxv{flex:1;min-height:0;margin:0 16px calc(88px + env(safe-area-inset-bottom,0px));padding:14px;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift)}
   .days>:first-child{margin-top:auto}
-  #chat.self [data-tag]::after{content:attr(data-tag);display:block;margin-top:3px;font-size:11px;font-weight:400;opacity:.55}
   .rtcard{position:absolute;top:4px;left:16px;right:16px;z-index:2;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
     background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden;
     transition:opacity .38s ease,transform .45s cubic-bezier(.2,.8,.2,1)}
@@ -687,7 +686,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2000</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2030</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -845,7 +844,7 @@ function connectWS(){
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
     if(d.type==="room"&&boxOpen&&String(d.tool)===boxOpen&&$("#s-boxv").classList.contains("on")){ const sb=selfBond(); if(sb) api(`/api/room/${sb.id}`).then(r=>{ boxData=r.tools||boxData; if(boxOpen===d.tool) openBox(d.tool) }).catch(()=>{}) }
-    if(d.type==="items"){ (d.tools||[]).forEach(k=>loadItems(k)); loadTags();
+    if(d.type==="items"){ (d.tools||[]).forEach(k=>loadItems(k));
       if(boxOpen&&(d.tools||[]).includes(boxOpen)&&$("#s-boxv").classList.contains("on")){ const id=boxOpen; boxItems(id).then(()=>{ if(boxOpen===id&&boxH) boxH.push() }) }
       return }
     if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot}:null; renderMsgs() } return }
@@ -1297,11 +1296,7 @@ $("#days").addEventListener("click",e=>{
   const r=el.getBoundingClientRect(); if(e.clientY<r.bottom-18) return;   // 맨 아래 작은 글씨 줄을 눌렀을 때만
   e.stopPropagation(); tagMenu(el.dataset.mid||el.dataset.id);
 },true);
-function applyTags(){
-  if(!cur||!cur.self) return;
-  $$("#days [data-mid]").forEach(el=>{ const t=selfTags[el.dataset.mid]; if(t) el.dataset.tag=t; else delete el.dataset.tag });
-  $$("#days .msg[data-id]").forEach(el=>{ if(el.querySelector("[data-mid]")) return; const t=selfTags[el.dataset.id]; if(t) el.dataset.tag=t; else delete el.dataset.tag });
-}
+function applyTags(){}   // 작은 글씨 없음. 잘못 들어간 건 도구 안에서 고치거나 빼고, 틸봇에게 말한다
 async function openChat(id){
   cur=people.find(p=>p.id===id); if(!cur) return;
   composeMode=null; $("#cbar").hidden=true;
@@ -1312,8 +1307,6 @@ async function openChat(id){
   roomData=store.get("tools:"+id,{}); Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   // 보던 자리를 기억한다. 위로 올려 두고 나갔으면 다시 들어올 때 그 자리, 바닥을 보고 있었으면 바닥
   const sv=store.get("scroll:"+id,null); nodes.clear(); $("#days").replaceChildren(); pinned=!sv||sv.p;
-  // 말풍선 아래 작은 글씨(어느 도구에 들어갔는지)도 기억해 둔 것으로 먼저 그린다. 서버 답을 받고 붙이면 말풍선이 커지며 대화가 밀렸다
-  if(cur.self) selfTags=store.get("tags:"+id,{});
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
   if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
@@ -1326,7 +1319,7 @@ async function openChat(id){
     requestAnimationFrame(f); }
   // 화면이 미끄러져 들어오는 동안 대화가 바뀌면 눈에 튄다. 서버 대화·작은 글씨·도구를 받아 두었다가 전환이 끝난 뒤 한 번에 그린다(2026-11-03 폰 기록)
   const settled=new Promise(r=>setTimeout(r,360));
-  const tagsP=cur.self?api("/api/self/tags").then(r=>r.tags||{}).catch(()=>null):Promise.resolve(null);
+  const tagsP=Promise.resolve(null);   // 말풍선 아래 작은 글씨(어느 도구에 들어갔는지)는 그리지 않는다(2026-11-03, 사용자: 글만 있으면 된다)
   const roomP=api(`/api/room/${id}`).then(r=>r.tools||{}).catch(()=>null);
   try{
     const [d]=await Promise.all([api("/api/messages/"+id),settled]);
