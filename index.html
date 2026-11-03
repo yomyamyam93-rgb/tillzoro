@@ -71,7 +71,7 @@
   @keyframes risein{from{opacity:0;transform:translateY(14px)}}
   @keyframes bubin{from{opacity:0;transform:translateY(10px) scale(.97)}}
   @keyframes zoomin{from{opacity:0;transform:scale(.94)}}
-  #msgMenuBg.on{background:rgba(0,0,0,.55)}   /* 전부 어둡게 덮고, 누른 말풍선만 그 위에 떠오른다(.lifted 사본) */
+  /* 어둡게 덮는 것은 .lifted 의 그림자가 한다(자리가 뚫린 막). 이 층은 눌러서 닫는 손가락만 받는다 */
   .menu.pop.on{animation:popin .18s cubic-bezier(.2,.9,.3,1.2) both}
   .menu:not(.pop).on,.confirm.on{animation:risein .26s var(--ease-soft) both}
   .enter{animation:bubin .28s var(--ease-soft) both}
@@ -547,9 +547,9 @@
   .menu.pop button{height:46px;display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;font-size:15px;color:var(--ink);text-align:left;white-space:nowrap;background:none;width:100%}
   .menu.pop button svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
   .menu.pop button.danger{color:var(--zero)}
-  /* 길게 누르기: 누른 것 자리만 뚫린 어두운 막(복사본을 띄우지 않는다 → 겹쳐 보이거나 도구 상자가 비는 일이 없다) */
-  .lifted{position:absolute;z-index:31;margin:0;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.35);animation:lift .2s cubic-bezier(.2,.8,.2,1) both}
-  @keyframes lift{from{transform:scale(1)}to{transform:scale(1.03)}}
+  /* 길게 누르기: 누른 것 자리만 뚫린 어두운 막. 사본은 띄우지 않는다 —
+     사본은 반투명한 막 뒤의 원본과 어긋나 글이 두 겹으로 보였다(목록이 한 줄만 움직여도 그렇게 된다) */
+  .lifted{position:absolute;z-index:28;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.55);animation:fadein .18s both}
   .quote{display:block;max-width:100%;font-size:12.5px;line-height:1.4;padding:1px 0 1px 8px;margin:1px 0 5px;border-left:2px solid currentColor;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .quote b{font-weight:600;margin-right:5px}
   .msg.media .quote{color:var(--ink-3);opacity:1;margin:0 0 5px}
@@ -682,7 +682,7 @@
     <div class="pad" id="boxList"></div>
   </section>
   <section class="screen" id="s-boxv">
-    <div class="bar big"><button class="icon" data-back="s-box"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="boxvTitle"></h2><div class="toggle" id="boxvOn"></div></div>
+    <div class="bar big"><button class="icon" data-back="s-box"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="boxvTitle"></h2><button class="icon" id="boxvDel" aria-label="지우기"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button><div class="toggle" id="boxvOn"></div></div>
     <div class="boxv" id="boxvBody"></div>
   </section>
 
@@ -1954,7 +1954,7 @@ function renderMsgs(){
   const kids=days.children;
   if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
   applyTags();
-  days.scrollTop=pinned?days.scrollHeight:(anchor&&anchor.parentNode===days?anchor.offsetTop-anchorY:top);
+  days.scrollTop=pinned&&!menuOn?days.scrollHeight:(anchor&&anchor.parentNode===days?anchor.offsetTop-anchorY:top);
   // 묶인 말풍선에 한 줄이 더해진 거면 그 줄만, 아니면 말풍선 전체가 나타난다
   fresh.forEach(id=>{
     const ln=days.querySelector(`[data-mid="${id}"]`), bub=ln?ln.closest(".msg"):days.querySelector(`.msg[data-id="${id}"]`);
@@ -2009,7 +2009,7 @@ function bubble(ms){
     // 다 받으면 나타나고, 바닥을 보고 있었으면 곧바로 바닥에 붙인다
     const md=el.querySelector("img,.vthumb"), d0=$("#days");
     const settle=()=>{
-      const stick=pinned||d0.scrollHeight-d0.scrollTop-d0.clientHeight<40;
+      const stick=!menuOn&&(pinned||d0.scrollHeight-d0.scrollTop-d0.clientHeight<40);
       if(m.type==="image"){ if(!ar&&md.naturalWidth) md.style.aspectRatio=md.naturalWidth+"/"+md.naturalHeight; md.classList.add("ok") }
       if(stick) d0.scrollTop=d0.scrollHeight;
     };
@@ -2077,12 +2077,13 @@ function popMenu(bub,items,right){
   const mine=right;
   const box=$("#msgMenu"), bg=$("#msgMenuBg"), host=box.parentNode, hr=host.getBoundingClientRect();
   box.innerHTML="";
-  // 화면 전체를 어둡게 덮고, 누른 말풍선의 사본을 같은 자리에 막 위로 띄운다
+  // 누른 것의 자리만 남기고 나머지를 어둡게 한다. 보이는 것은 원본 그대로라 두 겹으로 보일 수가 없다
   const r=bub.getBoundingClientRect();
-  const ghost=bub.cloneNode(true); ghost.classList.add("lifted"); ghost.querySelectorAll("[data-id],[data-mid]").forEach(e=>{ delete e.dataset.id; delete e.dataset.mid });
-  Object.assign(ghost.style,{left:r.left-hr.left+"px",top:r.top-hr.top+"px",width:r.width+"px",height:r.height+"px",boxSizing:"border-box",maxWidth:"none",transformOrigin:(mine?"right":"left")+" center"});
-  host.appendChild(ghost);
-  const close=()=>{ box.classList.remove("on"); bg.classList.remove("on"); ghost.remove() };
+  const hole=document.createElement("div"); hole.className="lifted";
+  hole.style.borderRadius=getComputedStyle(bub).borderRadius;
+  Object.assign(hole.style,{left:r.left-hr.left+"px",top:r.top-hr.top+"px",width:r.width+"px",height:r.height+"px"});
+  host.appendChild(hole); menuOn=true;
+  const close=()=>{ menuOn=false; box.classList.remove("on"); bg.classList.remove("on"); hole.remove() };
   items.forEach(([k,label,act,cls])=>{
     const b=document.createElement("button"); if(cls) b.className=cls;
     b.innerHTML=`<svg viewBox="0 0 24 24">${MI[k]}</svg><span>${label}</span>`;
@@ -2263,7 +2264,7 @@ function appendBubble(m){
   renderMsgs(); saveMsgs();
   // 내가 보낸 것은 곧바로 바닥에 붙인다(부드럽게 내리면 키보드 움직임과 겹쳐 덜 내려간 채 멈췄다)
   if(m.who==="me"){ pinned=true; d.scrollTop=d.scrollHeight; requestAnimationFrame(()=>{ d.scrollTop=d.scrollHeight }) }
-  else if(near) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
+  else if(near&&!menuOn) d.scrollTo({top:d.scrollHeight,behavior:"smooth"});
   else $("#newPill").classList.add("on");
 }
 async function push(m){
@@ -2538,9 +2539,10 @@ $("#compose").addEventListener("mousedown",e=>{ if(e.target!==msgIn) e.preventDe
 // 메시지 영역을 탭하면 키보드가 내려간다 (S-5)
 $("#days").addEventListener("click",()=>{ if(document.activeElement===msgIn) msgIn.blur() });
 let pinned=true;   // 사용자가 바닥을 보고 있는가. 직접 위로 올리면 풀린다
+let menuOn=false;  // 길게 눌러 메뉴가 떠 있는 동안은 목록을 움직이지 않는다(뚫린 자리가 어긋난다)
 $("#days").addEventListener("scroll",()=>{ const d=$("#days"); pinned=d.scrollHeight-d.scrollTop-d.clientHeight<30; if(cur) store.set("scroll:"+cur.id,{p:pinned,t:Math.round(d.scrollTop)}) },{passive:true});
-new ResizeObserver(()=>{ const d=$("#days"); if(pinned) d.scrollTop=d.scrollHeight }).observe($("#days"));
-$("#days").addEventListener("load",()=>{ const d=$("#days"); if(pinned) d.scrollTop=d.scrollHeight },true);
+new ResizeObserver(()=>{ const d=$("#days"); if(pinned&&!menuOn) d.scrollTop=d.scrollHeight }).observe($("#days"));
+$("#days").addEventListener("load",()=>{ const d=$("#days"); if(pinned&&!menuOn) d.scrollTop=d.scrollHeight },true);
 // 바닥까지 내려오면 알약은 할 일이 없다
 $("#days").addEventListener("scroll",()=>{ const d=$("#days"); if(d.scrollHeight-d.scrollTop-d.clientHeight<40) $("#newPill").classList.remove("on") },{passive:true});
 $("#newPill").addEventListener("click",()=>{ const d=$("#days"); d.scrollTo({top:d.scrollHeight,behavior:"smooth"}); $("#newPill").classList.remove("on") });
@@ -2728,6 +2730,18 @@ $("#boxvOn").addEventListener("click",async()=>{
   const el=$("#boxvOn"), on=!boxData[id].on; boxData[id].on=on; el.classList.toggle("on",on);
   try{ await api(`/api/room/${sb.id}/${id}`,{method:"POST",body:{data:boxData[id]}}); renderBox() }
   catch(e){ boxData[id].on=!on; el.classList.toggle("on",!on); toast(e.message) }
+});
+/* 도구 지우기. 도구는 만들 수만 있고 지울 수는 없었다 — 그 자체가 막힌 길이다(E-1).
+   지우면 쌓인 것·버전·띄워 둔 방에서까지 함께 내려간다(서버가 그 방들에 알린다) */
+$("#boxvDel").addEventListener("click",()=>{
+  const id=boxOpen; if(!id) return;
+  confirmBox(`'${boxData[id]?.name||"도구"}' 를 지울까요? 이 도구에 쌓인 것도 함께 사라져요.`,async()=>{
+    try{
+      await api("/api/tools/"+id,{method:"DELETE"});
+      delete boxData[id]; boxOpen=null; boxH=null;
+      back("s-box"); renderBox(); loadMyTools();
+    }catch(e){ toast(e.message) }
+  },{ok:"지우기"});
 });
 // 내가 만든 도구(대화방 도구 시트에 늘 보인다)
 let myTools=[];

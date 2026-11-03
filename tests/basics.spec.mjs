@@ -122,11 +122,11 @@ test("길게 누르면 메뉴가 뜨고 바깥을 누르면 닫힌다", async ({
   await page.evaluate(() => { const b = [...document.querySelectorAll("#days .msg")].pop(); const m = cur.msgs.find((x) => String(x.id) === b.dataset.id) || cur.msgs[cur.msgs.length - 1]; msgMenu(m, b) });
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => document.getElementById("msgMenu").classList.contains("on"))).toBe(true);
-  // 화면 전체가 어두워지고, 누른 말풍선의 사본만 같은 자리에 떠 있다
-  const d = await page.evaluate(() => { const g = document.querySelector(".lifted"), o = [...document.querySelectorAll("#days .msg")].pop(); if (!g) return null; const a = g.getBoundingClientRect(), c = o.getBoundingClientRect(); return { off: Math.abs(a.left - c.left) + Math.abs(a.top - c.top) + Math.abs(a.width - c.width), dark: getComputedStyle(document.getElementById("msgMenuBg")).backgroundColor } });
-  expect(d, "떠오른 사본이 있어야 한다").not.toBeNull();
-  expect(d.off, "사본이 원래 자리에 있어야 한다").toBeLessThan(24);   // 1.03배 커지는 모션만큼은 어긋난다
-  expect(d.dark).not.toBe("rgba(0, 0, 0, 0)");
+  // 누른 자리만 뚫린 어두운 막이다. 사본이 아니므로 자리가 한 치도 어긋나지 않는다
+  const d = await page.evaluate(() => { const g = document.querySelector(".lifted"), o = [...document.querySelectorAll("#days .msg")].pop(); if (!g) return null; const a = g.getBoundingClientRect(), c = o.getBoundingClientRect(); return { off: Math.abs(a.left - c.left) + Math.abs(a.top - c.top) + Math.abs(a.width - c.width), dark: getComputedStyle(g).boxShadow } });
+  expect(d, "뚫린 막이 있어야 한다").not.toBeNull();
+  expect(d.off, "뚫린 자리가 말풍선과 어긋났다").toBeLessThan(1);
+  expect(d.dark, "나머지가 어두워지지 않았다").toContain("9999px");
   await page.evaluate(() => document.getElementById("msgMenuBg").click());
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => document.getElementById("msgMenu").classList.contains("on"))).toBe(false);
@@ -333,4 +333,62 @@ test("적는 줄의 ✕ 를 누르면 적던 것을 버리고 닫힌다", async 
   expect(await page.locator("#askBar.on").count(), "✕ 를 눌렀는데 안 닫혔다").toBe(0);
   expect(await page.evaluate(() => __sent.join("|")), "버리랬는데 저장됐다").toBe("");
   expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("하나");
+});
+
+/* 길게 누르면 화면이 어두워지고 누른 말풍선만 밝게 남는다.
+   사본을 띄우면 반투명한 막 뒤로 원본이 비쳐서 글이 두 겹으로 보인다 */
+test("길게 눌러 메뉴를 열어도 말풍선이 두 겹으로 보이지 않는다", async ({ page }) => {
+  await page.evaluate((id) => openChat(id), ROOM);
+  await page.waitForSelector("#days .msg [data-mid]", { timeout: 15000 });
+  const txt = await page.evaluate(() => {
+    const el = [...document.querySelectorAll("#days .msg")].filter((e) => e.querySelector("[data-mid]")).pop();
+    const m = cur.msgs.find((x) => String(x.id) === el.dataset.id) || cur.msgs.filter((x) => x.type === "text").pop();
+    msgMenu(m, el);
+    return el.querySelector("[data-mid]").textContent;
+  });
+  await page.waitForTimeout(400);
+  expect(await page.locator("#msgMenu.on").count(), "메뉴가 안 열렸다").toBe(1);
+  const n = await page.evaluate((t) => [...document.querySelectorAll("#phone div")].filter((e) => !e.children.length && e.textContent === t).length, txt);
+  expect(n, "같은 글이 두 군데 그려져 겹쳐 보인다").toBe(1);
+});
+
+/* 도구는 만들 수만 있고 지울 수는 없었다. 지우는 길이 없는 것도 막힌 길이다 */
+test("모음에서 연 도구를 그 자리에서 지울 수 있다", async ({ page }) => {
+  await page.evaluate(() => goTab("s-box"));
+  await page.waitForSelector("#boxList .boxt", { timeout: 15000 });
+  // 진짜로 지우면 시험 계정의 도구가 사라진다. 서버에 무엇이 나가는지만 본다
+  await page.evaluate(() => { window.__del = []; const real = window.api;
+    window.api = (u, o) => { if (o && o.method === "DELETE") { __del.push(u); return Promise.resolve({ ok: true }) } return real(u, o) } });
+  await page.locator("#boxList .boxt").first().click();
+  await page.waitForFunction(() => stack[stack.length - 1] === "s-boxv", null, { timeout: 10000 });
+  await page.click("#boxvDel");
+  await page.click("#confirmYes");
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => __del.join("|")), "지우라고 보내지 않았다").toMatch(/^\/api\/tools\/u\d+$/);
+  expect(await page.evaluate(() => stack[stack.length - 1]), "지운 뒤 모음으로 돌아오지 않았다").toBe("s-box");
+});
+
+/* 같은 도구를 모음에서 보나 대화방에서 펼쳐 보나 같아야 한다(둘은 같은 방·같은 판을 본다) */
+test("모음에서 본 도구와 대화방에서 펼친 도구가 같다", async ({ page }) => {
+  await page.evaluate(() => goTab("s-box"));
+  await page.waitForSelector("#boxList .boxt", { timeout: 15000 });
+  const id = await page.evaluate(() => Object.keys(boxData).filter((k) => isUserTool(k) && boxData[k]?.on && boxData[k]?.ver)[0]);
+  expect(id, "나챗방에 띄워 둔 도구가 없다").toBeTruthy();
+  await page.evaluate((id) => openBox(id), id);
+  await page.waitForSelector("#boxvBody iframe", { timeout: 15000 });
+  await page.waitForTimeout(1200);
+  const inBox = (await page.frameLocator("#boxvBody iframe").locator("body").innerText()).trim();
+  const name = await page.locator("#boxvTitle").innerText();
+
+  await page.evaluate(() => { back("s-box"); goTab("till") });
+  await page.evaluate(() => openChat(people.find((p) => p.self).id));
+  await page.waitForFunction((id) => onTools().includes(id), id, { timeout: 15000 });
+  await page.evaluate((id) => { toolView[cur.id] = id; renderRoomTool() }, id);
+  await page.waitForFunction((id) => roomBox && roomBox.key.startsWith(id + "@") && roomBox.h.alive, id, { timeout: 20000 });
+  await page.evaluate(() => setKeep(true));
+  await page.waitForSelector(".rtkeep.on iframe", { timeout: 15000 });
+  await page.waitForTimeout(1200);
+  const inRoom = (await page.frameLocator(".rtkeep.on iframe").locator("body").innerText()).trim();
+  expect(await page.evaluate(() => roomData[viewTool()]?.name), "대화방이 다른 도구를 펼쳤다").toBe(name);
+  expect(inRoom, "같은 도구인데 보이는 것이 다르다").toBe(inBox);
 });
