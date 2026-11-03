@@ -303,6 +303,8 @@ test("대화방에 들어올 때 도구 칸이 깜빡이지 않는다", async ({
 test("도구를 미는 동안 상자가 손가락을 따라오고, 조금 밀면 제자리로 돌아온다", async ({ page }) => {
   await page.evaluate((id) => openChat(id), await selfId(page));
   await page.waitForFunction(() => onTools().length >= 2, null, { timeout: 10000 });
+  // 옆 칸은 그 도구의 코드를 받아 둔 뒤라야 선다(갓 깔았을 때는 미리 받는 중이다)
+  await page.waitForFunction(() => onTools().every((id) => !isUserTool(id) || codeCache.has(id + "@" + roomData[id].ver)), null, { timeout: 20000 });
   const tf = () => page.evaluate(() => getComputedStyle(document.getElementById("rtTrack")).transform);
   expect(await tf()).toBe("none");
   await page.evaluate(() => dragTool(-80));
@@ -318,4 +320,17 @@ test("도구를 미는 동안 상자가 손가락을 따라오고, 조금 밀면
   await page.evaluate(() => { const w = document.querySelector(".rtcard").offsetWidth; dragTool(-w); dropTool(-w, 1200) });
   await page.waitForTimeout(900);
   expect(await page.evaluate(() => viewTool()), "끝까지 밀었는데 안 넘어갔다").not.toBe(before);
+});
+
+// 폰에는 Esc 가 없다. 버리고 나오는 길은 눈에 보여야 한다
+test("적는 줄의 ✕ 를 누르면 적던 것을 버리고 닫힌다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await page.locator("#askBar.on").waitFor({ timeout: 10000 });
+  await page.locator("#askIn").fill("버릴 글");
+  await page.locator("#askNo").click();
+  await page.waitForTimeout(400);
+  expect(await page.locator("#askBar.on").count(), "✕ 를 눌렀는데 안 닫혔다").toBe(0);
+  expect(await page.evaluate(() => __sent.join("|")), "버리랬는데 저장됐다").toBe("");
+  expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("하나");
 });

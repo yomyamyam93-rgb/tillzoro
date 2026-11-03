@@ -399,6 +399,7 @@
   .phone.kb .askbar,.phone.kbapp .askbar{padding-bottom:6px}
   .askbar input{flex:1;min-width:0;height:36px;border:0;background:var(--card);border-radius:var(--r-pill);padding:0 14px;font-size:16px;color:var(--ink);outline:none}
   .askbar .btn{flex:none;width:auto;height:36px;padding:0 18px}
+  .askbar .icon{flex:none;width:34px;height:34px;background:transparent;color:var(--ink-3)}
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
@@ -770,7 +771,7 @@
   </div>
   <!-- 적는 곳은 앱에 하나다: 키패드가 올라오고 그 바로 위에 이 줄이 붙는다(대화방 입력줄과 같은 자리) -->
   <div class="askscrim" id="askScrim"></div>
-  <div class="askbar" id="askBar"><input id="askIn" autocomplete="off" enterkeyhint="done"><button class="btn" id="askOk">확인</button></div>
+  <div class="askbar" id="askBar"><button class="icon" id="askNo" aria-label="취소"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><input id="askIn" autocomplete="off" enterkeyhint="done"><button class="btn" id="askOk">확인</button></div>
   <div class="toast" id="toast"></div>
 </div>
 </div>
@@ -1395,7 +1396,8 @@ async function showRoomInvite(){
 $("#riShare").addEventListener("click",shareCode);
 $("#riCopy").addEventListener("click",()=>{ if(curCode) copyText(curCode) });
 /* 적는 곳은 앱에 하나다(interaction-guide E-5). 도구는 입력칸을 직접 그리지 않고 이것을 부른다.
-   나올 길은 셋: 확인(또는 return) · 바깥을 누르기(적은 것이 조용히 저장된다, E-1) · Esc(없던 일).
+   나올 길 — 확인(또는 return) · 바깥을 누르기(적은 것이 조용히 저장된다, E-1) · ✕ 와 뒤로 가기(없던 일).
+   폰에는 Esc 가 없으니 버리고 나오는 길은 눈에 보이는 ✕ 다(PC 에서는 Esc 도 같다).
    빈 글로 확인하면 빈 글이 그대로 간다 — 그것을 "지움"으로 다룰지는 부른 쪽이 정한다 */
 let asking=null;
 function askText(o){
@@ -1412,6 +1414,7 @@ function endAsk(val){ const r=asking; asking=null;
 }
 { const bar=$("#askBar"), inp=$("#askIn");
   $("#askOk").addEventListener("click",()=>endAsk(inp.value));
+  $("#askNo").addEventListener("click",()=>endAsk(null));   // 버리고 나오기. 폰에는 Esc 가 없으니 눈에 보여야 한다
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); endAsk(inp.value) }
     else if(e.key==="Escape"){ e.preventDefault(); endAsk(null) } });
   // 바깥을 누르면 적은 것이 조용히 저장되고 닫힌다. 비어 있으면 없던 일로 — 도구 안에서와 같은 규칙이고,
@@ -2891,6 +2894,7 @@ function viewer(m){
 }
 // 안드로이드 뒤로 가기 버튼: 크게 보기 → 닫기, 안쪽 화면 → 뒤로, 맨 앞 화면 → 앱 내리기
 if(NATIVE) plug("App").addListener("backButton",()=>{
+  if(asking) return endAsk(null);   // 적는 중이면 적던 것을 버리고 닫는다(화면을 벗어나지 않는다)
   if($("#viewer").classList.contains("on")) return closeViewer();
   if(stack.length>1) back(); else plug("App").minimizeApp();
 });
