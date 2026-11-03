@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1600</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1715</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1559,9 +1559,12 @@ const roomMembers=()=>cur.group?cur.members.map(m=>({id:String(m.id),name:m.name
   :cur.other?[{id:myId(),name:auth?.me?.nickname||"나"},{id:String(cur.other),name:cur.name}]:[];
 // 나챗방의 내 도구는 받아 적은 항목(c.items)을 함께 받는다
 const toolItems={};   // "u5" → 항목들
+// 같은 도구의 목록 요청이 겹치면(저장·삭제 알림이 연달아 올 때) 먼저 떠난 옛 답이 나중에 도착해 지운 것을 되살렸다. 마지막 요청의 답만 쓴다
+const itemSeq={};
+async function fetchItems(id){ const n=itemSeq[id]=(itemSeq[id]||0)+1; const r=await api(`/api/tools/${id}/items`).catch(()=>null); return r&&itemSeq[id]===n?r:null }
 async function loadItems(id){
   if(!cur||!cur.self||!isUserTool(id)) return;
-  const r=await api(`/api/tools/${id}/items`).catch(()=>null); if(!r) return;
+  const r=await fetchItems(id); if(!r) return;
   toolItems[id]=r.items.map(it=>({id:it.id,kind:it.kind,text:it.text,at:new Date(it.at).getTime(),room:it.room,data:it.data||{},
     src:it.media?mediaURL(it.media,true):"",full:it.media?mediaURL(it.media):""}));
   if(roomBox&&viewTool()===id) roomBox.h.push();
@@ -2471,7 +2474,7 @@ async function boxSave(id,data){
   try{ await api(`/api/room/${sb.id}/${id}`,{method:"POST",body:{data:boxData[id]}}) }catch(e){ toast(e.message) }
 }
 async function boxItems(id){
-  const r=await api(`/api/tools/${id}/items`).catch(()=>null); if(!r) return;
+  const r=await fetchItems(id); if(!r) return;
   toolItems[id]=r.items.map(it=>({id:it.id,kind:it.kind,text:it.text,at:new Date(it.at).getTime(),room:it.room,data:it.data||{},
     src:it.media?mediaURL(it.media,true):"",full:it.media?mediaURL(it.media):""}));
 }
