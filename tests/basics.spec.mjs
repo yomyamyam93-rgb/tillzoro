@@ -165,6 +165,9 @@ test("고치는 중에 알림이 와도 입력칸이 남는다", async ({ page }
   await page.waitForFunction(() => roomBox && roomBox.h.alive && roomBox.h.hasKeep, null, { timeout: 20000 });
   await page.evaluate(() => setKeep(true)); await page.waitForTimeout(1200);
   const fr = page.frameLocator(".rtkeep.on iframe");
+  // 먼저 데이터가 바뀐 뒤 다시 그려진 상태를 만든다(CI 에서는 목록이 나중에 와서 늘 이 길이다). 그 뒤에도 줄을 누르면 고치기가 열려야 한다
+  await page.evaluate(() => { const k = viewTool(); toolItems[k] = (toolItems[k] || []).concat({ id: "fake-" + Date.now(), kind: "text", text: "시험용 줄", at: Date.now(), data: {} }); keepBox && keepBox.h.push(); roomBox && roomBox.h.push() });
+  await page.waitForTimeout(300);
   await fr.locator(".kl [data-id] .tx").first().tap();   // 글자를 누른다(동그라미는 했음/안 했음 토글)
   await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
   await fr.locator("input.rt-in").fill("고치는 중");
