@@ -990,12 +990,26 @@ function render(box, c) { ... }
   구역은 2~3개(지금 / 사람별 / 지금까지)로 나누고 구역 사이는 12px 이상 띄우거나 가는 줄(1px var(--line)) 하나.
   자세히 볼 것이 적으면 억지로 채우지 말고 핵심 값을 크게, 가운데에 둔다 — 작은 글 두세 줄만 위에 붙어 있는 모습은 안 된다.
 
+[막힌 길을 만들지 않는다 — 무엇을 만들든, 고치든 먼저 따진다]
+- 그리기 전에 "유저가 이 칸에서 가질 수 있는 선택지"를 다 적어 보고, 그중 들어가면 못 나오는 곳이 하나라도 있는지 본다. 있으면 그 모양은 쓰지 않는다.
+- 어떤 상태든 나올 길이 둘 이상이다. 특정 버튼만이 유일한 출구인 화면은 만들지 않는다.
+  입력칸이 있는 줄에는 검은 버튼 하나(저장·등록·추가)를 두고, 적지 않고 나갈 수 있어야 하면 "취소"(rt-btn ghost)를 함께 둔다.
+  적는 중에 그 줄 바깥을 누르거나 Esc 를 누르면 앱이 이 두 버튼으로 옮겨 준다 — 적은 것이 있으면 검은 버튼, 비어 있으면 취소.
+  그래서 이 버튼 규칙만 지키면 "바깥을 눌러 나오기"가 저절로 된다. 따로 만들 것은 없다.
+- 누른 것이 다른 데로 튀지 않는다. 체크·완료 표시는 그 자리에서 모양만 바뀐다(동그라미가 차고 글에 줄이 긋힌다).
+  누른 줄을 아래 "한 것" 구역으로 옮기거나 목록을 다시 정렬하지 않는다 — 손가락 밑의 것이 움직이면 번잡하다.
+  줄 세우기는 들어올 때 한 번만 한다: 처음 그릴 때 순서를 c.ui 에 적어 두고(c.ui.ord) 그 순서로 그린다. 다시 들어오면 c.ui 가 비워져 새로 정리된다.
+- 되돌릴 수 있게 한다. 체크는 다시 누르면 풀린다. 지우기는 지우기 버튼으로만 되게 하고, 누르다가 실수로 지워지는 자리에 두지 않는다.
+- 확인 창이나 안내 문구로 때우지 않는다. 묻지 않아도 되게 만드는 것이 먼저다.
+- 목록은 데이터가 바뀌어도 보고 있던 줄이 제자리에 있는다. 줄마다 data-id 를 달아 두면 앱이 알아서 맞춰 준다(안 달면 못 맞춘다).
+
 [지킬 것]
 - 화면에 설명 문장을 넣지 않는다. 이름·숫자·짧은 버튼 글자(2~4자)·빈 상태 한 줄만. 사용법 안내 문구 금지.
 - Count·D-day·Keep(앱의 30일 규칙)을 바꾸려 하지 않는다. 그런 기능은 없다.
 - 오류 없이 돌아야 한다. 데이터가 비어 있을 때(처음)도 그려져야 한다.
 
 [만드는 법] 사용자는 대화방에서 "@봇 할 일" 한 줄로 부른다. 되묻지 않는다 — 다시 물을 기회가 없다.
+- 유저가 왜 이걸 원하는지(소구점)와 그게 정말 필요한 것인지를 먼저 정확히 잡는다. 그 다음 가장 쉽고 편한 길 하나로 만든다 — 손이 덜 가고, 생각할 것이 적고, 막히는 데가 없는 쪽.
 - 그 한 줄 뒤에 있는 진짜 목적을 생각한다. 그 목적에 꼭 필요한 것은 말하지 않았어도 넣고, 없어도 되는 기능은 넣지 않는다.
   (예: "회식비 정산" → 1인 금액과 각자 낸 표시는 필요, 영수증 사진·항목별 메모는 필요 없다)
 - 빠진 것은 가장 흔하고 자연스러운 쪽으로 정한다: 인원은 c.members, 누가 누르나는 정산·체크는 각자 자기 것만 / 게임·뽑기는 누구나,
@@ -1835,15 +1849,32 @@ app.get("/api/rooms/:bondId/organize", auth, async (req, res) => {
 });
 // 나챗방 처음 열 때 기본 도구(일정·할 일·링크·메모)를 깔아 둔다. 한 번만
 const SELF_DEFAULTS = require("./self-defaults");
+/* 기본 도구(일정·할 일)를 고치면 이미 깔린 사람도 받아야 한다. 사용자가 틸봇으로 손댄 것은 건드리지 않는다 —
+   판이 모두 앱이 올린 것일 때만(note 가 "처음"·"기본 갱신") 새 코드로 한 판 올리고 나챗방이 그 판을 보게 한다 */
+async function upgradeDefaults(userId, bondId) {
+  let n = 0;
+  for (const d of SELF_DEFAULTS) {
+    const t = (await pool.query("select * from user_tools where owner_id = $1 and name = $2 order by id limit 1", [userId, d.name])).rows[0];
+    if (!t) continue;
+    const vs = (await pool.query("select ver, code, note from tool_versions where tool_id = $1 order by ver", [t.id])).rows;
+    if (!vs.length || vs.some((v) => v.note !== "처음" && v.note !== "기본 갱신")) continue;   // 사용자가 고친 도구는 그대로 둔다
+    if (vs[vs.length - 1].code === d.code) continue;                                          // 이미 최신
+    const ver = await addVersion(t, d.code, "기본 갱신");
+    await pool.query("update room_state set data = data || $3::jsonb where bond_id = $1 and tool = $2", [bondId, "u" + t.id, JSON.stringify({ ver })]);
+    n++;
+  }
+  return n;
+}
 app.post("/api/self/setup", auth, async (req, res) => {
   await ensureSelfBond(req.user.id);
   const bond = (await pool.query("select id from bonds where a_id = $1 and b_id = $1 and kind <> 'group'", [req.user.id])).rows[0];
   if (!bond) return res.json({ ok: false });
   const done = await pool.query("insert into room_state (bond_id, tool, data) values ($1, '__setup', '{}') on conflict do nothing returning 1", [bond.id]);
   if (!done.rowCount) {
+    const up = await upgradeDefaults(req.user.id, bond.id);
     // 깊게 이해하기 전에 받아 적은 것이 남아 있으면 한 번 다시 이해한다(2026-11-03 바뀐 뒤 처음 열 때)
     if ((await pool.query("select 1 from items where user_id = $1 and meta is null and kind in ('text','link') limit 1", [req.user.id])).rowCount) refillAll(req.user.id);
-    return res.json({ ok: true, made: 0 });
+    return res.json({ ok: true, made: 0, upgraded: up });
   }
   for (const d of SELF_DEFAULTS) {
     const tool = (await pool.query("insert into user_tools (owner_id, name, bot, rule) values ($1, $2, 'free', $3) returning *", [req.user.id, d.name, d.rule])).rows[0];

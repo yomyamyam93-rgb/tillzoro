@@ -3,6 +3,7 @@
    돌리기: npx playwright test  (tests/ 에서. 시험 계정 열쇠는 .claude/qa.json 또는 QA_TOKEN) */
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
+import SELF_DEFAULTS from "../server/self-defaults.js";
 
 const qa = (() => { try { return JSON.parse(fs.readFileSync(new URL("../.claude/qa.json", import.meta.url), "utf8")) } catch { return null } })();
 const TOKEN = process.env.QA_TOKEN || qa?.A?.token, ME = process.env.QA_ID || qa?.A?.id, ROOM = process.env.QA_ROOM || qa?.bond;
@@ -176,4 +177,78 @@ test("고치는 중에 알림이 와도 입력칸이 남는다", async ({ page }
   expect(await fr.locator("input.rt-in").count(), "입력칸이 남아야 한다").toBe(1);
   expect(await fr.locator("input.rt-in").inputValue()).toBe("고치는 중");
   expect(await fr.locator("input.rt-in").evaluate((e) => document.activeElement === e), "커서가 남아야 한다").toBe(true);
+});
+
+/* 막힌 길이 없다(interaction-guide E-1) · 누른 것이 튀지 않는다(E-2).
+   모음의 할 일에서 이름을 고치러 들어가면 저장·삭제 말고는 나올 길이 없었고, 체크하면 그 줄이 아래
+   「한 것」 구역으로 날아가며 화면이 밀렸다(2026-11-03 사용자 지적).
+   서버에 깔린 판은 틸봇이 고쳐 둔 것일 수 있으니, 지금 소스의 기본 도구 코드를 그대로 띄워 본다 */
+const TODO = SELF_DEFAULTS.find((d) => d.name === "할 일").code;
+const QA_ITEMS = () => ["하나", "둘", "셋"].map((t, i) => ({ id: "qa-" + i, kind: "text", text: t, at: Date.now() - i, data: { what: t } }));
+
+async function mountTodo(page) {
+  await page.evaluate(([code, its]) => {
+    window.__sent = []; window.__items = its;
+    const real = toolAsk;   // 고치기·지우기는 서버까지 가지 않고 이 안에서 끝낸다
+    window.toolAsk = (m, w, h) => {
+      if (m.kind !== "item.edit" && m.kind !== "item.drop") return real(m, w, h);
+      __sent.push(m.kind + ":" + ((m.opt && m.opt.text) || ""));
+      const i = __items.findIndex((x) => String(x.id) === String(m.opt.id));
+      if (i >= 0) { if (m.kind === "item.drop") __items.splice(i, 1); else { __items[i].text = m.opt.text; __items[i].data = { what: m.opt.text } } }
+      try { w && w.postMessage({ tz: 1, k: "askd", id: m.id, val: true }, "*") } catch {}
+      __h.push();
+    };
+    const host = document.createElement("div");
+    host.id = "qaHost"; host.className = "roomtool on user";
+    host.style.cssText = "position:fixed;left:0;top:0;width:375px;height:280px;z-index:9999;background:var(--card)";
+    document.body.appendChild(host);
+    let data = { done: {} };
+    const h = (window.__h = mountSandbox(host, code, {
+      state: () => ({ data, me: "1", self: true, members: [], items: __items, mode: "keep" }),
+      save: (d) => { data = d; h.push() },
+    }));
+  }, [TODO, QA_ITEMS()]);
+  await page.waitForFunction(() => window.__h && __h.alive, null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  return page.frameLocator("#qaHost iframe");
+}
+const rowIds = (fr) => fr.locator(".kl [data-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-id")));
+
+test("고치다가 그 줄 바깥을 누르면 조용히 저장되고 닫힌다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
+  await fr.locator("input.rt-in").fill("고친 이름");
+  await fr.locator(".kl .top .hd").tap();   // 그 줄 바깥(맨 위 머리글)
+  await page.waitForTimeout(400);
+  expect(await fr.locator("input.rt-in").count(), "바깥을 눌렀는데 편집이 안 닫혔다").toBe(0);
+  expect(await page.evaluate(() => __sent.join("|")), "적던 것이 저장되지 않았다").toContain("item.edit:고친 이름");
+  expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("고친 이름");
+});
+
+test("비운 채 바깥을 누르면 없던 일이 된다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
+  await fr.locator("input.rt-in").fill("");
+  await fr.locator(".kl .top .hd").tap();
+  await page.waitForTimeout(400);
+  expect(await fr.locator("input.rt-in").count(), "편집이 안 닫혔다").toBe(0);
+  expect(await page.evaluate(() => __sent.join("|")), "비웠는데 저장·삭제가 나갔다").toBe("");
+  expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("하나");
+});
+
+test("체크해도 줄은 제자리에 있고 「한 것」 구역이 생기지 않는다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  const order0 = await rowIds(fr), y0 = (await fr.locator(".kl [data-id]").first().boundingBox()).y;
+  await fr.locator(".kl [data-id] .ck").first().tap();
+  await page.waitForTimeout(500);
+  expect(await rowIds(fr), "체크한 줄이 다른 자리로 옮겨갔다").toEqual(order0);
+  expect((await fr.locator(".kl [data-id]").first().boundingBox()).y, "줄이 위아래로 튀었다").toBeCloseTo(y0, 0);
+  expect(await fr.locator(".kl [data-id] .ck.on").count(), "체크 표시가 안 들어갔다").toBe(1);
+  expect(await fr.locator(".kl .hd").count(), "「한 것」 머리글이 새로 생겼다").toBe(1);
+  await fr.locator(".kl [data-id] .ck").first().tap();   // 다시 누르면 풀린다
+  await page.waitForTimeout(400);
+  expect(await fr.locator(".kl [data-id] .ck.on").count(), "다시 눌러도 안 풀린다").toBe(0);
+  expect(await rowIds(fr), "풀었더니 자리가 바뀌었다").toEqual(order0);
 });

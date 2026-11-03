@@ -1308,7 +1308,7 @@ async function openChat(id){
   // 보던 자리를 기억한다. 위로 올려 두고 나갔으면 다시 들어올 때 그 자리, 바닥을 보고 있었으면 바닥
   const sv=store.get("scroll:"+id,null); nodes=nodesFor(id); pinned=!sv||sv.p;
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
-  if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
+  if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if((r.made||r.upgraded)&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); if(sv&&!sv.p) $("#days").scrollTop=sv.t; go("chat");
@@ -1426,7 +1426,28 @@ function __morph(a,b,protect){
 function __draw(){ __drawn=true; document.documentElement.classList.toggle("keep",S.mode==="keep"); setTimeout(__fit,0); const f=(S.mode==="keep"&&__k)||__r; if(!f){ __fail("render 함수가 없어요"); return }
   const tmp=document.createElement("div"); tmp.id="box"; try{ f(tmp,c) }catch(e){ __fail(e); return }
   const act=document.activeElement, typing=act&&act!==document.body&&__box.contains(act)&&(act.tagName==="INPUT"||act.tagName==="TEXTAREA");
-  __morph(__box,tmp,typing?(act.closest("[data-id]")||act):null); }
+  /* 보고 있던 줄은 제자리에 있는다(E-3). 줄이 늘거나 줄어도 손가락 밑의 것이 움직이지 않게,
+     그리기 전에 화면 맨 위에 걸친 줄을 기억해 두고 그린 뒤 스크롤을 되맞춘다(대화 화면과 같은 방식) */
+  const sc=document.scrollingElement, sy=sc?sc.scrollTop:0; let ak=null, ay=0;
+  if(sy>0) for(const el of __box.querySelectorAll("[data-id]")) if(el.offsetTop+el.offsetHeight>sy){ ak=el.getAttribute("data-id"); ay=el.offsetTop-sy; break }
+  __morph(__box,tmp,typing?(act.closest("[data-id]")||act):null);
+  if(ak!=null&&sc) for(const el of __box.querySelectorAll("[data-id]")) if(el.getAttribute("data-id")===ak){ sc.scrollTop=el.offsetTop-ay; break } }
+/* 적던 것에서 나올 길은 늘 둘 이상이다(E-1). 저장 버튼만이 유일한 출구인 화면을 만들지 않는다:
+   적는 중에 그 줄 바깥을 누르거나 Esc 를 누르면 실행기가 대신 끝낸다 — 적은 것이 있으면 그 줄의 검은 버튼
+   (한 줄에 하나뿐인 "가장 중요한 행동" = 저장·추가), 비어 있으면 취소 버튼. 도구는 아무것도 선언하지 않는다 */
+const __typing=()=>{ const a=document.activeElement; return a&&__box.contains(a)&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")?a:null };
+function __leave(){ const a=__typing(); if(!a) return false;
+  const row=a.closest("[data-id]")||a.parentElement||__box;
+  const ok=row.querySelector("button.rt-btn:not(.ghost)");
+  const no=[...__box.querySelectorAll("button.rt-btn.ghost")].find(b=>b.textContent.trim()==="취소");
+  const has=a.value!=null&&String(a.value).trim()!==""; a.blur();
+  if(has&&ok) ok.click(); else if(no) no.click(); else __draw();
+  return true }
+addEventListener("pointerdown",e=>{ const a=__typing(); if(!a) return;
+  const row=a.closest("[data-id]")||a.parentElement;
+  if(row&&row.contains(e.target)) return;   // 같은 줄 안(저장·취소·삭제)은 그 버튼이 처리한다
+  __leave() },true);
+addEventListener("keydown",e=>{ if(e.key==="Escape"&&__leave()) e.preventDefault() });
 // 검사: 칸 밖으로 나간 것(잘림)과 오류를 모은다. 버튼은 최대 4개를 차례로 눌러 보고 그때마다 다시 잰다
 const __errs=[]; addEventListener("error",e=>__errs.push(String(e.message||e.error)));
 function __label(el){ const t=(el.textContent||"").trim().replace(/\s+/g," ").slice(0,14); return t?"'"+t+"'":el.tagName.toLowerCase() }
@@ -1682,6 +1703,26 @@ function drawRoomTool(){
   });
   roomBox={key,h};
 }
+/* 기본 도구(앱이 직접 그리는 칸)도 만든 도구와 같은 길로 나온다(E-1): 적는 중에 그 줄 바깥을 누르거나
+   Esc 를 누르면, 적은 것이 있으면 그 줄의 검은 버튼을 누른 것으로 치고 비어 있으면 취소를 누른 것으로 친다 */
+function leaveToolEdit(){
+  const box=$("#roomTool"), a=document.activeElement;
+  if(!a||!box.contains(a)||(a.tagName!=="INPUT"&&a.tagName!=="TEXTAREA")) return false;
+  const row=a.closest(".rt-row")||a.parentElement||box;
+  const ok=row.querySelector("button.rt-btn:not(.ghost)");
+  const no=[...box.querySelectorAll("button.rt-btn.ghost")].find(b=>b.textContent.trim()==="취소");
+  const has=String(a.value||"").trim()!==""; a.blur();
+  if(has&&ok) ok.click(); else if(no) no.click(); else renderRoomTool();
+  return true;
+}
+document.addEventListener("pointerdown",e=>{
+  const box=$("#roomTool"), a=document.activeElement;
+  if(!a||!box.contains(a)) return;
+  const row=a.closest(".rt-row")||a.parentElement;
+  if(row&&row.contains(e.target)) return;
+  leaveToolEdit();
+},true);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&leaveToolEdit()) e.preventDefault() });
 // 이 방에 켜기/끄기. 설치 안 한 도구는 켜는 순간 설치된다. 이미 켜 둔 다른 도구는 그대로 두고 옆으로 넘겨 본다
 async function setRoomTool(t,on){
   if(on&&!t.user&&!toolOn[t.id]) setToolOn(t,true);
@@ -2469,7 +2510,7 @@ const TOOLS=[
            <input class="rt-in" maxlength="30" placeholder="할 일" value="${q?esc(q.title):""}">
            <button class="rt-btn ghost" data-k="pt">${q?q.pt:1}P</button>
            <button class="rt-btn" data-k="ok">${q?"수정":"등록"}</button>
-         </div>${q?`<div class="rt-row"><button class="rt-btn ghost" data-k="del">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`:score}`;
+         </div>${q?`<div class="rt-row"><button class="rt-btn ghost" data-k="del">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`:`<div class="rt-row"><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`}`;
        const inp=$b(".rt-in"); inp.focus();
        let pt=q?q.pt:1;
        $b('[data-k="pt"]').onclick=()=>{ pt=pt%5+1; $b('[data-k="pt"]').textContent=pt+"P" };
@@ -2478,10 +2519,8 @@ const TOOLS=[
          const was=!!q; d.quest={title:t,pt,by:c.me}; c.ui.edit=false;
          c.save(`${was?"퀘스트 수정":"퀘스트"} '${t}' ${pt}P`);
        };
-       if(q){
-         $b('[data-k="del"]').onclick=()=>{ d.quest=null; c.ui.edit=false; c.save(`퀘스트 '${q.title}' 지움`) };
-         $b('[data-k="no"]').onclick=()=>{ c.ui.edit=false; c.redraw() };
-       }
+       $b('[data-k="no"]').onclick=()=>{ c.ui.edit=false; c.redraw() };   // 등록하다 말고도 나올 수 있다(E-1)
+       if(q) $b('[data-k="del"]').onclick=()=>{ d.quest=null; c.ui.edit=false; c.save(`퀘스트 '${q.title}' 지움`) };
        return;
      }
      if(!q){

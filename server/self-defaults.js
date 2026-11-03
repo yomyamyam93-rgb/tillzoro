@@ -41,11 +41,13 @@ function editRow(el,c,id,text){
   // 다른 줄을 고치던 중이면 그것부터 닫는다(두 줄이 같이 열리지 않게)
   var o=el.parentNode.querySelector('.ed'); if(o&&o!==el){ c.redraw(); el=document.querySelector('[data-id="'+id+'"]'); if(!el) return }
   el.className='ed'; el.onclick=null;
-  el.innerHTML='<input class="rt-in"><button class="rt-btn" data-a="s">저장</button><button class="rt-btn ghost" data-a="d">삭제</button>';
+  el.innerHTML='<input class="rt-in"><button class="rt-btn" data-a="s">저장</button><button class="rt-btn ghost" data-a="c">취소</button><button class="rt-btn ghost" data-a="d">삭제</button>';
   var inp=el.querySelector('input'); inp.value=text; inp.focus();
   // 저장·삭제를 누르면 입력칸을 먼저 떠난다(적는 중에는 새 목록이 와도 다시 그리지 않으므로)
   el.querySelector('[data-a="s"]').onclick=async function(e){ e.stopPropagation(); var t=inp.value.trim(); if(!t) return; inp.blur();
     try{ await c.ask('item.edit',{id:id,text:t}) }catch(err){ c.toast(err.message) } };
+  // 버리고 나오기. 바깥을 누르는 쪽은 앱이 저장으로 옮겨 준다 — 여기는 "고친 것을 버린다"는 뜻
+  el.querySelector('[data-a="c"]').onclick=function(e){ e.stopPropagation(); inp.blur(); c.redraw() };
   el.querySelector('[data-a="d"]').onclick=async function(e){ e.stopPropagation(); inp.blur();
     try{ await c.ask('item.drop',{id:id}) }catch(err){ c.toast(err.message) } };
 }`;
@@ -98,12 +100,21 @@ function render(box,c){
 }
 function keep(box,c){
   c.ui.ph='우유 사기';
-  var all=items(c), open=all.filter(function(e){ return !e.done }), done=all.filter(function(e){ return e.done }).slice(0,10);
+  var all=items(c);
+  // 체크한 줄은 그 자리에 남는다. 들어올 때 한 번 "안 한 것 먼저"로 줄 세우고 그 순서를 화면에 있는 동안 지킨다 —
+  // 누른 줄이 아래 구역으로 날아가 화면이 밀리는 일이 없게. 정리는 다시 들어왔을 때(c.ui 는 나가면 비워진다)
+  if(!c.ui.ord) c.ui.ord=all.filter(function(e){ return !e.done }).concat(all.filter(function(e){ return e.done })).map(function(e){ return String(e.id) });
+  var ord=c.ui.ord;
+  var add=[]; all.forEach(function(e){ if(ord.indexOf(String(e.id))<0) add.push(String(e.id)) });
+  if(add.length) c.ui.ord=ord=add.concat(ord);   // 새로 받아 적힌 것은 받아 적힌 순서대로 맨 위에
+  all.sort(function(a,b){ return ord.indexOf(String(a.id))-ord.indexOf(String(b.id)) });
+  var open=all.filter(function(e){ return !e.done }), dn=0;
+  all=all.filter(function(e){ return !e.done||++dn<=10 });   // 한 것은 최근 10개까지만 보인다
   var top='<div class="top"><span class="hd" style="flex:1;padding:0">남은 할 일 '+open.length+'</span><button class="rt-btn ghost" data-a="add">＋</button></div>';
   if(!all.length){ box.innerHTML=CSS+'<div class="kl">'+top+'<div class="zero">할 일 없음</div></div>'; adder(box,c); return }
-  // 동그라미를 누르면 했음/안 했음, 글을 누르면 그 자리에서 고치기·지우기
+  // 동그라미를 누르면 했음/안 했음(그 자리에서 동그라미가 차고 글에 줄이 긋힌다. 다시 누르면 풀린다), 글을 누르면 그 자리에서 고치기·지우기
   var row=function(e){ return '<div class="it" data-id="'+e.id+'"><span class="ck'+(e.done?' on':'')+'"></span><span class="tx'+(e.done?' done':'')+'">'+esc(e.w)+'</span></div>' };
-  box.innerHTML=CSS+'<div class="kl">'+top+open.map(row).join('')+(done.length?'<div class="hd">한 것</div>'+done.map(row).join(''):'')+'</div>';
+  box.innerHTML=CSS+'<div class="kl">'+top+all.map(row).join('')+'</div>';
   adder(box,c);
   box.querySelectorAll('.it').forEach(function(el){
     var id=el.getAttribute('data-id'), e=all.find(function(x){ return String(x.id)===id });
