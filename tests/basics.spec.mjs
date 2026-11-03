@@ -146,8 +146,8 @@ test("틸봇에게 할 일 고치기를 시키면 새 버전이 붙는다", asyn
   await page.evaluate((id) => openChat(id), await selfId(page));
   await page.waitForFunction(() => Object.values(roomData).some((d) => d && d.name === "할 일"), null, { timeout: 15000 });
   const [tid, before] = await page.evaluate(() => { const k = Object.keys(roomData).find((k) => roomData[k]?.name === "할 일"); return [k, roomData[k].ver] });
-  const texts = ["끝낸 건 줄 그어서 보여줘", "끝낸 건 흐리게 보여줘", "끝낸 건 맨 아래로 내려줘"];
-  await page.evaluate((t) => callBot(null, "할 일 " + t), texts[Date.now() % texts.length]);
+  // 매번 다른 부탁이어야 한다. 이미 그렇게 돼 있는 것을 부탁하면 봇이 "이미 그래요" 하고 고치지 않는다(맞는 행동)
+  await page.evaluate((n) => callBot(null, `할 일 남은 할 일 제목 뒤에 "(${n})" 붙여줘`), Date.now() % 1000);
   await page.waitForFunction(([k, v]) => roomData[k] && roomData[k].ver > v, [tid, before], { timeout: 200000 });
   await page.waitForFunction((k) => roomBox && roomBox.key.startsWith(k + "@") && roomBox.h.alive, tid, { timeout: 30000 });
   expect(await page.evaluate(() => [...document.querySelectorAll("#days .botmsg:not(.work)")].length)).toBeGreaterThan(0);
