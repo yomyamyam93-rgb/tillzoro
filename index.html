@@ -265,14 +265,18 @@
   /* 도구와 펼침은 한 상자다. 펼치면 상자가 아래로 늘어난다 */
   .dayswrap{position:relative}
   /* 모음 탭: 나챗방 도구들을 한곳에서. 누르면 그 도구를 펼친 모습으로 화면 가득 */
-  #boxList{display:flex;flex-direction:column;gap:14px}
-  .boxc{display:flex;flex-direction:column;gap:6px;cursor:pointer}
-  .boxc .bh{display:flex;align-items:center;gap:8px;padding:0 4px;min-height:28px}
-  .boxc .bh b{flex:1;min-width:0;font:600 13px var(--font-body);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .boxc .bh .toggle{flex:none;transform:scale(.82);transform-origin:right center}
-  .boxc.off .roomtool{opacity:.45}
-  .boxc .roomtool{display:flex;margin:0;position:relative}
-  .boxc .roomtool>.cover{position:absolute;inset:0;z-index:2}
+  /* 모음: 도구 이름이 적힌 정사각 칸들. 누르면 그 도구를 화면 가득 */
+  #boxList{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:start}
+  #boxList>.tempty{grid-column:1/-1}
+  .boxt{aspect-ratio:1;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
+    background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);
+    padding:12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:transform .15s ease,opacity .2s}
+  .boxt:active{transform:scale(.96)}
+  .boxt i{width:8px;height:8px;border-radius:50%;background:var(--ink)}
+  .boxt b{font:600 14px/1.3 var(--font-body);color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all}
+  .boxt.off{opacity:.5}
+  .boxt.off i{background:transparent;border:1.5px solid var(--ink-3)}
+  #s-boxv .bar .toggle{margin-left:auto;flex:none}
   #s-boxv{display:flex;flex-direction:column}
   .boxv{flex:1;min-height:0;margin:0 16px calc(88px + env(safe-area-inset-bottom,0px));padding:14px;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift)}
   .days>:first-child{margin-top:auto}
@@ -651,7 +655,7 @@
     <div class="pad" id="boxList"></div>
   </section>
   <section class="screen" id="s-boxv">
-    <div class="bar big"><button class="icon" data-back="s-box"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="boxvTitle"></h2></div>
+    <div class="bar big"><button class="icon" data-back="s-box"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="boxvTitle"></h2><div class="toggle" id="boxvOn"></div></div>
     <div class="boxv" id="boxvBody"></div>
   </section>
 
@@ -683,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1146</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1154</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -2457,26 +2461,29 @@ async function renderBox(){
   const ids=Object.keys(boxData).filter(k=>isUserTool(k)&&boxData[k]?.ver).sort((a,b)=>(!boxData[a].on-!boxData[b].on)||Number(a.slice(1))-Number(b.slice(1)));
   l.innerHTML="";
   if(!ids.length){ const e=document.createElement("p"); e.className="tempty"; e.textContent="아직 없어요"; l.appendChild(e); return }
-  for(const id of ids){
-    const card=document.createElement("div"); card.className="boxc"+(boxData[id].on?"":" off");
-    card.innerHTML=`<div class="bh"><b>${esc(boxData[id].name||"도구")}</b><div class="toggle${boxData[id].on?" on":""}"></div></div><div class="roomtool user"></div>`;
-    card.querySelector(".roomtool").onclick=()=>openBox(id); l.appendChild(card);
-    // 나챗방 위 칸에 띄우기. 상자는 그대로 두고 이름 줄의 스위치만 바뀐다
-    const tg=card.querySelector(".toggle");
-    tg.onclick=async e=>{ e.stopPropagation(); const on=!boxData[id].on; boxData[id].on=on; tg.classList.toggle("on",on); card.classList.toggle("off",!on);
-      try{ await api(`/api/room/${sb.id}/${id}`,{method:"POST",body:{data:boxData[id]}}) }catch(err){ boxData[id].on=!on; tg.classList.toggle("on",!on); card.classList.toggle("off",on); toast(err.message) } };
-    const host=card.querySelector(".roomtool");
-    Promise.all([fetchToolCode(id,boxData[id].ver),boxItems(id)]).then(([code])=>{ if(!code||!card.isConnected) return;
-      mountSandbox(host,code,{state:()=>boxState(id,""),save:()=>{}}); const c=document.createElement("i"); c.className="cover"; host.appendChild(c) });
-  }
+  ids.forEach(id=>{
+    const t=document.createElement("div"); t.className="boxt"+(boxData[id].on?"":" off");
+    t.innerHTML=`<i></i><b>${esc(boxData[id].name||"도구")}</b>`;
+    t.onclick=()=>openBox(id); l.appendChild(t);
+  });
 }
+let boxOpen=null;
 async function openBox(id){
+  boxOpen=id;
   $("#boxvTitle").textContent=boxData[id]?.name||"도구";
+  $("#boxvOn").classList.toggle("on",!!boxData[id]?.on);
   const body=$("#boxvBody"); body.innerHTML="";
   go("s-boxv");
-  const code=await fetchToolCode(id,boxData[id].ver); if(!code) return;
+  const [code]=await Promise.all([fetchToolCode(id,boxData[id].ver),boxItems(id)]); if(!code||boxOpen!==id) return;
   const h=mountSandbox(body,code,{state:()=>boxState(id,"keep"),save:(data)=>{ boxSave(id,data); h.push() }});
 }
+// 나챗방 위 칸에 띄우기(켜고 끄기)
+$("#boxvOn").addEventListener("click",async()=>{
+  const id=boxOpen, sb=selfBond(); if(!id||!sb) return;
+  const el=$("#boxvOn"), on=!boxData[id].on; boxData[id].on=on; el.classList.toggle("on",on);
+  try{ await api(`/api/room/${sb.id}/${id}`,{method:"POST",body:{data:boxData[id]}}); renderBox() }
+  catch(e){ boxData[id].on=!on; el.classList.toggle("on",!on); toast(e.message) }
+});
 // 내가 만든 도구(대화방 도구 시트에 늘 보인다)
 let myTools=[];
 async function loadMyTools(){ try{ myTools=(await api("/api/tools/mine")).tools||[] }catch(e){} }

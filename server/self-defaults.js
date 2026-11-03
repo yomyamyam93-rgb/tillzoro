@@ -1,4 +1,4 @@
-/* 나챗방을 처음 열 때 깔아 두는 기본 도구. 틸봇이 만드는 것과 같은 모양(render + keep, 조건 rule)이라
+/* 나챗방을 처음 열 때 깔아 두는 기본 도구 — 일정·할 일 둘만(2026-11-03 사용자 결정). 틸봇이 만드는 것과 같은 모양(render + keep, 조건 rule)이라
    사용자가 지우거나 "@일정 달력으로 바꿔줘" 처럼 고칠 수 있다. c.items 는 받아 적은 항목(새것이 앞) */
 const css = `<style>.lx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .lx .row{display:flex;align-items:center;gap:8px;min-width:0}
@@ -70,44 +70,6 @@ function keep(box,c){
   box.innerHTML=CSS+'<div class="kl">'+open.map(row).join('')+(done.length?'<div class="hd">한 것</div>'+done.map(row).join(''):'')+'</div>';
   box.querySelectorAll('.it').forEach(function(el){ el.onclick=function(){ var id=el.getAttribute('data-id'); c.data.done=c.data.done||{};
     if(c.data.done[id]) delete c.data.done[id]; else c.data.done[id]=true; c.save() } });
-}`,
-  },
-  {
-    name: "링크",
-    rule: { on: true, kinds: ["link"], ai: false, ask: "", fields: [] },
-    code: `
-var CSS=${JSON.stringify(css)};
-function url(t){ var m=String(t||'').match(/https?:\\/\\/\\S+/); return m?m[0]:'' }
-function host(u){ try{ return new URL(u).hostname.replace(/^www\\./,'') }catch(e){ return u } }
-function label(it){ var u=url(it.text), rest=String(it.text||'').replace(u,'').trim(); return rest||host(u) }
-function render(box,c){
-  var l=c.items;
-  if(!l.length){ box.innerHTML=CSS+'<div class="lx"><div class="none">모은 링크 없음</div></div>'; return }
-  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big">'+esc(label(l[0]))+'</span></div><div class="sub">'+esc(host(url(l[0].text)))+' · 링크 '+l.length+'개</div></div>';
-}
-function keep(box,c){
-  var l=c.items.slice(0,60);
-  if(!l.length){ box.innerHTML=CSS+'<div class="kl"><div class="zero">모은 링크 없음</div></div>'; return }
-  box.innerHTML=CSS+'<div class="kl">'+l.map(function(it,i){ return '<div class="it" data-i="'+i+'"><span class="tx">'+esc(label(it))+'</span><span class="mt">'+esc(host(url(it.text)))+'</span></div>' }).join('')+'</div>';
-  box.querySelectorAll('.it').forEach(function(el){ el.onclick=async function(){ var it=l[+el.getAttribute('data-i')];
-    try{ await c.ask('copy',{text:url(it.text)}); c.toast('복사했어요') }catch(e){} } });
-}`,
-  },
-  {
-    name: "메모",
-    rule: { on: true, kinds: ["text"], ai: true, ask: "일정·약속도 할 일도 아닌 글(생각, 정보, 적어 둔 것)", fields: [] },
-    code: `
-var CSS=${JSON.stringify(css)};
-function when(at){ var x=new Date(at); return (x.getMonth()+1)+'/'+x.getDate() }
-function render(box,c){
-  var l=c.items;
-  if(!l.length){ box.innerHTML=CSS+'<div class="lx"><div class="none">메모 없음</div></div>'; return }
-  box.innerHTML=CSS+'<div class="lx"><div class="row"><span class="big" style="font-size:15px;font-weight:600">'+esc(l[0].text)+'</span></div><div class="sub">'+esc(when(l[0].at))+' · 메모 '+l.length+'개</div></div>';
-}
-function keep(box,c){
-  var l=c.items.slice(0,80);
-  if(!l.length){ box.innerHTML=CSS+'<div class="kl"><div class="zero">메모 없음</div></div>'; return }
-  box.innerHTML=CSS+'<div class="kl">'+l.map(function(it){ return '<div class="it"><span class="tx">'+esc(it.text)+'</span><span class="mt">'+esc(when(it.at))+'</span></div>' }).join('')+'</div>';
 }`,
   },
 ];
