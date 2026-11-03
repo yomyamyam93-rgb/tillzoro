@@ -32,6 +32,8 @@ async function watchDays(page, ms) {
   }, ms);
 }
 
+// 내 컴퓨터에서 열쇠가 없으면 건너뛰지만, CI 에서 없으면 문이 그냥 열리는 셈이라 깨뜨린다
+if (process.env.CI && !TOKEN) throw new Error("시험 계정 열쇠가 GitHub 설정에 없다");
 test.beforeEach(async ({ page }) => { test.skip(!TOKEN, "시험 계정 열쇠가 없다"); await open(page) });
 
 test("방에 들어가면 처음부터 바닥이고, 들어가는 동안 대화가 움직이지 않는다", async ({ page }) => {

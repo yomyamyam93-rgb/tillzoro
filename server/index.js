@@ -1351,6 +1351,17 @@ async function collect(bond, row, m, senderId) {
     }
   } catch (e) { console.error("collect", e.message) }
 }
+// 서버가 재시작되는 사이에 온 글은 collect 가 끊겨 항목이 안 남는다(2026-11-03 "치약 사기"). 나챗방의 최근 글 중 항목이 없는 것을 다시 넣는다
+async function backfillItems() {
+  try {
+    const { rows } = await pool.query(
+      `select m.id, m.sender_id, m.body, m.media, m.mime, m.kind, to_jsonb(b) as bond from messages m join bonds b on b.id = m.bond_id
+       where b.kind <> 'group' and b.a_id = b.b_id and m.kind <> 'bot' and m.created_at > now() - interval '3 days'
+         and not exists (select 1 from items i where i.msg_id = m.id) order by m.id limit 100`);
+    for (const r of rows) await collect(r.bond, { id: r.id }, { body: r.body, media: r.media, mime: r.mime, kind: r.kind }, r.sender_id);
+    if (rows.length) console.log("backfill", rows.length);
+  } catch (e) { console.error("backfill", e.message) }
+}
 // 항목들을 이해하고(필요한 것만) 도구에 넣는다. only: 이 도구들의 넣고 빼기만 다시 정한다(새 도구·조건 바뀜)
 async function fileItems(uid, items, tools) {
   const fit = (x, it) => x.rule.kinds.includes(it.kind);
@@ -1859,4 +1870,4 @@ ensureSchema().then(() =>
   server.listen(PORT, "127.0.0.1", () =>
     console.log(`till zero server on 127.0.0.1:${PORT}`)
   )
-);
+).then(() => { setTimeout(backfillItems, 5000); setInterval(backfillItems, 600000) });
