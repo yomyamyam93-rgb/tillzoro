@@ -163,7 +163,8 @@ test("고치는 중에 알림이 와도 입력칸이 남는다", async ({ page }
   await page.waitForFunction(() => roomBox && roomBox.h.alive && roomBox.h.hasKeep, null, { timeout: 20000 });
   await page.evaluate(() => setKeep(true)); await page.waitForTimeout(1200);
   const fr = page.frameLocator(".rtkeep.on iframe");
-  await fr.locator(".kl [data-id]").first().tap();
+  await fr.locator(".kl [data-id] .tx").first().tap();   // 글자를 누른다(동그라미는 했음/안 했음 토글)
+  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
   await fr.locator("input.rt-in").fill("고치는 중");
   await page.evaluate(() => { keepBox && keepBox.h.push(); roomBox && roomBox.h.push() });   // 알림이 온 것처럼 다시 그린다
   await page.waitForTimeout(300);
