@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1545</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1600</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1499,7 +1499,7 @@ async function toolAsk(m,win,h){
     // 나챗방에 던진 것과 같이 받아 적힌다(도구 안의 ＋)
     else if(m.kind==="throw"){
       const sb=people.find(p=>p.self); if(!sb||!text) throw new Error("적을 것이 없어요");
-      const r=await api("/api/messages",{method:"POST",body:{bondId:sb.id,body:text}});
+      const r=await api("/api/messages",{method:"POST",body:{bondId:sb.id,body:text,tool:h&&h.tool||undefined}});   // 이 도구에 꼭 들어간다
       if(cur&&cur.id===sb.id) appendBubble(fromServer(r,true));
       back(true);
     }

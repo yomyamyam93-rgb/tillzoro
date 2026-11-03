@@ -698,7 +698,8 @@ app.post("/api/messages", auth, async (req, res) => {
   if (!body) return res.status(400).json({ error: "빈 메시지는 보낼 수 없어요" });
   const bond = await myBond(req.body?.bondId, req.user.id);
   if (!bond) return res.status(404).json({ error: "없는 대화예요" });
-  sendMessage(req, res, bond, { body, kind: "text", replyTo: await replyOf(bond.id, req.body?.replyTo) });
+  // 도구 안의 ＋ 로 던진 글은 그 도구에 꼭 들어간다(tool). 이해는 똑같이 하되 들어갈지는 AI 판단에 맡기지 않는다
+  sendMessage(req, res, bond, { body, kind: "text", replyTo: await replyOf(bond.id, req.body?.replyTo), tool: Number(String(req.body?.tool || "").replace(/^u/, "")) || 0 });
 });
 // 답장 대상은 같은 방에 있는 메시지만. 아니면 답장 없이 보낸다
 async function replyOf(bondId, v) {
@@ -1347,7 +1348,7 @@ async function collect(bond, row, m, senderId) {
       const it = (await pool.query(
         "insert into items (user_id, bond_id, msg_id, kind, body, media, mime) values ($1, $2, $3, $4, $5, $6, $7) returning *",
         [uid, bond.id, row.id, kind, m.body || "", m.media || null, m.mime || null])).rows[0];
-      await fileItems(uid, [it], tools);
+      await fileItems(uid, [it], tools, String(uid) === String(senderId) ? m.tool : 0);
     }
   } catch (e) { console.error("collect", e.message) }
 }
@@ -1363,7 +1364,7 @@ async function backfillItems() {
   } catch (e) { console.error("backfill", e.message) }
 }
 // 항목들을 이해하고(필요한 것만) 도구에 넣는다. only: 이 도구들의 넣고 빼기만 다시 정한다(새 도구·조건 바뀜)
-async function fileItems(uid, items, tools) {
+async function fileItems(uid, items, tools, force = 0) {   // force: 이 도구에는 무조건 넣는다(도구 안의 ＋)
   const fit = (x, it) => x.rule.kinds.includes(it.kind);
   const smart = tools.filter((x) => x.rule.ai);
   // 글·링크는 늘 이해한다(나중에 생길 도구와 답하기에 쓴다). 사진은 사진을 가리는 도구가 있을 때만 본다
@@ -1374,7 +1375,7 @@ async function fileItems(uid, items, tools) {
   for (const it of items) {
     const u = res.get(Number(it.id)), meta = u ? u.meta : (it.meta || {});
     if (u) await pool.query("update items set meta = $2 where id = $1", [it.id, meta]);
-    for (const x of tools) if (fit(x, it) && (!x.rule.ai || (u && u.tools.includes(x.id)))) hits.push([it.id, x.id, meta]);
+    for (const x of tools) if (Number(x.id) === force || (fit(x, it) && (!x.rule.ai || (u && u.tools.includes(x.id))))) hits.push([it.id, x.id, meta]);
   }
   for (const [i, x, d] of hits)
     await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, $3) on conflict (item_id, tool_id) do update set data = $3", [i, x, d]);
