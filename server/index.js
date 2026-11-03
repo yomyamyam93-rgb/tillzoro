@@ -1025,6 +1025,9 @@ function render(box, c) { ... }
   - 이름(name)은 사용자가 부른 말 그대로 짧게(가계부라 하면 "가계부"). 꾸민 이름을 짓지 않는다.
   - 코드에서는 c.items 로 받는다: [{id, kind, text, src(사진·영상 작은 것), full(원본), at(밀리초), room(방 이름), data:{뽑은 값}}], 새것이 앞.
     사진은 <img src="\${it.src}"> 로 그린다(object-fit:cover). c.items 는 읽기만 한다.
+  - 받아 가는 도구의 펼친 모습에는 직접 더하고·고치고·지우는 길을 늘 둔다(사용자가 틸봇에게 부탁하지 않아도 되게):
+    더하기: 맨 위 ＋ → 입력칸 → await c.ask("throw",{text}) (나챗방에 던진 것과 똑같이 받아 적히고 c.items 로 들어온다).
+    고치기: 줄을 누르면 그 자리에 입력칸 + 저장·삭제 → await c.ask("item.edit",{id, text}) / await c.ask("item.drop",{id}). 끝나면 c.items 가 새로 온다.
   - 직접 적는 것(예: 가계부에 손으로 추가)이 필요하면 c.data 에 따로 쌓고 c.items 와 합쳐 보여 준다. 다 한 것 표시(할 일 체크 등)도 c.data 에 item id 로 둔다.
   - 보통 도구(누르는 것: 게임·정산·투표 등)이거나 나챗방이 아니면 rule.on=false, kinds·fields 빈 목록, ai=false, ask 빈 글.
 - 칸은 바깥 인터넷과 끊겨 있다. 대신 앱에 부탁할 수 있다(모두 Promise):
@@ -1461,10 +1464,13 @@ async function botRoute(uid, ctx, text, ridTool, seen) {
       model: PATCH_MODEL, max_tokens: 1500,
       output_config: { format: betaZodOutputFormat(RouteOut) },
       system: `너는 틸봇이다. 사용자가 대화방에서 "@..." 로 한 말을 보고 할 일 하나를 고른다.
+너 자신이 틸봇이고 도구를 만들고 고치는 쪽이다 — reply 에서 스스로를 "틸봇"이라 부르거나 "틸봇에게 말해 달라"고 하지 않는다("제가 고칠게요"). 사과·변명을 늘어놓지 않는다.
 - show: 이미 있는 도구를 찾거나 보여 달라는 말("가계부 보여줘", "가계부 어딨어", "열어 줘", "찾아 줘", 도구 이름만 말함). tool = 그 도구.
-- answer: 도구에 든 내용이나 앞 대화로 답할 수 있는 질문("이번 달 얼마 썼어?", "토요일에 뭐 있어?", "할 일 몇 개 남았어?", "아까 그거 뭐였지?").
+- answer: 도구에 든 "내용"에 대한 질문(도구의 기능에 대한 불만·요청은 answer 가 아니다)("이번 달 얼마 썼어?", "토요일에 뭐 있어?", "할 일 몇 개 남았어?", "아까 그거 뭐였지?").
   reply 에 한두 문장으로 답한다. 숫자는 도구 내용에서 직접 세고 더한다(금액은 쉼표, "원"). 모르면 모른다고 짧게. tool = 근거가 된 도구(없으면 0).
 - edit: 있는 도구를 바꾸거나 더해 달라는 말("카페는 따로", "이름 바꿔", "버튼 키워", "합계 크게"). tool = 그 도구. 남의 도구(mine=false)는 고를 수 없다.
+  도구에 없는 기능을 탓하거나 바라는 말도 edit 다 — 질문 꼴이어도 답하지 말고 고친다("왜 수정을 못해?", "지울 수 있어야지", "직접 넣을 수 있게", "고치라고", "그니까 고쳐").
+  앞 대화에서 이어지는 "고치라고/해 줘/그거" 도 앞에서 말한 도구의 edit 다. 여러 도구를 말하면 보고 있는 도구, 없으면 먼저 말한 도구.
 - new: 이 방에 같은 일을 하는 도구가 없을 때만. 이미 비슷한 도구가 있으면 new 가 아니라 show 나 edit 다(가계부가 있는데 "가계부" → show).
   사용자가 "하나 더", "새로", "따로 하나" 처럼 분명히 새 것을 원할 때만 비슷해도 new.
 - remember: 나에 대한 사실을 알려 주거나 고쳐 주는 말("지연이는 와이프야", "그거 와이프 일정이야", "회사는 강남이야", "민지는 동료").
@@ -1749,6 +1755,17 @@ app.post("/api/self/item/:itemId", auth, async (req, res) => {
   const body = (await pool.query("select body from items where id = $1", [it.id])).rows[0]?.body || "";
   if (body) await pool.query("insert into corrections (user_id, body, tool, \"on\") values ($1, $2, $3, $4)", [req.user.id, body.slice(0, 200), tn, !!req.body?.on]);
   notify([String(req.user.id)], { type: "items", tools: ["u" + tool] });
+  res.json({ ok: true });
+});
+// 받아 적은 것 고치기: 글을 바꾸고 다시 이해해서 도구들에 다시 넣는다(나챗방의 원래 말풍선은 그대로)
+app.post("/api/self/item/:itemId/edit", auth, async (req, res) => {
+  const text = String(req.body?.text || "").trim().slice(0, 1000);
+  const it = (await pool.query("update items set body = $3 where id = $1 and user_id = $2 returning *", [Number(req.params.itemId) || 0, req.user.id, text])).rows[0];
+  if (!it || !text) return res.sendStatus(404);
+  const tools = await ruleTools(req.user.id);
+  await pool.query("delete from item_hits where item_id = $1 and tool_id = any($2::bigint[])", [it.id, tools.filter((x) => x.rule.ai).map((x) => x.id)]);
+  await fileItems(req.user.id, [it], tools);
+  notify([String(req.user.id)], { type: "items", tools: tools.map((x) => "u" + x.id) });
   res.json({ ok: true });
 });
 // 기억장: 틸봇이 나에 대해 아는 것. 설정에서 보고 지운다
