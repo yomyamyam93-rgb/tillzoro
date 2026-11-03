@@ -89,6 +89,10 @@
   #rows .card:not(.add):active{transform:scale(.98)}
   .btn:active{transform:scale(.97)}
   .item:active{background-color:var(--line)}
+  /* 누르면 반응한다(2026-11-03). 도구 칸은 .rt- 로 시작하는 규칙을 그대로 받아 가므로 만든 도구에도 같이 적용된다 */
+  .rt-btn:active,.rt-chip:active{transform:scale(.96)}
+  .icon:active,.sq:active{opacity:.5}
+  .tabs button:active{opacity:.5}
   @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
   /* generic */
@@ -939,7 +943,7 @@ applyTheme();
   if(auth){
     $("#till").classList.add("base"); stack=["till"];
     renderTill(); syncTabs();
-    tryUrlCode(); connectWS(); loadToolStates(); loadMyTools(); syncPush();
+    tryUrlCode(); connectWS(); loadToolStates(); loadMyTools(); syncPush(); selfSetup();
     if(linkAfterSplash||store.get("needPhone",0)) askPhoneLink(true);
   }
   else { $("#ob-phone").classList.add("base"); stack=["ob-phone"]; }
@@ -1009,7 +1013,7 @@ async function verifyCode(){
       }
       const d=await api("/api/phone/link",{method:"POST",body:{ticket}});
       me.phone=d.phone; store.del("needPhone"); setPhoneMode("signin"); back("till"); toast("번호를 연결했어요");
-      syncTill().catch(()=>{}); connectWS(); loadToolStates(); loadMyTools(); syncPush();
+      syncTill().catch(()=>{}); connectWS(); loadToolStates(); loadMyTools(); syncPush(); selfSetup();
       return;
     }
     if(r.existing){ await enter(await api("/api/phone/login",{method:"POST",body:{ticket}})); return }
@@ -1276,6 +1280,16 @@ function drawHead(p){
   const ph=headPhoto(p); $("#cavatar").style.backgroundImage=ph?`url(${ph})`:"none";
 }
 let selfReady=false, selfTags={};
+/* 나챗방 기본 도구를 깔고(처음), 고쳐진 기본 도구를 받아 둔다. 나챗방에 들어가지 않고 모음만 열어도 받아야 하므로
+   앱을 열 때 한 번 돌린다 — 전에는 나챗방에 들어간 사람만 새 판을 받았다(2026-11-03) */
+function selfSetup(){
+  if(selfReady) return; selfReady=true;
+  return api("/api/self/setup",{method:"POST"}).then(r=>{
+    if(!(r.made||r.upgraded)) return;
+    if(cur&&cur.self) loadRoomTools();
+    if(stack[stack.length-1]==="s-box") renderBox();
+  }).catch(()=>{ selfReady=false });
+}
 async function loadTags(){ if(!cur||!cur.self) return; const id=cur.id; try{ selfTags=(await api("/api/self/tags")).tags||{} }catch(e){ return } store.set("tags:"+id,selfTags); applyTags() }
 // 나챗방 말풍선의 작은 글씨를 누르면: 이 글을 넣을 도구를 켜고 끈다(틸봇이 잘못 넣었거나 빠뜨렸을 때)
 async function tagMenu(msgId){
@@ -1308,7 +1322,7 @@ async function openChat(id){
   // 보던 자리를 기억한다. 위로 올려 두고 나갔으면 다시 들어올 때 그 자리, 바닥을 보고 있었으면 바닥
   const sv=store.get("scroll:"+id,null); nodes=nodesFor(id); pinned=!sv||sv.p;
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
-  if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if((r.made||r.upgraded)&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
+  if(cur.self) selfSetup();
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); if(sv&&!sv.p) $("#days").scrollTop=sv.t; go("chat");
@@ -1631,8 +1645,14 @@ const toolView={};   // 방 → 내가 보고 있는 도구
 const onTools=()=>cur?Object.keys(roomData).filter(k=>roomData[k]?.on&&(isUserTool(k)||TOOLS.some(t=>t.id===k&&t.slot==="top")))
   .sort((a,b)=>(isUserTool(a)-isUserTool(b))||(Number(a.slice(1))-Number(b.slice(1)))||a.localeCompare(b)):[];
 const viewTool=()=>{ const ids=onTools(), v=cur&&toolView[cur.id]; return ids.includes(v)?v:ids[0] };
+/* --rth 는 대화가 비워 두는 위쪽 자리(접힌 상자 높이)다. 펼치는 동안에는 손대지 않는다 —
+   닫을 때 open 을 떼면 상자가 아직 커 있어서 그 높이가 --rth 로 들어가 대화가 한 번 아래로 밀렸다(2026-11-03).
+   다 접힌 뒤(closing 이 떨어진 뒤)에 한 번만 맞춘다 */
+let rthFit=()=>{};
 { const card=$("#roomTool").parentNode, days=$("#days");
-  new ResizeObserver(()=>{ if(card.classList.contains("open")) return; days.style.setProperty("--rth",card.offsetHeight?card.offsetHeight+8+"px":"0px") }).observe(card) }
+  rthFit=()=>{ if(card.classList.contains("open")||card.classList.contains("closing")) return;
+    days.style.setProperty("--rth",card.offsetHeight?card.offsetHeight+8+"px":"0px") };
+  new ResizeObserver(()=>rthFit()).observe(card) }
 let keepOpen=false, keepBox=null;   // 펼침은 나만의 것. 다른 도구로 넘기면 접힌다
 function setKeep(on){ if(on&&!roomBox?.h?.hasKeep) return; keepOpen=on; syncKeep() }
 function syncKeep(){
@@ -1653,7 +1673,9 @@ function syncKeep(){
     panel.classList.add("on");
   } else if(panel.classList.contains("on")||keepBox){
     panel.classList.remove("on"); const kb=keepBox; keepBox=null;
-    setTimeout(()=>{ if(!keepBox&&kb&&panel.contains(kb.h.frame)) panel.innerHTML="" },360);
+    const card=panel.parentNode; card.classList.add("closing");
+    setTimeout(()=>{ if(!keepBox&&kb&&panel.contains(kb.h.frame)) panel.innerHTML="";
+      card.classList.remove("closing"); rthFit() },360);
   }
 }
 let swiping=false;

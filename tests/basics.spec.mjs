@@ -252,3 +252,21 @@ test("체크해도 줄은 제자리에 있고 「한 것」 구역이 생기지 
   expect(await fr.locator(".kl [data-id] .ck.on").count(), "다시 눌러도 안 풀린다").toBe(0);
   expect(await rowIds(fr), "풀었더니 자리가 바뀌었다").toEqual(order0);
 });
+
+// 도구를 펼쳤다 닫으면 대화가 한 번 아래로 밀렸다: open 을 떼는 순간 아직 커 있는 상자 높이가 --rth 로 새어 들어갔다(2026-11-03)
+test("도구를 펼쳤다 닫아도 대화가 비워 두는 자리가 안 변한다", async ({ page }) => {
+  await page.evaluate((id) => openChat(id), await selfId(page));
+  await page.waitForFunction(() => roomBox && roomBox.h.alive && roomBox.h.hasKeep, null, { timeout: 20000 });
+  const rth = () => page.evaluate(() => getComputedStyle(document.getElementById("days")).getPropertyValue("padding-top"));
+  const before = await rth();
+  await page.evaluate(() => setKeep(true)); await page.waitForTimeout(700);
+  expect(await rth(), "펼치는 동안 대화 자리가 변했다").toBe(before);
+  // 닫는 동안 한 프레임이라도 달라지면 그것이 눈에 튀는 그 순간이다
+  const seen = await page.evaluate(async () => {
+    const d = document.getElementById("days"), S = new Set(); const t0 = performance.now();
+    setKeep(false);
+    await new Promise((r) => { const f = () => { S.add(getComputedStyle(d).paddingTop); performance.now() - t0 < 700 ? requestAnimationFrame(f) : r() }; requestAnimationFrame(f) });
+    return [...S];
+  });
+  expect(seen, "닫는 동안 대화 자리가 움직였다: " + seen.join(" → ")).toEqual([before]);
+});

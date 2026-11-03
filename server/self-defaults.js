@@ -11,6 +11,7 @@ const css = `<style>.lx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .kl .top .rt-in{flex:1}
 .kl .it{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line);min-width:0;cursor:pointer}
 .kl .it:last-child{border-bottom:0}
+.kl .it:active{background:var(--paper-2)}
 .kl .tx{flex:1;min-width:0;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kl .tx.done{color:var(--ink-3);text-decoration:line-through}
 .kl .mt{flex:none;font-size:12px;color:var(--ink-3)}
