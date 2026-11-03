@@ -1765,6 +1765,13 @@ app.post("/api/self/item/:itemId", auth, async (req, res) => {
   notify([String(req.user.id)], { type: "items", tools: ["u" + tool] });
   res.json({ ok: true });
 });
+// 받아 적은 것 지우기: 항목 자체를 지운다(도구에서만 빼면 다시 이해할 때 되살아난다). 나챗방의 원래 말풍선은 그대로
+app.post("/api/self/item/:itemId/drop", auth, async (req, res) => {
+  const it = (await pool.query("delete from items where id = $1 and user_id = $2 returning id", [Number(req.params.itemId) || 0, req.user.id])).rows[0];
+  if (!it) return res.sendStatus(404);
+  notify([String(req.user.id)], { type: "items", tools: (await ruleTools(req.user.id)).map((x) => "u" + x.id) });
+  res.json({ ok: true });
+});
 // 받아 적은 것 고치기: 글을 바꾸고 다시 이해해서 도구들에 다시 넣는다(나챗방의 원래 말풍선은 그대로)
 app.post("/api/self/item/:itemId/edit", auth, async (req, res) => {
   const text = String(req.body?.text || "").trim().slice(0, 1000);

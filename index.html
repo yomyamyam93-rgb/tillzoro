@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1230</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1250</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -844,8 +844,9 @@ function connectWS(){
       appendBubble(fromServer(d,false));
     }
     if(d.type==="deleted"){ dropMsg(d.bondId,d.id) }
+    if(d.type==="room"&&boxOpen&&String(d.tool)===boxOpen&&$("#s-boxv").classList.contains("on")){ const sb=selfBond(); if(sb) api(`/api/room/${sb.id}`).then(r=>{ boxData=r.tools||boxData; if(boxOpen===d.tool) openBox(d.tool) }).catch(()=>{}) }
     if(d.type==="items"){ (d.tools||[]).forEach(k=>loadItems(k)); loadTags();
-      if(boxOpen&&(d.tools||[]).includes(boxOpen)&&$("#s-boxv").classList.contains("on")){ const id=boxOpen; boxItems(id).then(()=>{ if(boxOpen===id) openBox(id) }) }
+      if(boxOpen&&(d.tools||[]).includes(boxOpen)&&$("#s-boxv").classList.contains("on")){ const id=boxOpen; boxItems(id).then(()=>{ if(boxOpen===id&&boxH) boxH.push() }) }
       return }
     if(d.type==="botwork"){ if(cur&&String(cur.id)===String(d.bondId)){ botWork=d.on?{bond:cur.id,bot:d.bot}:null; renderMsgs() } return }
     if(d.type==="report"){ if($("#s-admin").classList.contains("on")) renderAdmin(); else api("/api/admin/reports").then(x=>{ $("#adminVal").textContent=x.reports.filter(r=>!r.resolved).length||"" }).catch(()=>{}) }
@@ -1310,21 +1311,20 @@ async function openChat(id){
   roomData={}; Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   nodes.clear(); $("#days").replaceChildren(); pinned=true;
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
-  if(cur.self){ loadTags(); if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
+  if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
-  // 임시(2026-11-03 #3): 방에 들어갈 때 대화가 움직이는 순간을 잡는다 — 스크롤이 생길 때마다 + 프레임마다(두 화면의 자리·투명도까지)
-  { const dv=$("#days"), t0=performance.now(), L=[], ms=()=>Math.round(performance.now()-t0);
-    const onS=()=>L.push(`${ms()} S ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight}`); dv.addEventListener("scroll",onS,{passive:true});
-    const scr=id=>{ const e=$("#"+id), c=getComputedStyle(e); return `${id}:${c.transform.split(",")[4]||"0"}/${(+c.opacity).toFixed(2)}/${e.classList.contains("on")?1:0}` };
-    const f=()=>{ L.push(`${ms()} F ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight} n=${dv.children.length} ${scr("chat")} ${scr("till")} card=${getComputedStyle(document.querySelector(".rtcard")).opacity.slice(0,4)}`);
-      if(ms()<2500) requestAnimationFrame(f); else { dv.removeEventListener("scroll",onS); if(auth) api("/api/kblog",{method:"POST",body:{lines:["open3 "+id].concat(L).slice(0,80),ua:navigator.userAgent}}).catch(()=>{}) } };
-    requestAnimationFrame(f); }
-  loadRoomTools();
+  // 화면이 미끄러져 들어오는 동안 대화가 바뀌면 눈에 튄다. 서버 대화·작은 글씨·도구를 받아 두었다가 전환이 끝난 뒤 한 번에 그린다(2026-11-03 폰 기록)
+  const settled=new Promise(r=>setTimeout(r,360));
+  const tagsP=cur.self?api("/api/self/tags").then(r=>r.tags||{}).catch(()=>null):Promise.resolve(null);
+  const roomP=api(`/api/room/${id}`).then(r=>r.tools||{}).catch(()=>null);
   try{
-    const d=await api("/api/messages/"+id);
+    const [d]=await Promise.all([api("/api/messages/"+id),settled]);
     if(!cur||cur.id!==id) return;
+    const tags=await tagsP, got=await roomP;
+    if(tags) selfTags=tags;
+    if(got){ roomData=got; renderRoomTool() }
     if(d.bond.group){ cur.members=d.bond.members||cur.members; cur.history=!!d.bond.history; cur.name=d.bond.name; cur.named=!!d.bond.named }
     // 내 화면에서 지운 것은 다시 안 보이고, 못 보낸 것은 맨 아래에 남아 있다
     const hidden=new Set(store.get("hide:"+id,[])), failed=cur.msgs.filter(x=>x.ok===false);
@@ -1504,7 +1504,7 @@ async function toolAsk(m,win,h){
     }
     // 받아 적힌 것을 고치거나(다시 이해한다) 이 도구에서 뺀다
     else if(m.kind==="item.edit"){ if(!text) throw new Error("비어 있어요"); await api(`/api/self/item/${Number(opt.id)||0}/edit`,{method:"POST",body:{text}}); back(true) }
-    else if(m.kind==="item.drop"){ if(!h||!h.tool) throw new Error("뺄 수 없어요"); await api(`/api/self/item/${Number(opt.id)||0}`,{method:"POST",body:{tool:h.tool,on:false}}); back(true) }
+    else if(m.kind==="item.drop"){ if(!h||!h.tool) throw new Error("뺄 수 없어요"); await api(`/api/self/item/${Number(opt.id)||0}/drop`,{method:"POST"}); back(true) }
     else if(m.kind==="buzz"){ if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{}); else navigator.vibrate&&navigator.vibrate(8); back(true) }
     else throw new Error("모르는 부탁이에요");
   }catch(e){ const msg=String(e&&e.message||e).slice(0,120); if(m.kind==="location") toast("위치: "+msg); back(null,msg) }
@@ -2012,7 +2012,7 @@ function copyText(t){
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,legacy); else legacy();
 }
 // 올리는 중이거나 못 보낸 사진·동영상은 이 기기 메모리에만 있으므로 기억해두지 않는다
-function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,shrunk,jobId,bondId,cid,...m})=>m).slice(-200))) }catch(e){} }
+function saveMsgs(){ if(cur) try{ localStorage.setItem("tz:msgs:"+cur.id, JSON.stringify(cur.msgs.filter(m=>m.type==="text"||m.type==="bot"||m.media).map(({blob,src,thumb,thumbSrc,pct,base,xhr,conv,gen,stopped,squeezed,shrunk,jobId,bondId,cid,...m})=>m).slice(-200))) }catch(e){} }
 // 사진·동영상 주소. 그 방에 있는 사람만 볼 수 있게 로그인 토큰을 붙인다
 const mediaURL=(id,small)=>API+"/api/media/"+id+"?t="+encodeURIComponent(auth?.token||"")+(small?"&s=t":"");
 const srcOf=m=>m.src||mediaURL(m.media);                 // 원본(크게 보기·동영상 재생)
@@ -2486,7 +2486,7 @@ async function renderBox(){
     t.onclick=()=>openBox(id); l.appendChild(t);
   });
 }
-let boxOpen=null;
+let boxOpen=null, boxH=null;
 async function openBox(id){
   boxOpen=id;
   $("#boxvTitle").textContent=boxData[id]?.name||"도구";
@@ -2494,7 +2494,7 @@ async function openBox(id){
   const body=$("#boxvBody"); body.innerHTML="";
   go("s-boxv");
   const [code]=await Promise.all([fetchToolCode(id,boxData[id].ver),boxItems(id)]); if(!code||boxOpen!==id) return;
-  const h=mountSandbox(body,code,{tool:id,state:()=>boxState(id,"keep"),save:(data)=>{ boxSave(id,data); h.push() }});
+  const h=mountSandbox(body,code,{tool:id,state:()=>boxState(id,"keep"),save:(data)=>{ boxSave(id,data); h.push() }}); boxH=h;
 }
 // 나챗방 위 칸에 띄우기(켜고 끄기)
 $("#boxvOn").addEventListener("click",async()=>{
