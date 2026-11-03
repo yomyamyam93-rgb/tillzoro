@@ -686,7 +686,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2100</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-2130</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1306,7 +1306,7 @@ async function openChat(id){
   // 지난번에 본 이 방의 도구를 곧바로 그린다. 비웠다가 서버 답으로 다시 그리면 위 상자가 사라졌다 나타나며 대화가 두 번 밀렸다(2026-11-03)
   roomData=store.get("tools:"+id,{}); Object.keys(toolUi).forEach(k=>delete toolUi[k]); renderRoomTool(); $("#newPill").classList.remove("on");
   // 보던 자리를 기억한다. 위로 올려 두고 나갔으면 다시 들어올 때 그 자리, 바닥을 보고 있었으면 바닥
-  const sv=store.get("scroll:"+id,null); nodes.clear(); $("#days").replaceChildren(); pinned=!sv||sv.p;
+  const sv=store.get("scroll:"+id,null); nodes=nodesFor(id); pinned=!sv||sv.p;
   $("#chat").classList.toggle("self",!!cur.self); Object.keys(toolItems).forEach(k=>delete toolItems[k]);
   if(cur.self){ if(!selfReady){ selfReady=true; api("/api/self/setup",{method:"POST"}).then(r=>{ if(r.made&&cur&&cur.self) loadRoomTools() }).catch(()=>{ selfReady=false }) } }
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
@@ -1720,7 +1720,9 @@ function sepLabel(d){const t=new Date();if(d.toDateString()===t.toDateString())r
 /* 대화 목록 그리기. 칸마다 이름표(key)와 내용 요약(sig)을 붙여 두고, 내용이 그대로인 칸은 만들어 둔 것을 그대로 쓴다.
    바뀐 칸만 새로 만들고, 순서가 그대로면 화면을 아예 건드리지 않는다. 그래서 다시 그려도 사진이 다시 불러와지거나
    스크롤이 튀지 않는다. 스크롤은 하나의 규칙: 바닥을 보고 있었으면(pinned) 바닥, 아니면 보던 자리 */
-const nodes=new Map();   // key → {sig, el}
+let nodes=new Map();   // key → {sig, el}. 방마다 따로 두고(roomNodes) 들어갈 때 꺼내 쓴다
+const roomNodes=new Map();
+function nodesFor(id){ let m=roomNodes.get(id); if(!m){ m=new Map(); roomNodes.set(id,m); if(roomNodes.size>6) roomNodes.delete(roomNodes.keys().next().value) } return m }
 const fresh=new Set();   // 방금 들어온 메시지: 다음 그리기에서 한 번만 나타나는 모션
 const keyOf=m=>String(m.jobId||m.cid||m.id);   // 보내는 동안 번호가 바뀌어도 같은 칸으로 본다
 const quoteKey=rid=>{ const o=cur.msgs.find(x=>String(x.id)===String(rid)); return o?o.who+":"+o.type+":"+(o.text||""):"-" };
@@ -1735,6 +1737,7 @@ function syncMedia(row,m){
 }
 function renderMsgs(){
   const days=$("#days"), top=days.scrollTop;
+  let anchor=null, anchorY=0; if(!pinned) for(const el of days.children){ if(el.offsetTop+el.offsetHeight>top){ anchor=el; anchorY=el.offsetTop-top; break } }
   const items=cur.msgs.concat(toolEvents(),memberEvents()).sort((a,b)=>a.ts-b.ts);
   const out=[], keep=new Map();
   const put=(key,sig,make)=>{ const c=nodes.get(key), el=c&&c.sig===sig?c.el:make(); keep.set(key,{sig,el}); out.push(el); return el };
@@ -1761,7 +1764,7 @@ function renderMsgs(){
   const kids=days.children;
   if(out.length!==kids.length||out.some((el,i)=>kids[i]!==el)) days.replaceChildren(...out);
   applyTags();
-  days.scrollTop=pinned?days.scrollHeight:top;
+  days.scrollTop=pinned?days.scrollHeight:(anchor&&anchor.parentNode===days?anchor.offsetTop-anchorY:top);
   // 묶인 말풍선에 한 줄이 더해진 거면 그 줄만, 아니면 말풍선 전체가 나타난다
   fresh.forEach(id=>{
     const ln=days.querySelector(`[data-mid="${id}"]`), bub=ln?ln.closest(".msg"):days.querySelector(`.msg[data-id="${id}"]`);
