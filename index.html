@@ -687,7 +687,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1154</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1225</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1312,6 +1312,13 @@ async function openChat(id){
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
+  // 임시(2026-11-03 #3): 방에 들어갈 때 대화가 움직이는 순간을 잡는다 — 스크롤이 생길 때마다 + 프레임마다(두 화면의 자리·투명도까지)
+  { const dv=$("#days"), t0=performance.now(), L=[], ms=()=>Math.round(performance.now()-t0);
+    const onS=()=>L.push(`${ms()} S ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight}`); dv.addEventListener("scroll",onS,{passive:true});
+    const scr=id=>{ const e=$("#"+id), c=getComputedStyle(e); return `${id}:${c.transform.split(",")[4]||"0"}/${(+c.opacity).toFixed(2)}/${e.classList.contains("on")?1:0}` };
+    const f=()=>{ L.push(`${ms()} F ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight} n=${dv.children.length} ${scr("chat")} ${scr("till")} card=${getComputedStyle(document.querySelector(".rtcard")).opacity.slice(0,4)}`);
+      if(ms()<2500) requestAnimationFrame(f); else { dv.removeEventListener("scroll",onS); if(auth) api("/api/kblog",{method:"POST",body:{lines:["open3 "+id].concat(L).slice(0,80),ua:navigator.userAgent}}).catch(()=>{}) } };
+    requestAnimationFrame(f); }
   loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
