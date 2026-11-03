@@ -75,11 +75,11 @@ test("도구 넘기기: 상자째 움직이고 다음 도구가 된다", async (
   await page.waitForFunction(() => onTools().length >= 2, null, { timeout: 10000 });
   const before = await page.evaluate(() => viewTool());
   const [moved] = await Promise.all([
-    page.evaluate(async () => { const card = document.querySelector(".rtcard"); await new Promise((r) => setTimeout(r, 80)); return card.getAnimations().length > 0 }),
+    page.evaluate(async () => { const tr = document.getElementById("rtTrack"); await new Promise((r) => setTimeout(r, 80)); return tr.getAnimations().length > 0 }),
     page.evaluate(() => swipeTool(1)),
   ]);
   await page.waitForTimeout(900);
-  expect(moved, "상자(rtcard)가 움직여야 한다").toBe(true);
+  expect(moved, "도구 줄(rtTrack)이 움직여야 한다").toBe(true);
   expect(await page.evaluate(() => viewTool())).not.toBe(before);
 });
 
@@ -158,25 +158,19 @@ test("틸봇에게 할 일 고치기를 시키면 새 버전이 붙는다", asyn
   await page.evaluate(([k, v]) => api(`/api/tools/${k}/revert`, { method: "POST", body: { ver: v } }), [tid, before]);
 });
 
-// 업계 방식(바뀐 부분만 갈아 끼우기): 줄을 고치는 중에 새 데이터가 와도 입력칸·적던 글·커서가 그대로다
-test("고치는 중에 알림이 와도 입력칸이 남는다", async ({ page }) => {
-  await page.evaluate((id) => openChat(id), await selfId(page));
-  await page.waitForFunction(() => Object.keys(roomData).some((k) => roomData[k]?.name === "할 일"), null, { timeout: 15000 });
-  await page.evaluate(() => { toolView[cur.id] = Object.keys(roomData).find((k) => roomData[k]?.name === "할 일"); renderRoomTool() });
-  await page.waitForFunction(() => roomBox && roomBox.h.alive && roomBox.h.hasKeep, null, { timeout: 20000 });
-  await page.evaluate(() => setKeep(true)); await page.waitForTimeout(1200);
-  const fr = page.frameLocator(".rtkeep.on iframe");
-  // 먼저 데이터가 바뀐 뒤 다시 그려진 상태를 만든다(CI 에서는 목록이 나중에 와서 늘 이 길이다). 그 뒤에도 줄을 누르면 고치기가 열려야 한다
-  await page.evaluate(() => { const k = viewTool(); toolItems[k] = (toolItems[k] || []).concat({ id: "fake-" + Date.now(), kind: "text", text: "시험용 줄", at: Date.now(), data: {} }); keepBox && keepBox.h.push(); roomBox && roomBox.h.push() });
+// 업계 방식(바뀐 부분만 갈아 끼우기): 적는 중에 새 데이터가 와도 적던 글·커서가 그대로다.
+// 적는 줄은 도구 칸 바깥에 있으니, 칸을 다시 그려도 건드려지지 않는다
+test("고치는 중에 알림이 와도 적던 글이 남는다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await page.locator("#askBar.on").waitFor({ timeout: 10000 });
+  await page.locator("#askIn").fill("고치는 중");
+  await page.evaluate(() => { __items.push({ id: "qa-new", kind: "text", text: "새로 온 줄", at: Date.now(), data: { what: "새로 온 줄" } }); __h.push() });
   await page.waitForTimeout(300);
-  await fr.locator(".kl [data-id] .tx").first().tap();   // 글자를 누른다(동그라미는 했음/안 했음 토글)
-  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
-  await fr.locator("input.rt-in").fill("고치는 중");
-  await page.evaluate(() => { keepBox && keepBox.h.push(); roomBox && roomBox.h.push() });   // 알림이 온 것처럼 다시 그린다
-  await page.waitForTimeout(300);
-  expect(await fr.locator("input.rt-in").count(), "입력칸이 남아야 한다").toBe(1);
-  expect(await fr.locator("input.rt-in").inputValue()).toBe("고치는 중");
-  expect(await fr.locator("input.rt-in").evaluate((e) => document.activeElement === e), "커서가 남아야 한다").toBe(true);
+  expect(await page.locator("#askBar.on").count(), "적는 줄이 사라졌다").toBe(1);
+  expect(await page.locator("#askIn").inputValue(), "적던 글이 날아갔다").toBe("고치는 중");
+  expect(await page.locator("#askIn").evaluate((e) => document.activeElement === e), "커서가 남아야 한다").toBe(true);
+  expect(await fr.locator(".kl [data-id]").count(), "새로 온 줄이 안 들어왔다").toBe(4);
 });
 
 /* 막힌 길이 없다(interaction-guide E-1) · 누른 것이 튀지 않는다(E-2).
@@ -200,8 +194,8 @@ async function mountTodo(page) {
     };
     const host = document.createElement("div");
     host.id = "qaHost"; host.className = "roomtool on user";
-    host.style.cssText = "position:fixed;left:0;top:0;width:375px;height:280px;z-index:9999;background:var(--card)";
-    document.body.appendChild(host);
+    host.style.cssText = "position:absolute;left:0;top:60px;width:375px;height:280px;z-index:10;background:var(--card)";
+    document.getElementById("phone").appendChild(host);
     let data = { done: {} };
     const h = (window.__h = mountSandbox(host, code, {
       state: () => ({ data, me: "1", self: true, members: [], items: __items, mode: "keep" }),
@@ -214,28 +208,49 @@ async function mountTodo(page) {
 }
 const rowIds = (fr) => fr.locator(".kl [data-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-id")));
 
-test("고치다가 그 줄 바깥을 누르면 조용히 저장되고 닫힌다", async ({ page }) => {
+// 적는 것은 모두 앱의 적는 줄(#askBar)에서 한다. 도구 칸 안에는 입력칸이 열리지 않는다
+const askOpen = (page) => page.locator("#askBar.on");
+const askIn = (page) => page.locator("#askIn");
+
+test("줄을 누르면 칸 안이 아니라 앱의 적는 줄이 열린다", async ({ page }) => {
   const fr = await mountTodo(page);
   await fr.locator(".kl [data-id] .tx").first().tap();
-  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
-  await fr.locator("input.rt-in").fill("고친 이름");
-  await fr.locator(".kl .top .hd").tap();   // 그 줄 바깥(맨 위 머리글)
+  await askOpen(page).waitFor({ timeout: 10000 });
+  expect(await askIn(page).inputValue(), "고칠 글이 담겨 있어야 한다").toBe("하나");
+  expect(await askIn(page).evaluate((e) => document.activeElement === e), "커서가 가 있어야 한다").toBe(true);
+  expect(await fr.locator("input.rt-in").count(), "칸 안에 입력칸이 또 열렸다").toBe(0);
+});
+
+test("고치다가 적는 줄 바깥을 누르면 조용히 저장되고 닫힌다", async ({ page }) => {
+  const fr = await mountTodo(page);
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await askOpen(page).waitFor({ timeout: 10000 });
+  await askIn(page).fill("고친 이름");
+  await page.locator("#askScrim").tap({ position: { x: 180, y: 300 } });   // 적는 줄 바깥 아무 곳
   await page.waitForTimeout(400);
-  expect(await fr.locator("input.rt-in").count(), "바깥을 눌렀는데 편집이 안 닫혔다").toBe(0);
+  expect(await askOpen(page).count(), "바깥을 눌렀는데 적는 줄이 안 닫혔다").toBe(0);
   expect(await page.evaluate(() => __sent.join("|")), "적던 것이 저장되지 않았다").toContain("item.edit:고친 이름");
   expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("고친 이름");
 });
 
-test("비운 채 바깥을 누르면 없던 일이 된다", async ({ page }) => {
+test("비운 채 바깥을 누르면 없던 일이 되고, 비우고 확인하면 지워진다", async ({ page }) => {
   const fr = await mountTodo(page);
   await fr.locator(".kl [data-id] .tx").first().tap();
-  await fr.locator("input.rt-in").waitFor({ timeout: 10000 });
-  await fr.locator("input.rt-in").fill("");
-  await fr.locator(".kl .top .hd").tap();
+  await askOpen(page).waitFor({ timeout: 10000 });
+  await askIn(page).fill("");
+  await page.locator("#askScrim").tap({ position: { x: 180, y: 300 } });
   await page.waitForTimeout(400);
-  expect(await fr.locator("input.rt-in").count(), "편집이 안 닫혔다").toBe(0);
-  expect(await page.evaluate(() => __sent.join("|")), "비웠는데 저장·삭제가 나갔다").toBe("");
+  expect(await askOpen(page).count()).toBe(0);
+  expect(await page.evaluate(() => __sent.join("|")), "비우고 바깥을 눌렀는데 지워졌다").toBe("");
   expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("하나");
+  // 비우고 확인은 "지움" 이다
+  await fr.locator(".kl [data-id] .tx").first().tap();
+  await askOpen(page).waitFor({ timeout: 10000 });
+  await askIn(page).fill("");
+  await page.locator("#askOk").click();
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => __sent.join("|")), "비우고 확인했는데 안 지워졌다").toContain("item.drop");
+  expect(await fr.locator(".kl [data-id] .tx").first().innerText()).toBe("둘");
 });
 
 test("체크해도 줄은 제자리에 있고 「한 것」 구역이 생기지 않는다", async ({ page }) => {
@@ -288,10 +303,14 @@ test("대화방에 들어올 때 도구 칸이 깜빡이지 않는다", async ({
 test("도구를 미는 동안 상자가 손가락을 따라오고, 조금 밀면 제자리로 돌아온다", async ({ page }) => {
   await page.evaluate((id) => openChat(id), await selfId(page));
   await page.waitForFunction(() => onTools().length >= 2, null, { timeout: 10000 });
-  const tf = () => page.evaluate(() => getComputedStyle(document.querySelector(".rtcard")).transform);
+  const tf = () => page.evaluate(() => getComputedStyle(document.getElementById("rtTrack")).transform);
   expect(await tf()).toBe("none");
   await page.evaluate(() => dragTool(-80));
   expect(await tf(), "미는 동안 상자가 안 따라왔다").toContain("-80");
+  const gap = await page.evaluate(() => { const c = document.getElementById("roomTool").getBoundingClientRect(),
+      p = document.querySelector(".rttrack > .roomtool.peek");
+    return p ? Math.round(p.getBoundingClientRect().left - c.right) : null });
+  expect(gap, "옆 칸이 바로 옆(한 칸 간격)에 서 있지 않다").toBe(12);
   const before = await page.evaluate(() => viewTool());
   await page.evaluate(() => dropTool(-80, 1200));          // 느리고 조금만 — 제자리
   await page.waitForTimeout(600);

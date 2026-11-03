@@ -290,7 +290,16 @@
   /* 들어올 때 칸째 감추면 대화는 이미 떠 있는데 도구만 늦게 혼자 페이드로 들어와 깜빡여 보였다
      (2026-11-03 측정: 379ms 동안 없음 → 702ms 부터 300ms 페이드). 칸은 첫 프레임부터 제 자리에 있고 안의 것만 든다 */
   .rtcard.wait .roomtool{opacity:0}
-  .rtcard:has(> .roomtool:not(.on)){display:none}
+  .rtcard:has(.rttrack > .roomtool:not(.on)){display:none}
+  /* 도구는 한 줄에 나란히 서 있다. 옆 칸은 한 칸 간격(12px) 바로 옆에 실제로 있고, 미는 만큼 같이 따라온다 */
+  .rttrack{position:relative}
+  .rttrack>.roomtool.peek{position:absolute;top:0;left:0;width:100%}
+  .rttrack>.roomtool.peek.nx{transform:translateX(calc(100% + 12px))}
+  .rttrack>.roomtool.peek.pv{transform:translateX(calc(-100% - 12px))}
+  /* 미는 동안에는 상자 하나하나가 제 카드가 된다 — 두 칸이 한 칸 간격을 두고 나란히 간다(한 카드 안에서 글만 미끄러지는 것이 아니다) */
+  .rtcard.sliding{background:none;box-shadow:none;background-image:none;overflow:visible}
+  .rtcard.sliding .rttrack>.roomtool{background:var(--card);box-shadow:var(--tool-lift);border-radius:var(--r-card);
+    background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%)}
   .rtcard .roomtool{margin:0;box-shadow:none;background:none;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .2s}
   .rtcard.open .roomtool,.rtcard.open .roomtool.user{height:0;padding-top:0;padding-bottom:0;opacity:0}
   .rtkeep{height:0;overflow:hidden;padding:0 14px;opacity:0;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .25s .1s}
@@ -378,6 +387,18 @@
   .phone.kbapp .confirm{bottom:calc(16px + var(--kb))}
   .phone.kbapp .menu:not(.pop){bottom:calc(16px + var(--kb))}
   .phone.kbapp .sheet.on{bottom:var(--kb)}
+  /* 적는 줄. 키패드가 있으면 그 바로 위(--kb), 없으면 틀 바닥. 글자는 16px 이상이라 초점이 가도 화면이 확대되지 않는다(P-5) */
+  .askbar{position:absolute;left:0;right:0;bottom:var(--kb,0px);z-index:40;display:none;align-items:center;gap:8px;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--paper-2);border-top:1px solid var(--line);
+    transition:bottom .25s cubic-bezier(.4,0,.2,1)}
+  .askbar.on{display:flex}
+  /* 적는 동안 나머지 화면을 받는 투명한 층. 도구는 격리된 칸(iframe)이라 그 안의 손가락은 바깥으로 올라오지 않는다 —
+     이 층이 없으면 도구를 눌러도 적는 줄이 닫히지 않는다. 어둡게 하지 않는다: 무엇을 고치는 중인지 보여야 한다 */
+  .askscrim{position:absolute;inset:0;z-index:39;display:none}
+  .askscrim.on{display:block}
+  .phone.kb .askbar,.phone.kbapp .askbar{padding-bottom:6px}
+  .askbar input{flex:1;min-width:0;height:36px;border:0;background:var(--card);border-radius:var(--r-pill);padding:0 14px;font-size:16px;color:var(--ink);outline:none}
+  .askbar .btn{flex:none;width:auto;height:36px;padding:0 18px}
   /* 키보드와 같이 움직이는 것은 입력줄과 목록의 transform 뿐이다(합성 스레드라 메인이 바빠도 끊기지 않는다).
      높이는 키보드가 다 올라온 뒤 한 번만, 눈에 안 띄게 바꾼다. 곡선은 iOS 키보드와 비슷하게. */
   .dayswrap{flex:1;min-height:0;display:flex;flex-direction:column;clip-path:inset(0 0 -600px 0)}   /* 위로 밀리면 머리말 밑으로 잘리고, 아래는 안 자른다 */
@@ -601,7 +622,7 @@
     </div>
     </div>
     <div class="roominvite" id="roomInvite" hidden><div class="codebox" id="riCode">· · · · · ·</div><div class="row2b"><button class="btn" id="riShare">링크 보내기</button><button class="btn ghost" id="riCopy">코드 복사</button></div></div>
-    <div class="dayswrap"><div class="rtcard"><div class="roomtool" id="roomTool"></div><div class="rtkeep" id="rtKeep"></div></div><div class="days" id="days"></div></div>
+    <div class="dayswrap"><div class="rtcard"><div class="rttrack" id="rtTrack"><div class="roomtool" id="roomTool"></div></div><div class="rtkeep" id="rtKeep"></div></div><div class="days" id="days"></div></div>
     <div class="compose" id="compose">
       <button class="newpill" id="newPill">↓ 새 메시지</button>
       <div class="cbar" id="cbar" hidden><div class="cbt"><b id="cbarK"></b><span id="cbarT"></span></div><button class="icon" id="cbarX" aria-label="취소"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -747,6 +768,9 @@
       <button id="tabBox" data-tab="s-box" aria-label="모음"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></button>
       <button id="tabSettings" data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
   </div>
+  <!-- 적는 곳은 앱에 하나다: 키패드가 올라오고 그 바로 위에 이 줄이 붙는다(대화방 입력줄과 같은 자리) -->
+  <div class="askscrim" id="askScrim"></div>
+  <div class="askbar" id="askBar"><input id="askIn" autocomplete="off" enterkeyhint="done"><button class="btn" id="askOk">확인</button></div>
   <div class="toast" id="toast"></div>
 </div>
 </div>
@@ -1370,6 +1394,31 @@ async function showRoomInvite(){
 }
 $("#riShare").addEventListener("click",shareCode);
 $("#riCopy").addEventListener("click",()=>{ if(curCode) copyText(curCode) });
+/* 적는 곳은 앱에 하나다(interaction-guide E-5). 도구는 입력칸을 직접 그리지 않고 이것을 부른다.
+   나올 길은 셋: 확인(또는 return) · 바깥을 누르기(적은 것이 조용히 저장된다, E-1) · Esc(없던 일).
+   빈 글로 확인하면 빈 글이 그대로 간다 — 그것을 "지움"으로 다룰지는 부른 쪽이 정한다 */
+let asking=null;
+function askText(o){
+  o=o||{}; endAsk(null);
+  const bar=$("#askBar"), inp=$("#askIn");
+  inp.value=o.text||""; inp.placeholder=o.ph||""; $("#askOk").textContent=o.ok||"확인";
+  bar.classList.add("on"); $("#askScrim").classList.add("on");
+  requestAnimationFrame(()=>{ inp.focus(); const n=inp.value.length; try{ inp.setSelectionRange(n,n) }catch(e){} });
+  return new Promise(res=>{ asking=res });
+}
+function endAsk(val){ const r=asking; asking=null;
+  if(!r) return;
+  $("#askBar").classList.remove("on"); $("#askScrim").classList.remove("on"); $("#askIn").blur(); r(val);
+}
+{ const bar=$("#askBar"), inp=$("#askIn");
+  $("#askOk").addEventListener("click",()=>endAsk(inp.value));
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); endAsk(inp.value) }
+    else if(e.key==="Escape"){ e.preventDefault(); endAsk(null) } });
+  // 바깥을 누르면 적은 것이 조용히 저장되고 닫힌다. 비어 있으면 없던 일로 — 도구 안에서와 같은 규칙이고,
+  // 이렇게 해야 "비우고 확인 = 지움" 과 겹쳐 실수로 지워지는 일이 없다
+  $("#askScrim").addEventListener("pointerdown",()=>endAsk(inp.value.trim()?inp.value:null));
+}
+
 /* ---------- 대화방 도구 실행기 ----------
    도구 하나 = TOOLS 의 항목 하나(만드는 법: tools-guide.md). 실행기는 어떤 도구든 똑같이 다룬다.
    - 방마다 도구마다 데이터 한 덩어리(room_state)를 갖는다. Bond 가 사라지면 같이 사라진다.
@@ -1413,7 +1462,8 @@ const c={get data(){return S.data},get items(){return S.items||[]},get me(){retu
   redraw:()=>__draw(), save:t=>{ __send({k:"save",data:JSON.parse(JSON.stringify(S.data)),text:t?String(t):""}); __draw() }, toast:t=>__send({k:"toast",text:String(t)}),
   ask:(kind,opt)=>new Promise((ok,no)=>{ const id=++__aid; __asks[id]={ok,no};
     __send({k:"ask",id,kind:String(kind),opt:opt||{}});
-    setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },15000); })};
+    // 적는 줄은 사람이 한참 들고 있을 수 있다. 그동안 끊기지 않게 기다린다
+    setTimeout(()=>{ if(__asks[id]){ delete __asks[id]; no(new Error("응답이 없어요")) } },kind==="type"?600000:15000); })};
 let __aid=0; const __asks={};
 let __acted=0, __drawn=false, __sig="";
 function __fit(){ const d=document.documentElement; d.style.touchAction=S.mode==="keep"&&d.scrollHeight>innerHeight+2?"pan-y":"none" }
@@ -1571,6 +1621,11 @@ async function toolAsk(m,win,h){
       back(true);
     }
     else if(m.kind==="copy"){ if(!text) throw new Error("복사할 글이 없어요"); copyText(text); back(true) }
+    // 적는 줄을 띄워 글을 받아 준다. 도구는 입력칸을 그리지 않는다
+    else if(m.kind==="type"){
+      const v=await askText({text:String(opt.text||""),ph:String(opt.ph||""),ok:String(opt.ok||"확인")});
+      back(v===null?null:String(v).slice(0,200));
+    }
     // 나챗방에 던진 것과 같이 받아 적힌다(도구 안의 ＋)
     else if(m.kind==="throw"){
       const sb=people.find(p=>p.self); if(!sb||!text) throw new Error("적을 것이 없어요");
@@ -1659,7 +1714,7 @@ const viewTool=()=>{ const ids=onTools(), v=cur&&toolView[cur.id]; return ids.in
    닫을 때 open 을 떼면 상자가 아직 커 있어서 그 높이가 --rth 로 들어가 대화가 한 번 아래로 밀렸다(2026-11-03).
    다 접힌 뒤(closing 이 떨어진 뒤)에 한 번만 맞춘다 */
 let rthFit=()=>{};
-{ const card=$("#roomTool").parentNode, days=$("#days");
+{ const card=$("#roomTool").closest(".rtcard"), days=$("#days");
   rthFit=()=>{ if(card.classList.contains("open")||card.classList.contains("closing")) return;
     days.style.setProperty("--rth",card.offsetHeight?card.offsetHeight+8+"px":"0px") };
   new ResizeObserver(()=>rthFit()).observe(card) }
@@ -1692,32 +1747,62 @@ let swiping=false;
 /* 미는 동안 상자가 손가락을 따라온다(화면 뒤로가기 I-2 와 같은 느낌). 떼면 폭의 1/3 을 넘겼거나 빠르게 놓았으면
    넘어가고, 아니면 제자리로. 전에는 손을 뗀 뒤에야 움직여서 미는 동안 상자가 딱 붙어 있었고, 나간 뒤 다음
    도구를 최대 .4초 기다려서 들어오는 것이 따로 떨어져 보였다(2026-11-03 사용자 지적) */
-const toolCard=()=>$("#roomTool").parentNode;
-function dragTool(dx){ if(swiping||!cur) return; const box=toolCard();
-  if(onTools().length<2) dx*=.2;   // 넘어갈 곳이 없으면 조금만 끌리고 만다
-  box.style.transition="none"; box.style.transform=`translateX(${Math.round(dx)}px)`;
+const toolCard=()=>$("#roomTool").closest(".rtcard");
+const TGAP=12;   // CSS 의 .peek 간격과 같아야 한다
+/* 옆 도구는 한 칸 간격으로 실제로 옆에 서 있고, 미는 만큼 줄째 같이 따라온다. 떼면 폭의 1/3 을 넘겼거나
+   빠르게 놓았을 때 그 칸이 제자리로 들어온다. 전에는 상자를 바꿔 끼우는 방식이라 옆에 붙을 것이 없었고,
+   나간 뒤에 다음 것이 따로 떨어져 들어왔다(2026-11-03 사용자 지적) */
+let peek=null;   // 옆에 세워 둔 칸 {dir,id,box,h}
+function clearPeek(){ const p=peek; peek=null; if(p){ p.box.remove() } }
+const nextToolId=dir=>{ const ids=onTools(); return ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length] };
+function showPeek(dir){
+  const ids=onTools(); if(ids.length<2) return null;
+  const id=nextToolId(dir);
+  if(peek&&peek.dir===dir&&peek.id===id) return peek;
+  clearPeek();
+  const box=document.createElement("div");
+  box.className="roomtool on peek "+(dir>0?"nx":"pv");
+  if(isUserTool(id)){
+    const d=roomData[id], key=id+"@"+d.ver, code=codeCache.get(key)||store.get("code:"+key,"");
+    if(!code) return null;   // 아직 코드가 없으면 옆 칸 없이 민다(곧 받아 둔다)
+    box.classList.add("user"); $("#rtTrack").appendChild(box);
+    peek={dir,id,box,h:mountSandbox(box,code,{tool:id,state:()=>roomToolState(id),save:()=>{}})};
+  } else {
+    const t=TOOLS.find(x=>x.id===id); if(!t) return null;
+    $("#rtTrack").appendChild(box); t.render(box,toolCtx(t)); peek={dir,id,box,h:null};
+  }
+  return peek;
 }
-function dropTool(dx,ms){ if(swiping||!cur) return; const box=toolCard(), w=box.offsetWidth||300;
+function dragTool(dx){ if(swiping||!cur) return;
+  const track=$("#rtTrack"), many=onTools().length>1;
+  if(many) toolCard().classList.add("sliding");
+  if(many) showPeek(dx<0?1:-1); else dx*=.2;   // 넘어갈 곳이 없으면 조금만 끌리고 만다
+  track.style.transition="none"; track.style.transform=`translateX(${Math.round(dx)}px)`;
+}
+function dropTool(dx,ms){ if(swiping||!cur) return;
+  const track=$("#rtTrack"), w=track.offsetWidth||300;
   const far=Math.abs(dx)>w/3, flick=ms>0&&ms<250&&Math.abs(dx)>40;
   if(onTools().length>1&&(far||flick)) swipeTool(dx<0?1:-1,dx);
-  else { box.style.transition=""; box.style.transform="" }   // 제자리로. 상자가 가진 전환으로 돌아간다
+  else { track.style.transition=""; track.style.transform=""; setTimeout(()=>{ if(!swiping){ clearPeek(); toolCard().classList.remove("sliding") } },320) }
 }
 async function swipeTool(dir,from=0){
   const ids=onTools(); if(ids.length<2||swiping) return; swiping=true;
-  const box=toolCard(), bid=cur.id;   // 글씨만이 아니라 상자째
-  box.style.transition="none";
+  const track=$("#rtTrack"), bid=cur.id;
+  const p=(peek&&peek.dir===dir)?peek:showPeek(dir);
+  if(p) toolCard().classList.add("sliding");
+  const end=(dir>0?-1:1)*(track.offsetWidth+TGAP);
   if(NATIVE) plug("Haptics").impact({style:"LIGHT"}).catch(()=>{});
-  // 손가락이 데려온 자리에서 이어서 나간다(0 에서 다시 시작하면 한 번 되돌아갔다 나가 보인다)
-  await box.animate([{transform:`translateX(${Math.round(from)}px)`},{transform:`translateX(${-dir*110}%)`}],{duration:170,easing:"cubic-bezier(.4,0,1,1)",fill:"forwards"}).finished.catch(()=>{});
-  if(cur&&cur.id===bid){ toolView[bid]=ids[(ids.indexOf(viewTool())+dir+ids.length)%ids.length]; keepOpen=false; renderRoomTool() }
-  // 다음 도구가 그려질 때까지 아주 잠깐만 옆에 세워 둔다. 오래 기다리면 나간 것과 들어오는 것이 따로 떨어져 보인다
-  box.style.transform=`translateX(${dir*110}%)`;
-  await new Promise(r=>{ const t0=Date.now(); const f=()=>{ if((roomBox&&roomBox.h.alive)||!roomBox||Date.now()-t0>140) r(); else setTimeout(f,16) }; f() });
-  box.style.transform="";
-  const a=box.animate([{transform:`translateX(${dir*110}%)`},{transform:"none"}],{duration:260,easing:"cubic-bezier(0,0,.2,1)"});
-  box.getAnimations().forEach(x=>{ if(x!==a&&!(x instanceof CSSTransition)) x.cancel() });
+  track.style.transition="none";
+  // 손가락이 데려온 자리에서 이어서 간다(0 에서 다시 시작하면 한 번 되돌아갔다 가 보인다)
+  const a=track.animate([{transform:`translateX(${Math.round(from)}px)`},{transform:`translateX(${Math.round(end)}px)`}],{duration:p?240:170,easing:"cubic-bezier(.25,.1,.25,1)",fill:"forwards"});
   await a.finished.catch(()=>{});
-  box.style.transition=""; swiping=false;
+  // 옆 칸이 눈으로는 이미 제자리에 와 있다. 그 뒤에서 조용히 바꿔 끼우고, 준비되면 줄을 0 으로 되돌리며 옆 칸을 걷는다
+  if(cur&&cur.id===bid){ toolView[bid]=p?p.id:nextToolId(dir); keepOpen=false; renderRoomTool() }
+  await new Promise(r=>{ const t0=Date.now(); const f=()=>{ if((roomBox&&roomBox.h.alive)||!roomBox||Date.now()-t0>600) r(); else setTimeout(f,16) }; f() });
+  track.getAnimations().forEach(x=>x.cancel());
+  track.style.transition="none"; track.style.transform=""; clearPeek();
+  toolCard().classList.remove("sliding");
+  requestAnimationFrame(()=>{ track.style.transition=""; swiping=false });
 }
 // 기본 도구(앱이 직접 그림)는 칸 위의 손가락을 앱이 받는다
 { let sx=null,sy=0,ax=null,st=0; const tb=$("#roomTool");
@@ -1734,18 +1819,28 @@ async function swipeTool(dir,from=0){
   tb.addEventListener("pointerdown",e=>{ if(e.pointerType==="mouse") down(e.clientX,e.clientY) });
   tb.addEventListener("pointermove",e=>{ if(e.pointerType==="mouse") move(e.clientX,e.clientY) });
   tb.addEventListener("pointerup",e=>{ if(e.pointerType==="mouse") up(e.clientX,e.clientY) }); }
-function renderRoomTool(){ drawRoomTool(); syncKeep() }
+function renderRoomTool(){ drawRoomTool(); syncKeep(); prefetchTools() }
+// 옆 칸을 바로 세울 수 있게, 이 방에 켜 둔 도구의 코드를 미리 받아 둔다(없으면 미는 동안 옆이 비어 보인다)
+function prefetchTools(){
+  for(const id of onTools()){
+    if(!isUserTool(id)) continue;
+    const d=roomData[id]; if(!d||!d.ver) continue;
+    const key=id+"@"+d.ver; if(codeCache.has(key)) continue;
+    const c=store.get("code:"+key,"");
+    if(c) codeCache.set(key,c); else fetchToolCode(id,d.ver).catch(()=>{});
+  }
+}
 function drawRoomTool(){
   const box=$("#roomTool"), ids=onTools();
   const id=viewTool();
   if(!id){ box.classList.remove("on","user"); box.innerHTML=""; roomBox=null; return }
   box.classList.add("on");
-  if(!isUserTool(id)){ box.parentNode.classList.remove("wait"); box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }
+  if(!isUserTool(id)){ box.closest(".rtcard").classList.remove("wait"); box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }
   box.classList.add("user");
   const d=roomData[id], key=id+"@"+d.ver;
   if(roomBox&&roomBox.key===key&&box.contains(roomBox.h.frame)){ roomBox.h.push(); return }
-  if(!codeCache.has(key)){ const c=store.get("code:"+key,""); if(c) codeCache.set(key,c); else { box.innerHTML=""; roomBox=null; if(!swiping) box.parentNode.classList.add("wait"); fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return } }
-  const card=box.parentNode; if(!swiping) card.classList.add("wait");
+  if(!codeCache.has(key)){ const c=store.get("code:"+key,""); if(c) codeCache.set(key,c); else { box.innerHTML=""; roomBox=null; if(!swiping) box.closest(".rtcard").classList.add("wait"); fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return } }
+  const card=box.closest(".rtcard"); if(!swiping) card.classList.add("wait");
   const bid=cur.id;
   const h=mountSandbox(box,codeCache.get(key),{tool:id,
     state:()=>roomToolState(id),
@@ -2558,35 +2653,28 @@ const TOOLS=[
      const top=c.members.length>2?c.members.filter(m=>m.id!==c.me).map(m=>({n:m.name,p:pts(m.id)})).sort((a,b)=>b.p-a.p).slice(0,2):null;
      const score=`<div class="rt-row rt-score"><span>나<b>${pts(c.me)}</b></span>${c.self?"":top?top.map(t=>`<span>${esc(t.n)}<b>${t.p}</b></span>`).join(""):`<span>상대<b>${other?pts(other):0}</b></span>`}</div>`;
      const $b=sel=>box.querySelector(sel);
-     if(c.ui.edit){
-       box.innerHTML=`<div class="rt-row">
-           <input class="rt-in" maxlength="30" placeholder="할 일" value="${q?esc(q.title):""}">
-           <button class="rt-btn ghost" data-k="pt">${q?q.pt:1}P</button>
-           <button class="rt-btn" data-k="ok">${q?"수정":"등록"}</button>
-         </div>${q?`<div class="rt-row"><button class="rt-btn ghost" data-k="del">삭제</button><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`:`<div class="rt-row"><span style="flex:1"></span><button class="rt-btn ghost" data-k="no">취소</button></div>`}`;
-       const inp=$b(".rt-in"); inp.focus();
-       let pt=q?q.pt:1;
-       $b('[data-k="pt"]').onclick=()=>{ pt=pt%5+1; $b('[data-k="pt"]').textContent=pt+"P" };
-       $b('[data-k="ok"]').onclick=()=>{
-         const t=inp.value.trim(); if(!t){ c.toast("할 일을 적어주세요"); return }
-         const was=!!q; d.quest={title:t,pt,by:c.me}; c.ui.edit=false;
-         c.save(`${was?"퀘스트 수정":"퀘스트"} '${t}' ${pt}P`);
-       };
-       $b('[data-k="no"]').onclick=()=>{ c.ui.edit=false; c.redraw() };   // 등록하다 말고도 나올 수 있다(E-1)
-       if(q) $b('[data-k="del"]').onclick=()=>{ d.quest=null; c.ui.edit=false; c.save(`퀘스트 '${q.title}' 지움`) };
-       return;
-     }
+     // 적는 것은 앱의 적는 줄에서 한다(E-5). 그래서 "들어가면 못 나오는 편집 모드"가 아예 없다.
+     // 비우고 확인하면 지운 것으로 다룬다
+     const write=async()=>{
+       const t=await c.ask("type",{text:q?q.title:"",ph:"할 일",ok:q?"저장":"등록"});
+       if(t===null) return;
+       const s=t.trim();
+       if(!s){ if(q){ d.quest=null; c.save(`퀘스트 '${q.title}' 지움`) } return }
+       const pt=q?q.pt:1, was=!!q; d.quest={title:s,pt,by:c.me};
+       c.save(`${was?"퀘스트 수정":"퀘스트"} '${s}' ${pt}P`);
+     };
      if(!q){
        box.innerHTML=`<div class="rt-row"><span class="rt-title none">등록된 퀘스트가 없어요</span><button class="rt-btn" data-k="new">＋</button></div>${score}`;
-       $b('[data-k="new"]').onclick=()=>{ c.ui.edit=true; c.redraw() };
+       $b('[data-k="new"]').onclick=write;
        return;
      }
      const mine=String(q.by)===c.me;
      box.innerHTML=`<div class="rt-row">
-         <span class="rt-title">${esc(q.title)}</span><span class="rt-pt">${q.pt}P</span>
+         <span class="rt-title">${esc(q.title)}</span><button class="rt-btn ghost" data-k="pt">${q.pt}P</button>
          ${mine?`<button class="rt-btn ghost" data-k="edit">수정</button>`:""}${!mine||c.self?`<button class="rt-btn" data-k="done">완료</button>`:""}
        </div>${score}`;
-     if(mine) $b('[data-k="edit"]').onclick=()=>{ c.ui.edit=true; c.redraw() };
+     $b('[data-k="pt"]').onclick=()=>{ if(!mine) return; d.quest={...q,pt:q.pt%5+1}; c.save() };   // 눌러서 점수를 올린다
+     if(mine) $b('[data-k="edit"]').onclick=write;
      if($b('[data-k="done"]')) $b('[data-k="done"]').onclick=()=>{
        d.score[c.me]=pts(c.me)+Number(q.pt||0); d.quest=null;
        c.save(`'${q.title}' 완료 +${q.pt}P`); c.toast(`+${q.pt}P`);

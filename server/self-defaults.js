@@ -8,7 +8,6 @@ const css = `<style>.lx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .lx .none{font-size:14px;color:var(--ink-3)}
 .kl{flex:1;display:flex;flex-direction:column;gap:2px;padding:2px 0;min-width:0}
 .kl .top{display:flex;align-items:center;gap:8px;min-height:36px;margin-bottom:4px}
-.kl .top .rt-in{flex:1}
 .kl .it{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line);min-width:0;cursor:pointer}
 .kl .it:last-child{border-bottom:0}
 .kl .it:active{background:var(--paper-2)}
@@ -18,39 +17,33 @@ const css = `<style>.lx{display:flex;flex-direction:column;gap:6px;min-width:0}
 .kl .hd{font-size:12px;color:var(--ink-3);padding:10px 0 2px}
 .kl .ck{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line)}
 .kl .ck.on{background:var(--ink);border-color:var(--ink)}
-.kl .ed{display:flex;align-items:center;gap:6px;min-height:44px;border-bottom:1px solid var(--line)}
-.kl .ed .rt-in{flex:1}
 .kl .zero{flex:1;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink-3)}</style>`;
 const helpers = `
 function day(d){ var x=new Date(d+'T00:00:00'); return isNaN(x)?null:x }
 function md(x){ return (x.getMonth()+1)+'/'+x.getDate()+' '+'일월화수목금토'.charAt(x.getDay()) }
 function left(x){ var t=new Date(); t.setHours(0,0,0,0); var n=Math.round((x-t)/86400000); return n===0?'오늘':n===1?'내일':n>0?'D-'+n:'' }
-// 펼친 모습 맨 위: ＋ 를 누르면 입력칸. 적은 것은 나챗방에 던진 것과 같이 받아 적힌다
+/* 적는 것은 모두 앱의 적는 줄에서 한다 — 키패드가 올라오고 그 바로 위에 입력줄이 붙는다(대화방과 같은 자리).
+   도구는 입력칸을 그리지 않는다. 그래서 "줄 안에 열렸는데 못 나오는" 자리가 아예 없다 */
+// 펼친 모습 맨 위: ＋ 를 누르면 적는 줄. 적은 것은 나챗방에 던진 것과 같이 받아 적힌다
 function adder(box,c){
   var top=box.querySelector('.top'); if(!top) return;
-  top.querySelector('[data-a="add"]').onclick=function(){
-    top.innerHTML='<input class="rt-in" placeholder="'+(c.ui.ph||'')+'"><button class="rt-btn" data-a="go">추가</button><button class="rt-btn ghost" data-a="no">취소</button>';
-    var inp=top.querySelector('input'); inp.focus();
-    var go=async function(){ var t=inp.value.trim(); if(!t) return; top.innerHTML='<span class="mt">받아 적는 중</span>';
-      try{ await c.ask('throw',{text:t}) }catch(e){ c.toast(e.message) } };
-    top.querySelector('[data-a="go"]').onclick=go; inp.onkeydown=function(e){ if(e.key==='Enter') go() };
-    top.querySelector('[data-a="no"]').onclick=function(){ c.redraw() };
+  top.querySelector('[data-a="add"]').onclick=async function(){
+    var t=await c.ask('type',{ph:c.ui.ph||'',ok:'추가'});
+    if(t===null) return;
+    var s=String(t).trim(); if(!s) return;
+    top.innerHTML='<span class="mt">받아 적는 중</span>';
+    try{ await c.ask('throw',{text:s}) }catch(e){ c.toast(e.message); c.redraw() }
   };
 }
-// 줄 하나를 그 자리에서 고치기·지우기
-function editRow(el,c,id,text){
-  // 다른 줄을 고치던 중이면 그것부터 닫는다(두 줄이 같이 열리지 않게)
-  var o=el.parentNode.querySelector('.ed'); if(o&&o!==el){ c.redraw(); el=document.querySelector('[data-id="'+id+'"]'); if(!el) return }
-  el.className='ed'; el.onclick=null;
-  el.innerHTML='<input class="rt-in"><button class="rt-btn" data-a="s">저장</button><button class="rt-btn ghost" data-a="c">취소</button><button class="rt-btn ghost" data-a="d">삭제</button>';
-  var inp=el.querySelector('input'); inp.value=text; inp.focus();
-  // 저장·삭제를 누르면 입력칸을 먼저 떠난다(적는 중에는 새 목록이 와도 다시 그리지 않으므로)
-  el.querySelector('[data-a="s"]').onclick=async function(e){ e.stopPropagation(); var t=inp.value.trim(); if(!t) return; inp.blur();
-    try{ await c.ask('item.edit',{id:id,text:t}) }catch(err){ c.toast(err.message) } };
-  // 버리고 나오기. 바깥을 누르는 쪽은 앱이 저장으로 옮겨 준다 — 여기는 "고친 것을 버린다"는 뜻
-  el.querySelector('[data-a="c"]').onclick=function(e){ e.stopPropagation(); inp.blur(); c.redraw() };
-  el.querySelector('[data-a="d"]').onclick=async function(e){ e.stopPropagation(); inp.blur();
-    try{ await c.ask('item.drop',{id:id}) }catch(err){ c.toast(err.message) } };
+// 줄 하나를 고치기·지우기. 비우고 확인하면 지운다
+async function editRow(c,id,text){
+  var t=await c.ask('type',{text:text,ph:c.ui.ph||'',ok:'저장'});
+  if(t===null) return;
+  var s=String(t).trim();
+  try{
+    if(!s) await c.ask('item.drop',{id:id});
+    else if(s!==text) await c.ask('item.edit',{id:id,text:s});
+  }catch(err){ c.toast(err.message) }
 }`;
 
 module.exports = [
@@ -84,7 +77,7 @@ function keep(box,c){
   var row=function(e){ return '<div class="it" data-id="'+e.id+'"><span class="mt" style="width:96px">'+esc(when(e))+'</span><span class="tx">'+esc(what(e)+(e.p?' · '+e.p:''))+'</span><span class="mt">'+esc(state(e))+'</span></div>' };
   box.innerHTML=CSS+'<div class="kl">'+top+(up.length?up.map(row).join(''):'<div class="mt" style="padding:8px 0">없음</div>')+(past.length?'<div class="hd">지난 일정</div>'+past.map(row).join(''):'')+'</div>';
   adder(box,c);
-  box.querySelectorAll('.it').forEach(function(el){ el.onclick=function(){ var e=all.find(function(x){ return String(x.id)===el.getAttribute('data-id') }); if(e) editRow(el,c,e.id,e.text) } });
+  box.querySelectorAll('.it').forEach(function(el){ el.onclick=function(){ var e=all.find(function(x){ return String(x.id)===el.getAttribute('data-id') }); if(e) editRow(c,e.id,e.text) } });
 }`,
   },
   {
@@ -121,7 +114,7 @@ function keep(box,c){
     var id=el.getAttribute('data-id'), e=all.find(function(x){ return String(x.id)===id });
     el.querySelector('.ck').onclick=function(ev){ ev.stopPropagation(); c.data.done=c.data.done||{};
       if(c.data.done[id]) delete c.data.done[id]; else c.data.done[id]=true; c.save() };
-    el.onclick=function(){ if(e) editRow(el,c,e.id,e.text) };
+    el.onclick=function(){ if(e) editRow(c,e.id,e.text) };
   });
 }`,
   },
