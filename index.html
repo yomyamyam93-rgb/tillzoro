@@ -275,7 +275,9 @@
   .days>:first-child{margin-top:auto}
   #chat.self [data-tag]::after{content:attr(data-tag);display:block;margin-top:3px;font-size:11px;font-weight:400;opacity:.55}
   .rtcard{position:absolute;top:4px;left:16px;right:16px;z-index:2;border-radius:var(--r-card);background:var(--card);box-shadow:var(--tool-lift);
-    background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden}
+    background-image:linear-gradient(180deg,var(--tool-sheen),transparent 46%);overflow:hidden;
+    transition:opacity .38s ease,transform .45s cubic-bezier(.2,.8,.2,1)}
+  .rtcard.wait{opacity:0;transform:translateY(-12px) scale(.97)}
   .rtcard:has(> .roomtool:not(.on)){display:none}
   .rtcard .roomtool{margin:0;box-shadow:none;background:none;transition:height .36s cubic-bezier(.4,0,.2,1),padding .36s cubic-bezier(.4,0,.2,1),opacity .2s}
   .rtcard.open .roomtool,.rtcard.open .roomtool.user{height:0;padding-top:0;padding-bottom:0;opacity:0}
@@ -676,7 +678,7 @@
         <div class="item" id="logoutBtn"><div class="t">로그아웃</div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
         <div class="item danger" id="deleteBtn"><div class="t">계정 삭제</div></div>
       </div>
-      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1021</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
+      <p class="note" style="margin:22px 0 0;text-align:left">Till Zero · 버전 <b id="buildId">1103-1108</b><br><span id="storeInfo"></span><br><span id="kbLogBtn" style="text-decoration:underline">키보드 기록</span><pre id="kbLog" style="display:none;font:11px/1.4 ui-monospace,monospace;white-space:pre-wrap;margin:6px 0 0"></pre></p>
     </div>
   </section>
 
@@ -1297,12 +1299,6 @@ async function openChat(id){
   // 기억해 둔 대화를 곧바로 바닥에 붙여 보인다(짧아도 아래에 붙는다). 서버 대화가 오면 그 자리에서 이어 붙는다.
   // 감췄다가 보이면 그 순간이 깜빡임으로 보였다(2026-11-02)
   renderMsgs(); go("chat");
-  // 임시(2026-11-03): 방에 들어갈 때 화면 맨 위에 어느 말이 보이는지·사진이 몇 장 아직 안 왔는지 프레임마다 적어 kb.log 로
-  { const dv=$("#days"), t0=performance.now(), L=[]; const f=()=>{ const t=performance.now()-t0, r=dv.getBoundingClientRect();
-      const top=document.elementFromPoint(r.left+r.width/2,r.top+120)?.closest(".msg,.evt,.botmsg"), imgs=[...dv.querySelectorAll("img")];
-      L.push(`${Math.round(t)} ${Math.round(dv.scrollTop)}/${dv.scrollHeight-dv.clientHeight} n=${dv.children.length} top=${top?(top.dataset.id||top.className).slice(0,14):"-"} img=${imgs.filter(i=>!i.complete).length}/${imgs.length} ch=${getComputedStyle($("#chat")).transform.slice(-12)}`);
-      if(t<2000) requestAnimationFrame(f); else if(auth) api("/api/kblog",{method:"POST",body:{lines:["open2 "+id].concat(L.filter((x,i)=>i<40||i%3===0)).slice(0,80),ua:navigator.userAgent}}).catch(()=>{}) };
-    requestAnimationFrame(f); }
   loadRoomTools();
   try{
     const d=await api("/api/messages/"+id);
@@ -1599,18 +1595,19 @@ function drawRoomTool(){
   const id=viewTool();
   if(!id){ box.classList.remove("on","user"); box.innerHTML=""; roomBox=null; return }
   box.classList.add("on");
-  if(!isUserTool(id)){ box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }
+  if(!isUserTool(id)){ box.parentNode.classList.remove("wait"); box.classList.remove("user"); roomBox=null; const t=TOOLS.find(x=>x.id===id); t.render(box,toolCtx(t)); return }
   box.classList.add("user");
   const d=roomData[id], key=id+"@"+d.ver;
   if(roomBox&&roomBox.key===key&&box.contains(roomBox.h.frame)){ roomBox.h.push(); return }
-  if(!codeCache.has(key)){ box.innerHTML=""; roomBox=null; fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return }
+  if(!codeCache.has(key)){ box.innerHTML=""; roomBox=null; if(!swiping) box.parentNode.classList.add("wait"); fetchToolCode(id,d.ver).then(()=>{ if(roomData[id]===d) renderRoomTool() }); return }
+  const card=box.parentNode; if(!swiping) card.classList.add("wait");
   const bid=cur.id;
   const h=mountSandbox(box,codeCache.get(key),{
     state:()=>roomToolState(id),
     save:(data,text)=>{ if(!cur||cur.id!==bid) return;
       const old=roomData[id]||{}; roomData[id]={...data,on:old.on,ver:old.ver,name:old.name,log:old.log};
       if(text){ addLog(roomData[id],text); renderMsgs() } saveTool(id); h.push(); if(keepBox) keepBox.h.push() },
-    onReady:()=>syncKeep(),
+    onReady:()=>{ syncKeep(); setTimeout(()=>card.classList.remove("wait"),80) },
   });
   roomBox={key,h};
 }
