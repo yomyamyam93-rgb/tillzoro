@@ -392,3 +392,17 @@ test("모음에서 본 도구와 대화방에서 펼친 도구가 같다", async
   expect(await page.evaluate(() => roomData[viewTool()]?.name), "대화방이 다른 도구를 펼쳤다").toBe(name);
   expect(inRoom, "같은 도구인데 보이는 것이 다르다").toBe(inBox);
 });
+
+/* 도구를 다 지운 상태로 쓰는 사람이 있다. 그때 대화방이 깨지거나 빈 칸이 남으면 안 된다 */
+test("도구가 하나도 없어도 대화방이 멀쩡하다", async ({ page }) => {
+  await page.evaluate(() => openChat(people.find((p) => p.self).id));
+  await page.waitForFunction(() => onTools().length > 0, null, { timeout: 15000 });
+  const r = await page.evaluate(() => {
+    const keep = roomData;
+    try { roomData = {}; renderRoomTool(); return { display: getComputedStyle(document.querySelector(".rtcard")).display } }
+    catch (e) { return { err: String(e) } }
+    finally { roomData = keep; renderRoomTool() }
+  });
+  expect(r.err, "도구가 하나도 없으면 대화방이 깨진다").toBeUndefined();
+  expect(r.display, "도구가 없는데 빈 칸이 남는다").toBe("none");
+});
