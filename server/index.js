@@ -1348,7 +1348,13 @@ async function collect(bond, row, m, senderId) {
       const it = (await pool.query(
         "insert into items (user_id, bond_id, msg_id, kind, body, media, mime) values ($1, $2, $3, $4, $5, $6, $7) returning *",
         [uid, bond.id, row.id, kind, m.body || "", m.media || null, m.mime || null])).rows[0];
-      await fileItems(uid, [it], tools, String(uid) === String(senderId) ? m.tool : 0);
+      const force = String(uid) === String(senderId) && tools.some((x) => Number(x.id) === m.tool) ? m.tool : 0;
+      // 도구 안의 ＋: 이해(AI, 몇 초)를 기다리지 않고 그 도구에 바로 보인다. 자세한 뜻은 뒤에 채워진다
+      if (force) {
+        await pool.query("insert into item_hits (item_id, tool_id, data) values ($1, $2, $3) on conflict do nothing", [it.id, force, { what: m.body }]);
+        notify([String(uid)], { type: "items", tools: ["u" + force] });
+      }
+      await fileItems(uid, [it], tools, force);
     }
   } catch (e) { console.error("collect", e.message) }
 }
@@ -1792,10 +1798,15 @@ app.post("/api/self/item/:itemId/edit", auth, async (req, res) => {
   const it = (await pool.query("update items set body = $3 where id = $1 and user_id = $2 returning *", [Number(req.params.itemId) || 0, req.user.id, text])).rows[0];
   if (!it || !text) return res.sendStatus(404);
   const tools = await ruleTools(req.user.id);
-  await pool.query("delete from item_hits where item_id = $1 and tool_id = any($2::bigint[])", [it.id, tools.filter((x) => x.rule.ai).map((x) => x.id)]);
-  await fileItems(req.user.id, [it], tools);
+  // 고친 글은 바로 보이고(저장 즉시), 다시 이해해서 도구에 넣고 빼는 것은 뒤에서 한다
+  await pool.query("update item_hits set data = coalesce(data, '{}'::jsonb) || jsonb_build_object('what', $2::text) where item_id = $1", [it.id, text]);
   notify([String(req.user.id)], { type: "items", tools: tools.map((x) => "u" + x.id) });
   res.json({ ok: true });
+  (async () => {
+    await pool.query("delete from item_hits where item_id = $1 and tool_id = any($2::bigint[])", [it.id, tools.filter((x) => x.rule.ai).map((x) => x.id)]);
+    await fileItems(req.user.id, [it], tools);
+    notify([String(req.user.id)], { type: "items", tools: tools.map((x) => "u" + x.id) });
+  })().catch((e) => console.error("edit", e.message));
 });
 // 기억장: 틸봇이 나에 대해 아는 것. 설정에서 보고 지운다
 app.get("/api/me/facts", auth, async (req, res) => {
